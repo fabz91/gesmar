@@ -893,7 +893,7 @@ function renderModal(){
   if(!S.modal){root.innerHTML="";return}
   const a=document.activeElement;if(a&&root.contains(a)&&a.tagName!=="BUTTON"&&a.type!=="file"&&root.innerHTML)return; // ne pas effacer une saisie en cours
   const lid=S.config&&S.config.logoId;const dark=isDark();const P1=S.modalPanel;
-  const cloud=S.local?`<span class="cloud" title="${S.pc?"Enregistré dans Documents\\GESMAR":"Enregistré sur cet ordinateur"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2" fill="none"/><path d="M8 20h8M12 16v4" fill="none"/><path d="M9 10l2 2 4-4" fill="none"/></svg></span>`
+  const cloud=S.local?`<span class="cloud" title="${S.pc?"Enregistré sur ce PC (dossier des données)":"Enregistré sur cet ordinateur"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2" fill="none"/><path d="M8 20h8M12 16v4" fill="none"/><path d="M9 10l2 2 4-4" fill="none"/></svg></span>`
     :`<span class="cloud" title="Synchronisé en ligne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.34 9.5 4 4 0 0 0 7 19z" fill="none"/><path d="M9 14l2 2 4-4" fill="none"/></svg></span>`;
   root.innerHTML=`<div class="overlay" data-act="closeModalBg"></div><div class="reglages" role="dialog" aria-label="Réglages">
     <div class="head"><h3>Réglages</h3>${cloud}<button class="x" data-act="closeModal" aria-label="Fermer">✕</button></div>

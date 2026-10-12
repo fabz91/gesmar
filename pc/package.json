@@ -2,7 +2,43 @@
   "name": "gesmar",
   "productName": "GESMAR",
   "version": "1.0.0",
-  "description": "GESMAR – marges et avoirs fournisseurs",
+  "description": "GESMAR - marges et avoirs fournisseurs",
+  "author": "fabz91",
   "main": "main.js",
-  "author": "fabz91"
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "31.7.7",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "fr.fabz91.gesmar",
+    "productName": "GESMAR",
+    "copyright": "fabz91",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "core.js", "preload.js", "config.js", "index.html", "seed.json", "icon.png", "icon.ico", "package.json"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "icon.ico",
+      "artifactName": "GESMAR-Installateur-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "GESMAR",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "installerHeaderIcon": "icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "language": "1036",
+      "include": "installer.nsh"
+    }
+  }
 }

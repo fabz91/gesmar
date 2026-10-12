@@ -1,0 +1,67 @@
+﻿GESMAR - marges et avoirs fournisseurs
+=======================================
+
+CE QUE CONTIENT CE DOSSIER
+  index.html              toute l'application GESMAR
+  main.js                 ouvre la fenêtre, lit et écrit les données sur le PC,
+                          gère l'export, l'import, l'impression et la mise à jour
+  core.js                 enregistrement des données et mise à jour (utilisé par main.js)
+  preload.js              relie la page à main.js de façon sécurisée (window.api)
+  config.js               réglages modifiables (adresse des mises à jour, synchronisation)
+  package.json            nom du logiciel, versions d'Electron et d'electron-builder,
+                          réglages de l'installateur (NSIS)
+  installer.nsh           réglages complémentaires de l'installateur
+  icon.ico / icon.png     l'icône
+  seed.json               vos données de départ (BREDIS, CLAMART) pour le premier lancement
+                          -> fichier PRIVÉ : ne le mettez jamais sur GitHub
+  CREER-INSTALLATEUR.bat  le fichier à double-cliquer pour tout fabriquer
+
+
+À FAIRE UNE SEULE FOIS
+  1. Installez Node.js, version « LTS », depuis https://nodejs.org
+     Pendant l'installation, NE cochez PAS la case qui installe des outils
+     supplémentaires (« Tools for Native Modules ») : elle ouvre une longue
+     fenêtre PowerShell inutile.
+  2. Extrayez ce zip dans un dossier (par exemple Documents\GESMAR-source).
+  3. Double-cliquez sur CREER-INSTALLATEUR.bat.
+     Il lance « npm install » puis « npm run build ». Comptez quelques minutes,
+     avec une connexion internet.
+  4. L'installateur apparaît dans le dossier « dist » :
+     GESMAR-Installateur-1.0.0.exe. Lancez-le pour installer GESMAR.
+     Windows peut afficher « Windows a protégé votre ordinateur » (installateur
+     non signé) : cliquez sur « Informations complémentaires » puis
+     « Exécuter quand même ».
+  Pour réinstaller ou mettre à jour le programme lui-même, installez par-dessus :
+  les données sont conservées.
+
+
+OÙ SONT LES DONNÉES
+  Dans %APPDATA%\GESMAR\donnees\gesmar.json (jamais dans le dossier du programme).
+  Réglages (roue dentée) > Dossier des données ouvre ce dossier.
+  Une copie de sécurité est faite chaque jour dans donnees\sauvegardes
+  (les 30 derniers jours sont gardés).
+  Au premier lancement, GESMAR démarre avec les données de seed.json.
+  Réglages > Exporter crée une sauvegarde complète à garder sur une clé USB.
+
+
+MISE À JOUR SANS RÉINSTALLER (GitHub)
+  Réglages > Mettre à jour le logiciel : GESMAR lit version.json sur
+  https://github.com/fabz91/gesmar ; si la version est plus récente, il télécharge
+  la nouvelle page index.html, vérifie qu'elle est complète, puis redémarre.
+  Les données ne sont pas touchées.
+  Une pastille rouge sur la roue dentée signale qu'une nouvelle version existe.
+  « Revenir à la version d'origine » annule une mise à jour téléchargée.
+  Il faut refaire l'installateur seulement si le programme Windows lui-même change
+  (icône, fenêtre, installation, config.js).
+
+
+SYNCHRONISER PLUSIEURS PC (Supabase) - plus tard
+  Les emplacements sont prévus dans config.js (supabaseUrl, supabaseKey) mais la
+  synchronisation n'est pas encore active dans GESMAR. Ne mettez jamais la clé
+  « secret » ou « service_role », seulement la clé « publishable ».
+
+
+RACCOURCIS UTILES DANS GESMAR
+  Ctrl+P  imprimer l'écran affiché
+  F5      recharger
+  Ctrl+Z / Ctrl+Y  annuler / rétablir (en dehors d'une case de saisie)

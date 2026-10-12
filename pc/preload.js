@@ -8,9 +8,10 @@ contextBridge.exposeInMainWorld('api', {
   exportData: (text, name) => ipcRenderer.invoke('gm:export', text, name),
   importData: () => ipcRenderer.invoke('gm:import'),
   openFolder: () => ipcRenderer.invoke('gm:folder'),
+  print: () => ipcRenderer.invoke('gm:print'),
   updateInfo: () => ipcRenderer.invoke('gm:updateInfo'),
   updateCheck: (url) => ipcRenderer.invoke('gm:updateCheck', url),
   updateApply: (url) => ipcRenderer.invoke('gm:updateApply', url),
   updateReset: () => ipcRenderer.invoke('gm:updateReset')
 });
-contextBridge.exposeInMainWorld('SYNC', { updateUrl: cfg.updateUrl || '' });
+contextBridge.exposeInMainWorld('SYNC', { updateUrl: cfg.updateUrl || '', url: cfg.supabaseUrl || '', key: cfg.supabaseKey || '' });
