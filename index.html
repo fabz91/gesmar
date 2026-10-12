@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
-<meta name="gm-version" content="13">
+<meta name="gm-version" content="14">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -36,6 +36,9 @@
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.45}
 .wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+.wrap.wide{max-width:none;padding-inline:12px}
+.wrap.wide .sub{max-width:none}
+.sheet-scroll{max-height:calc(100vh - 150px);min-height:420px}
 
 /* ---- bandeau du haut (repris de GESTIME) ---- */
 header.top{background:var(--hdr)}
@@ -129,17 +132,18 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--surface);bor
 .sheet td.day,.sheet th.day{position:sticky;left:0;background:var(--surface);z-index:1;text-align:left;padding:4px 10px;font-weight:700}
 .sheet th.day{z-index:2}
 .sheet td.we{color:var(--red)}
-.sheet input{width:92px;border:0;border-radius:0;background:transparent;text-align:right;padding:6px 8px;font-variant-numeric:tabular-nums}
+.sheet input{width:84px;border:0;border-radius:0;background:transparent;text-align:right;padding:6px 8px;font-variant-numeric:tabular-nums}
 .sheet input:focus{background:var(--green-soft)}
 .sheet td.calc{padding:6px 8px;background:var(--sunk)}
 .sheet tr.tot td{padding:7px 8px;background:var(--sunk)}
 .sheet .ca input{font-weight:700}
+.sheet input[data-f="ca"],.sheet input[data-f="caHT"],.sheet input[data-f="caN1"]{width:100px}
 .sheet th.grp{text-align:center;background:var(--green);color:var(--on-green);border-bottom:1px solid var(--line)}
-.sheet th.fcol,.sheet th.fray{padding:6px 6px}
+.sheet th.fcol,.sheet th.fray{padding:5px 4px}
 .fhead{display:flex;align-items:center;gap:5px}
-.sheet input.fname{flex:1;min-width:118px;width:100%;background:var(--sunk);border:1px solid var(--line);border-radius:7px;padding:6px 8px;font:800 11px var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--fg);text-align:left}
+.sheet input.fname{flex:1;min-width:104px;width:100%;background:var(--sunk);border:1px solid var(--line);border-radius:7px;padding:6px 8px;font:800 11px var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--fg);text-align:left}
 .sheet input.fname:focus{border-color:var(--green-2);background:var(--surface)}
-.fx{flex:none;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:var(--sunk);color:var(--red-2);font:900 13px/1 var(--body);cursor:pointer;padding:0;display:grid;place-items:center}
+.fx{flex:none;width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--sunk);color:var(--red-2);font:900 13px/1 var(--body);cursor:pointer;padding:0;display:grid;place-items:center}
 .fx:hover,.fx:focus-visible{background:var(--red-2);border-color:var(--red-2);color:#fff}
 .rn{cursor:text;border-bottom:1px dashed transparent}
 .rn:hover{border-bottom-color:currentColor;color:var(--fg)}
@@ -244,7 +248,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=13;
+const APP_VERSION=14;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -369,6 +373,7 @@ function render(){
   if(!S.db){app.innerHTML=`<div class="empty-state">${S.noDb?"Les données ne sont pas disponibles dans cette vue. Ouvrez la page depuis Claude en étant connecté pour voir et saisir les chiffres.":"Chargement des données…<br><small>Les mois, les avoirs et les fournisseurs s'afficheront ici dès que la base répond.</small>"}</div>`;return}
   if(!S.magasins.length){app.innerHTML=S.magLoaded?`<div class="empty-state">Aucun magasin pour l'instant. Ouvrez les Réglages ⚙ pour créer le premier.</div>`:`<div class="empty-state">Chargement des magasins…</div>`;return}
   const active=document.activeElement&&document.activeElement.id;
+  app.classList.toggle("wide",S.tab==="saisie");
   app.innerHTML=({bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn}[S.tab]||vBord)();
   if(active){const el=document.getElementById(active);if(el&&el.tagName!=="BUTTON"&&!el.closest("#modalRoot"))el.focus()}
 }
@@ -521,7 +526,7 @@ function vSaisie(){
   <div class="row" style="margin-bottom:12px"><label class="lbl" for="mht">CA HT du mois (tableau d'analyse mensuel)</label>
     <input id="mht" inputmode="decimal" value="${doc.caHTmois?n2.format(doc.caHTmois):""}" placeholder="Ex. 262 556,21" style="width:140px">
     <span class="hist">${doc.caHTmois?"Ce montant remplace la somme des jours pour le calcul de la marge.":"Facultatif : s'il est rempli, il remplace la somme des CA HT journaliers."}</span></div>
-  <div class="panel flush"><div class="band">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll" style="max-height:70vh"><table class="sheet">
+  <div class="panel flush"><div class="band">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td><td>${n2.format(st.ca)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>`).join("")}</div>`:""}</div>
