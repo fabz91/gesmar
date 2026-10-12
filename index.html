@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
-<meta name="gm-version" content="14">
+<meta name="gm-version" content="15">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -140,6 +140,11 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--surface);bor
 .sheet input[data-f="ca"],.sheet input[data-f="caHT"],.sheet input[data-f="caN1"]{width:100px}
 .sheet th.grp{text-align:center;background:var(--green);color:var(--on-green);border-bottom:1px solid var(--line)}
 .sheet th.fcol,.sheet th.fray{padding:5px 4px}
+.sheet th.fcol input.fname{min-width:0;width:66px;padding:5px 5px;font-size:10px;letter-spacing:.02em}
+.sheet th.fcol .fhead{gap:3px}
+.sheet th.fcol .fx{width:20px;height:20px;font-size:11px;border-radius:6px}
+.sheet td.fc input{width:72px;padding:6px 5px}
+.sheet tr.tot td.fc{padding:7px 5px}
 .fhead{display:flex;align-items:center;gap:5px}
 .sheet input.fname{flex:1;min-width:104px;width:100%;background:var(--sunk);border:1px solid var(--line);border-radius:7px;padding:6px 8px;font:800 11px var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--fg);text-align:left}
 .sheet input.fname:focus{border-color:var(--green-2);background:var(--surface)}
@@ -248,7 +253,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=14;
+const APP_VERSION=15;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -504,14 +509,14 @@ function vSaisie(){
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
     const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
     rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td><td>${cell(dd,"caHT",j.caHT,j.ca&&!j.caHT?j.ca*coef():null)}</td>${hasN1?`<td>${cell(dd,"caN1",j.caN1)}</td>`:""}
-      ${runs.map(r=>r.mem.map(f=>`<td>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")+(r.groupe?(()=>{const s=r.mem.reduce((t,f)=>t+(a[f.id]||0),0);return `<td class="calc gtot">${s?n2.format(s):""}</td>`})():"")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
+      ${runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
   const tf=f=>st.par[f.id]?n2.format(st.par[f.id]):"";
   const rs="";
-  const nameCell=(f,del)=>!S.fourn.find(x=>x.id===f.id)?esc(f.nom):`<div class="fhead"><input id="rn-${esc(f.id)}" class="fname" data-rn="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur" title="Modifier le nom">${del?`<button class="fx" data-hidecol="${esc(f.id)}" title="Retirer ${esc(f.nom)} de la saisie" aria-label="Retirer ${esc(f.nom)} de la saisie">✕</button>`:""}</div>`;
-  const head1=`<tr><th class="day"${rs}>Jour</th><th${rs}>CA TTC</th><th${rs}>CA HT</th>${hasN1?`<th${rs}>CA N-1</th>`:""}${runs.map(r=>r.groupe?r.mem.map(f=>`<th class="fray">${nameCell(f,false)}</th>`).join("")+`<th>Total ${esc(fName(r.groupe))}</th>`:`<th class="fcol">${nameCell(r.mem[0],true)}</th>`).join("")}<th${rs}>Total achats</th></tr>`;
+  const nameCell=(f,del)=>!S.fourn.find(x=>x.id===f.id)?esc(f.nom):`<div class="fhead"><input id="rn-${esc(f.id)}" class="fname" data-rn="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur" title="${esc(f.nom)} : cliquer pour modifier le nom">${del?`<button class="fx" data-hidecol="${esc(f.id)}" title="Retirer ${esc(f.nom)} de la saisie" aria-label="Retirer ${esc(f.nom)} de la saisie">✕</button>`:""}</div>`;
+  const head1=`<tr><th class="day"${rs}>Jour</th><th${rs}>CA TTC</th><th${rs}>CA HT</th>${hasN1?`<th${rs}>CA N-1</th>`:""}${runs.map(r=>r.groupe?r.mem.map(f=>`<th class="fray">${nameCell(f,false)}</th>`).join(""):`<th class="fcol">${nameCell(r.mem[0],true)}</th>`).join("")}<th${rs}>Total achats</th></tr>`;
   const head2="";
   const hidAmt=retirees.map(f=>[f,st.par[f.id]||0]);
-  const totCells=runs.map(r=>r.mem.map(f=>`<td>${tf(f)}</td>`).join("")+(r.groupe?`<td class="gtot">${n2.format(r.mem.reduce((t,f)=>t+(st.par[f.id]||0),0))}</td>`:"")).join("");
+  const totCells=runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${tf(f)}</td>`).join("")).join("");
   return `
   ${periode("mois")}
   <h2>Saisie — ${MOIS[m]} ${y}</h2>
@@ -531,7 +536,7 @@ function vSaisie(){
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td><td>${n2.format(st.ca)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>`).join("")}</div>`:""}</div>
   <div class="gap"></div>
-  <div class="row">${hasN1?"":`<button class="btn" data-act="showN1">Ajouter la colonne CA N-1</button>`}<span class="hist">Tapez les montants directement : les totaux se calculent seuls. Touche Entrée = jour suivant. Le nom d'un fournisseur se modifie dans sa case en haut de colonne ; ✕ le retire de la saisie, « + Nom » en ajoute un.</span></div>
+  <div class="row">${hasN1?"":`<button class="btn" data-act="showN1">Ajouter la colonne CA N-1</button>`}<span class="hist">Tapez les montants directement : les totaux se calculent seuls. Touche Entrée = jour suivant. Le nom d'un fournisseur se modifie dans sa case en haut de colonne (le nom complet s'affiche au survol) ; ✕ le retire de la saisie, « + Nom » en ajoute un.</span></div>
   <div class="gap"></div>
   <label class="lbl" for="mnote">Note du mois</label>
   <textarea id="mnote" rows="2" style="width:100%;margin-top:4px" placeholder="Ex. facture en double, erreur du mois précédent…">${esc(doc.note||"")}</textarea>
