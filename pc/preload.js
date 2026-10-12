@@ -1,0 +1,16 @@
+'use strict';
+const { contextBridge, ipcRenderer } = require('electron');
+const cfg = ipcRenderer.sendSync('gm:config') || {};
+// Même interface que le programme PC de GESTIME (window.api + window.SYNC.updateUrl).
+contextBridge.exposeInMainWorld('api', {
+  load: (name) => ipcRenderer.sendSync('gm:load', name),
+  save: (name, text) => ipcRenderer.sendSync('gm:save', name, text),
+  exportData: (text, name) => ipcRenderer.invoke('gm:export', text, name),
+  importData: () => ipcRenderer.invoke('gm:import'),
+  openFolder: () => ipcRenderer.invoke('gm:folder'),
+  updateInfo: () => ipcRenderer.invoke('gm:updateInfo'),
+  updateCheck: (url) => ipcRenderer.invoke('gm:updateCheck', url),
+  updateApply: (url) => ipcRenderer.invoke('gm:updateApply', url),
+  updateReset: () => ipcRenderer.invoke('gm:updateReset')
+});
+contextBridge.exposeInMainWorld('SYNC', { updateUrl: cfg.updateUrl || '' });

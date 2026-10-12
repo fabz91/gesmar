@@ -1,0 +1,8 @@
+{
+  "name": "gesmar",
+  "productName": "GESMAR",
+  "version": "1.0.0",
+  "description": "GESMAR – marges et avoirs fournisseurs",
+  "main": "main.js",
+  "author": "fabz91"
+}
