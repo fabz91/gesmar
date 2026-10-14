@@ -8,7 +8,6 @@ module.exports = {
   updateUrl: 'https://raw.githubusercontent.com/fabz91/gesmar/main',
 
   // Synchronisation entre plusieurs PC (Supabase, comme GESTIME) : mêmes valeurs que le config.js de GESTIME.
-  // Si elles restent vides, on peut aussi les coller dans Réglages > « Synchronisation entre les PC ».
   // Ne mettez JAMAIS ici la clé « secret » ou « service_role », seulement la clé « publishable ».
   supabaseUrl: '',
   supabaseKey: ''

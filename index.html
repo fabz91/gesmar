@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="20">
+<meta name="gm-version" content="21">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -297,7 +297,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=20;
+const APP_VERSION=21;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -781,10 +781,6 @@ document.addEventListener("click",async e=>{
   if(act==="importPcOk"){const t=S.importPending&&S.importPending[0]&&S.importPending[0][1];S.importPending=null;S.modalPanel=null;if(t)applyImportText(t)}
   if(act==="openFolder"){try{window.api.openFolder()}catch(e){toast("Ouverture du dossier impossible")}}
   if(act==="majPc"){majPc()}
-  if(act==="syncSave"){const u=($("#syUrl")||{}).value||"",k=($("#syKey")||{}).value||"";
-    if(!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(u.trim())||k.trim().length<20){toast("Adresse ou clé incomplète : recopiez-les depuis config.js de GESTIME");return}
-    if(/secret|service_role/i.test(k)){toast("Cette clé est secrète : utilisez la clé « publishable »");return}
-    SYNC.configure(u,k).then(()=>render(),()=>render());render();toast("Synchronisation activée")}
   if(act==="majReset"){majReset()}
   if(act==="importOk"){confirmImport()}
   if(act==="importNo"){S.importPending=null;S.modalPanel=null;render()}
@@ -1090,9 +1086,6 @@ function renderModal(){
   const cloud=syncIcoHtml();
   root.innerHTML=`<div class="overlay" data-act="closeModalBg"></div><div class="reglages" role="dialog" aria-label="Réglages">
     <div class="head"><h3>Réglages</h3>${cloud}<button class="x" data-act="closeModal" aria-label="Fermer">✕</button></div>
-    ${S.local&&typeof SYNC!=="undefined"&&SYNC.st.state==="ko"&&SYNC.cfg()?`<div class="smsg">⚠️ ${esc(SYNC.st.msg)}</div>`:""}
-    ${S.local&&typeof SYNC!=="undefined"&&!SYNC.cfg()?`<h4>Synchronisation entre les PC</h4><div class="rinfo">Pas encore réglée sur ce poste. Collez l'adresse et la clé « publishable » de Supabase (les mêmes que dans le fichier config.js de GESTIME), puis Activer.</div>
-    <div class="sycfg"><input id="syUrl" placeholder="Adresse : https://….supabase.co" autocomplete="off" spellcheck="false"><input id="syKey" placeholder="Clé : sb_publishable_…" autocomplete="off" spellcheck="false"><button class="rbtn" data-act="syncSave"><span class="ic">☁️</span>Activer la synchronisation</button></div>`:""}
     <h4>Données</h4>
     <button class="rbtn" data-act="export"><span class="ic">💾</span>Exporter</button>
     <button class="rbtn" data-act="import"><span class="ic">📂</span>Importer</button><input type="file" id="importFile" accept="application/json,.json" hidden>
