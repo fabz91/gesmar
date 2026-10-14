@@ -36,11 +36,13 @@ CE QUE CONTIENT CE DOSSIER
 
 
 OÙ SONT LES DONNÉES
-  Dans %APPDATA%\GESMAR\donnees\gesmar.json (jamais dans le dossier du programme).
+  Dans %APPDATA%\GESMAR\donnees : un fichier par magasin (gesmar-bredis.json,
+  gesmar-clamart.json) + gesmar-commun.json (logo). Jamais dans le dossier du programme.
   Réglages (roue dentée) > Dossier des données ouvre ce dossier.
   Une copie de sécurité est faite chaque jour dans donnees\sauvegardes
   (les 30 derniers jours sont gardés).
-  Au premier lancement, GESMAR démarre avec les données de seed.json.
+  Au premier lancement, GESMAR reprend l'ancien fichier gesmar.json s'il existe,
+  sinon les données de seed.json.
   Réglages > Exporter crée une sauvegarde complète à garder sur une clé USB.
 
 
@@ -49,16 +51,24 @@ MISE À JOUR SANS RÉINSTALLER (GitHub)
   https://github.com/fabz91/gesmar ; si la version est plus récente, il télécharge
   la nouvelle page index.html, vérifie qu'elle est complète, puis redémarre.
   Les données ne sont pas touchées.
-  Une pastille rouge sur la roue dentée signale qu'une nouvelle version existe.
-  « Revenir à la version d'origine » annule une mise à jour téléchargée.
+  Une pastille rouge « 1 » sur la roue dentée et sur le bouton signale une nouvelle version.
+  
   Il faut refaire l'installateur seulement si le programme Windows lui-même change
   (icône, fenêtre, installation, config.js).
 
 
-SYNCHRONISER PLUSIEURS PC (Supabase) - plus tard
-  Les emplacements sont prévus dans config.js (supabaseUrl, supabaseKey) mais la
-  synchronisation n'est pas encore active dans GESMAR. Ne mettez jamais la clé
-  « secret » ou « service_role », seulement la clé « publishable ».
+SYNCHRONISER PLUSIEURS PC (Supabase, comme GESTIME)
+  1. Une seule fois : dans Supabase, menu « SQL Editor », collez le contenu de
+     supabase-gesmar.sql puis « Run ». Cela crée la table « gesmar »
+     (une ligne par magasin) sans toucher à GESTIME.
+  2. Sur chaque PC : soit config.js contient déjà supabaseUrl et supabaseKey
+     (mêmes valeurs que GESTIME), soit Réglages > « Synchronisation entre les PC » :
+     collez l'adresse et la clé « publishable », puis Activer.
+  Le nuage en haut des Réglages est vert quand tout est synchronisé, rouge sinon.
+  Chaque modification part tout de suite ; les autres postes la reçoivent en
+  15 secondes. Si deux postes modifient en même temps, les deux saisies sont gardées.
+  Sans internet, les saisies restent sur le PC et partent au retour de la connexion.
+  Ne mettez JAMAIS la clé « secret » ou « service_role », seulement « publishable ».
 
 
 RACCOURCIS UTILES DANS GESMAR
