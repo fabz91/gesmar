@@ -61,9 +61,9 @@ SYNCHRONISER PLUSIEURS PC (Supabase, comme GESTIME)
   1. Une seule fois : dans Supabase, menu « SQL Editor », collez le contenu de
      supabase-gesmar.sql puis « Run ». Cela crée la table « gesmar »
      (une ligne par magasin) sans toucher à GESTIME.
-  2. Sur chaque PC : soit config.js contient déjà supabaseUrl et supabaseKey
-     (mêmes valeurs que GESTIME), soit Réglages > « Synchronisation entre les PC » :
-     collez l'adresse et la clé « publishable », puis Activer.
+  2. config.js doit contenir supabaseUrl et supabaseKey (mêmes valeurs que GESTIME)
+     avant de fabriquer l'installateur. Le bouton « Mettre à jour » ne change
+     jamais config.js : un PC déjà installé sans ces valeurs doit être réinstallé.
   Le nuage en haut des Réglages est vert quand tout est synchronisé, rouge sinon.
   Chaque modification part tout de suite ; les autres postes la reçoivent en
   15 secondes. Si deux postes modifient en même temps, les deux saisies sont gardées.
