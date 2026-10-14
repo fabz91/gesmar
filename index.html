@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="22">
+<meta name="gm-version" content="23">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -297,7 +297,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=22;
+const APP_VERSION=23;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -993,11 +993,10 @@ const LocalAssets={
     const r=new FileReader();r.onload=()=>{const id="logo"+Date.now();STORE["__assets/"+id]={src:r.result};try{persist("__assets/"+id);res({id,url:r.result})}catch(e){rej(e)}};r.onerror=()=>rej({code:"invalid_request"});r.readAsDataURL(file)}),
   delete:async id=>{const had=!!STORE["__assets/"+id];delete STORE["__assets/"+id];persist("__assets/"+id);return{deleted:had}}};
 function blobSrc(id){if(S.local){const a=STORE["__assets/"+id];return a?a.src:""}return "/_blob/"+id}
-async function exportData(){
+async function exportData(){ // Nom du fichier : GESMAR-AAAA-MM-JJ.json (PC et navigateur : Windows propose l'emplacement)
   const j=JSON.stringify({app:"GESMAR",version:APP_VERSION,exporte:new Date().toISOString(),data:STORE},null,1);
-  if(PC){try{if(await window.api.exportData(j,"gesmar"))toast("Sauvegarde exportée")}catch(e){toast("Export impossible")}return}
   const blob=new Blob([j],{type:"application/json"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="GESMAR-sauvegarde-"+todayISO()+".json";document.body.appendChild(a);a.click();
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="GESMAR-"+todayISO()+".json";document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast("Sauvegarde exportée")}
 function applyImportText(t){try{const j=JSON.parse(t);const d=j&&j.data;if(!d||typeof d!=="object")throw 0;
     const before=Object.keys(STORE);STORE=clone(d);for(const k of Object.keys(STORE))if(k.startsWith("__meta/"))delete STORE[k];
