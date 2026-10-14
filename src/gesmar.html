@@ -1,0 +1,935 @@
+<title>GESMAR</title>
+<meta name="gm-version" content="21">
+<style>
+/* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
+:root{
+  --bg:#eef1ed; --surface:#ffffff; --sunk:#f1f4f0; --line:#d6ddd5; --fg:#18231b; --muted:#5d6b60;
+  --green:#17613a; --green-2:#23824d; --green-soft:#e2f0e6; --on-green:#ffffff;
+  --red:#c4161c; --red-2:#e2342b; --red-soft:#fbe5e3; --on-red:#ffffff;
+  --accent:var(--green); --accent-soft:var(--green-soft); --accent-fg:var(--on-green);
+  --warn:#9a5b00; --warn-soft:#fbefd9; --bad:#b3261e; --bad-soft:#fbe4e1; --good:#17613a; --good-soft:#e2f0e6; --info:#2d5a8a; --info-soft:#e2ebf5;
+  --bar-empty:#dfe5dd; --n1:#e7a3a0; --hdr:#ffffff; --tab-on:#3cb44b; --teal:#2fa89e; --on-teal:#ffffff; --panel:#ffffff; --logo-bg:transparent; --logo-pad:0; --shadow:0 1px 2px rgba(20,40,25,.08),0 2px 8px rgba(20,40,25,.05);
+  --display:system-ui,-apple-system,"Segoe UI",sans-serif; --body:system-ui,-apple-system,"Segoe UI",sans-serif; /* police de Windows, comme GESTIME */
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#2a2e32; --surface:#33383c; --sunk:#3b4045; --line:#4a5055; --fg:#eef0f1; --muted:#a8b0b5;
+  --green:#36a84a; --green-2:#45c05a; --green-soft:#2c3f31; --on-green:#ffffff;
+  --hdr:#1f2326; --tab-on:#3cb44b; --teal:#5fd0c6; --on-teal:#10302d; --panel:#3a3f44;
+  --red:#b8191f; --red-2:#d6322a; --red-soft:#3d1d1c; --on-red:#ffffff;
+  --warn:#f0b65a; --warn-soft:#3a2e17; --bad:#f08a80; --bad-soft:#3d1f1c; --good:#5cc28d; --good-soft:#1c3325; --info:#8db7e6; --info-soft:#1d2a3a;
+  --bar-empty:#2b332d; --n1:#8a4441; --logo-bg:#ffffff; --logo-pad:4px 8px; --shadow:none; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#2a2e32; --surface:#33383c; --sunk:#3b4045; --line:#4a5055; --fg:#eef0f1; --muted:#a8b0b5;
+  --green:#36a84a; --green-2:#45c05a; --green-soft:#2c3f31; --on-green:#ffffff;
+  --hdr:#1f2326; --tab-on:#3cb44b; --teal:#5fd0c6; --on-teal:#10302d; --panel:#3a3f44;
+  --red:#b8191f; --red-2:#d6322a; --red-soft:#3d1d1c; --on-red:#ffffff;
+  --warn:#f0b65a; --warn-soft:#3a2e17; --bad:#f08a80; --bad-soft:#3d1f1c; --good:#5cc28d; --good-soft:#1c3325; --info:#8db7e6; --info-soft:#1d2a3a;
+  --bar-empty:#2b332d; --n1:#8a4441; --logo-bg:#ffffff; --logo-pad:4px 8px; --shadow:none; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.45}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+.wrap.wide{max-width:none;padding-inline:12px}
+.wrap.wide .sub{max-width:none}
+.sheet-scroll{max-height:calc(100vh - 150px);min-height:420px}
+
+/* ---- bandeau du haut (repris de GESTIME) ---- */
+header.top{background:var(--hdr)}
+.bar{max-width:1280px;margin:0 auto;padding:12px 16px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px}
+.ident{display:flex;align-items:center;gap:12px;min-width:0}
+.appico{flex:none;width:46px;height:46px;border-radius:11px;background:linear-gradient(160deg,var(--green-2),var(--green));display:grid;place-items:center;color:var(--on-green);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.appico svg{width:28px;height:28px}
+.apptitle{font-family:var(--display);font-weight:900;font-size:27px;line-height:1;letter-spacing:.02em;color:var(--fg)}
+.apptitle b{color:var(--red-2)}
+.store{display:flex;align-items:center;gap:8px;margin-top:5px;font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.24em;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.house{border:0;background:none;color:var(--muted);width:22px;height:22px;display:grid;place-items:center;cursor:pointer;padding:0;border-radius:4px}
+.house svg{width:16px;height:16px}
+.logo{justify-self:center;display:flex;align-items:center;min-height:46px}
+.logo img{max-height:46px;max-width:120px;display:block;background:var(--logo-bg);border-radius:6px;padding:var(--logo-pad)}
+.logo .ph{border:1.5px dashed var(--line);color:var(--muted);background:none;border-radius:8px;padding:8px 12px;font:600 12px var(--body);cursor:pointer}
+.tools{justify-self:end;display:flex;gap:8px}
+.ibtn{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;display:grid;place-items:center;padding:0}
+.ibtn svg{width:17px;height:17px}
+.ibtn:disabled{opacity:.35;cursor:default}
+.ibtn:not(:disabled):hover,.house:hover{color:var(--green-2);border-color:var(--green-2)}
+.stripe{height:5px;background:linear-gradient(var(--green) 0 2px,transparent 2px 3px,var(--red-2) 3px 5px)}
+.menu{position:absolute;z-index:30;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.25);padding:6px;min-width:200px}
+.menu button{display:flex;width:100%;align-items:center;gap:8px;border:0;background:none;color:var(--fg);font:600 14px var(--body);padding:8px 10px;border-radius:6px;cursor:pointer;text-align:left}
+.menu button:hover{background:var(--sunk)}
+.menu button[aria-current="true"]{background:var(--green-soft);color:var(--green-2)}
+nav.tabs{max-width:1280px;margin:0 auto;padding:16px 16px 4px;display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
+nav.tabs button{font:800 13px var(--display);letter-spacing:.05em;text-transform:uppercase;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 20px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+nav.tabs button:hover{border-color:var(--tab-on)}
+nav.tabs button[aria-selected="true"]{background:var(--tab-on);border-color:var(--tab-on);color:#fff;box-shadow:0 2px 8px rgba(60,180,75,.35)}
+nav.tabs .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--red-2);color:var(--on-red);font-size:11px;letter-spacing:0}
+@media (max-width:640px){
+  .bar{grid-template-columns:1fr auto}
+  .logo{grid-column:1/-1;grid-row:2;justify-self:center;min-height:0}
+  .apptitle{font-size:23px}
+  nav.tabs button{padding:8px 12px;font-size:12px}
+}
+
+/* ---- période ---- */
+.periode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.periode .nav{width:34px;height:34px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:6px;cursor:pointer;font-size:16px}
+.periode select,.periode input{height:34px}
+.periode input{width:80px}
+.periode .sp{flex:1}
+
+/* ---- cartes à bandeau rouge ---- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0;box-shadow:var(--shadow)}
+.panel.flush{padding:0;overflow:hidden}
+.band{background:linear-gradient(180deg,var(--red-2),var(--red));color:var(--on-red);font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;text-align:center}
+.panel>.band{margin:-16px -16px 14px;border-radius:var(--r) var(--r) 0 0}
+.panel.flush>.band{margin:0}
+.band .pillbtn{font:700 12px var(--body);letter-spacing:0;text-transform:none;color:var(--on-red);background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.7);border-radius:14px;padding:3px 12px;cursor:pointer}
+.band .pillbtn:hover{background:rgba(255,255,255,.28)}
+
+h2{font-family:var(--display);font-weight:800;font-size:22px;margin:0 0 4px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 16px;max-width:75ch}
+.lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(175px,1fr))}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--shadow)}
+.kpi .v{font-family:var(--display);font-weight:800;font-size:24px;font-variant-numeric:tabular-nums}
+.kpi.hl .v{color:var(--green)}
+.kpi.alert .v{color:var(--red)}
+.kpi .d{font-size:12px;color:var(--muted)}
+.two{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+@media (max-width:860px){.two{grid-template-columns:minmax(0,1fr)}}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface);position:sticky;top:0}
+td.l,th.l{text-align:left}
+tr.tot td{font-weight:800;border-top:2px solid var(--fg);border-bottom:0}
+tr.muted td{color:var(--muted)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:700;white-space:nowrap}
+.s-a_reclamer{background:var(--warn-soft);color:var(--warn)}
+.s-reclame,.s-relance{background:var(--info-soft);color:var(--info)}
+.s-accepte,.s-deduit{background:var(--good-soft);color:var(--good)}
+.s-refuse{background:var(--bad-soft);color:var(--bad)}
+.late{color:var(--bad);font-weight:700}
+button.btn,.btn{font:700 13px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:6px;padding:7px 12px;cursor:pointer}
+.btn.primary{background:var(--green);border-color:var(--green);color:var(--on-green)}
+.btn.red{background:var(--red);border-color:var(--red);color:var(--on-red)}
+.btn.small{padding:3px 8px;font-size:12px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,nav.tabs button:focus-visible,.gear:focus-visible,.house:focus-visible,.band .pillbtn:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* saisie */
+/* grille de saisie : colonnes toutes égales qui se partagent la largeur (elles rétrécissent quand on ajoute un fournisseur) */
+.sheet{table-layout:fixed;width:100%}
+.sheet td{padding:0;border-right:1px solid var(--line);height:32px;overflow:hidden}
+.sheet th{border-right:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;padding:5px 4px;font-size:10.5px}
+.sheet th.day,.sheet td.day{width:78px;position:sticky;left:0;background:var(--surface);z-index:1;text-align:left;padding:4px 10px;font-weight:700}
+.sheet th.day{z-index:2}
+.sheet td.we{color:var(--red)}
+.sheet td input{display:block;width:100%;height:100%;min-width:0;box-sizing:border-box;border:0;border-radius:0;background:transparent;text-align:right;padding:6px 6px;font-variant-numeric:tabular-nums;font-size:13px}
+.sheet td input::placeholder{font-size:12px}
+/* sélection verte = exactement la case */
+.sheet td input:focus,.sheet td input:focus-visible{background:var(--green-soft);outline:2px solid var(--green-2);outline-offset:-2px}
+.sheet td.calc{padding:6px 6px;background:var(--sunk);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet tr.tot td{padding:7px 6px;background:var(--sunk);overflow:hidden;text-overflow:ellipsis}
+.sheet tr.tot td.day{padding:7px 10px}
+.sheet .ca input{font-weight:700}
+.fhead{display:flex;align-items:center;gap:3px;min-width:0}
+.sheet input.fname{flex:1;min-width:0;width:100%;box-sizing:border-box;background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:5px 5px;font:800 10px var(--display);letter-spacing:.02em;text-transform:uppercase;color:var(--fg);text-align:left;text-overflow:ellipsis}
+.sheet input.fname:focus{border-color:var(--green-2);background:var(--surface);outline:none}
+.fx{flex:none;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);background:var(--sunk);color:var(--red-2);font:900 11px/1 var(--body);cursor:pointer;padding:0;display:grid;place-items:center}
+.fx:hover,.fx:focus-visible{background:var(--red-2);border-color:var(--red-2);color:#fff}
+.rn{cursor:text;border-bottom:1px dashed transparent}
+.rn:hover{border-bottom-color:currentColor;color:var(--fg)}
+.rnin{width:120px;font:700 11px var(--body);text-transform:uppercase;padding:2px 4px}
+.colx{position:absolute;top:3px;right:3px;width:17px;height:17px;border-radius:50%;border:0;background:transparent;color:var(--muted);font:700 13px/17px var(--body);padding:0;cursor:pointer;opacity:.55}
+.colx:hover,.colx:focus-visible{opacity:1;background:var(--red-2);color:#fff}
+.hidden-cols{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.hidden-cols button{font:600 12px var(--body);border:1px dashed var(--line);background:none;color:var(--fg);border-radius:14px;padding:3px 10px;cursor:pointer}
+.hidden-cols button:hover{border-color:var(--green-2);color:var(--green-2)}
+.sheet td.gtot{background:var(--green-soft);font-weight:700}
+/* chart */
+svg text{fill:var(--muted);font:11px var(--body)}
+svg .vl{fill:var(--fg);font-weight:700}
+/* bars list */
+.hb{display:grid;grid-template-columns:120px minmax(0,1fr) 90px;gap:4px 8px;align-items:center;font-size:13px}
+.hb .tr{height:10px;background:var(--sunk);border-radius:2px;overflow:hidden}
+.hb .tr i{display:block;height:100%;background:var(--green)}
+.hb .n{text-align:right;font-variant-numeric:tabular-nums}
+.hb span.hsub{font-size:12px;color:var(--muted)} .hb span.hname{padding-left:14px}
+.hb .tr.hsub{height:6px} .hb .tr.hsub i{opacity:.55}
+/* avoirs */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:5px 12px;font:700 13px var(--body);color:var(--fg);cursor:pointer;display:flex;gap:6px;align-items:baseline}
+.chip[aria-pressed="true"]{border-color:var(--green);background:var(--green);color:var(--on-green)}
+.chip[aria-pressed="true"] .c{color:var(--on-green)}
+.chip .c{color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 12px}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--muted)}
+.form .wide{grid-column:1/-1}
+.hist{font-size:12px;color:var(--muted)}
+.empty-state{padding:32px 16px;text-align:center;color:var(--muted)}
+.note{background:var(--red-soft);color:var(--fg);border-radius:var(--r);padding:10px 12px;font-size:13px;border:1px solid var(--line)}
+.foot{font-size:12px;color:var(--muted);padding:8px 14px}
+/* réglages (repris de GESTIME) */
+.overlay{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.18)}
+.reglages{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:max(16px,calc((100vw - 1280px)/2 + 16px));width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 90px);overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.35);padding:16px 18px 18px;z-index:41}
+.reglages .head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.reglages .head h3{margin:0;flex:1;font-family:var(--display);font-weight:800;font-size:24px;color:var(--fg);text-shadow:0 0 10px rgba(69,192,90,.45)}
+.reglages .cloud{color:var(--green-2);display:grid;place-items:center}
+.reglages .cloud svg{width:24px;height:24px}
+.reglages .x{border:0;background:none;color:var(--fg);font-size:26px;line-height:1;cursor:pointer;padding:2px 4px}
+.reglages h4{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:16px 0 8px;opacity:.85}
+.rbtn{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);font:700 16px var(--display);color:var(--fg);cursor:pointer;text-align:left}
+.rbtn:hover{border-color:var(--green-2)}
+.rbtn .ic{font-size:18px;width:22px;text-align:center}
+.ibtn.upd{position:relative}.ibtn.upd::after{content:"";position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--red-2);border:2px solid var(--hdr)}
+.rver{font-size:13px;font-weight:700;color:var(--muted);margin:-2px 0 4px 2px}
+.rtheme{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rtheme button{padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);font:700 16px var(--display);cursor:pointer}
+.rtheme button[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.rinfo{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;margin:-2px 0 10px;line-height:1.5}
+.reglages .row input,.reglages .row select{background:var(--surface)}
+.storelist{display:grid;gap:6px}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:var(--r);font-weight:700;font-size:13px;z-index:60}
+.gap{height:16px}
+@media (prefers-reduced-motion:no-preference){.hb .tr i{transition:width .3s}}
+
+/* ===== Uniformisation avec GESTIME (v17) : mêmes couleurs, même mode sombre, même bandeau, mêmes onglets, mêmes réglages ===== */
+:root{--bg:#f6f5f1;--sunk:#f6f5f1;--line:#e2e0d8;--fg:#1d2433;--muted:#6b7385;
+  --green:#237a3b;--green-2:#237a3b;--green-soft:#e2f0e4;--good:#237a3b;--good-soft:#e2f0e4;--red:#d3262b;--red-2:#d3262b;
+  --tab-on:#237a3b;--teal:#237a3b;--on-teal:#fff;--hdr:#ffffff;--panel:#ffffff;--logo-bg:#fff;--logo-pad:4px 8px}
+:root[data-theme="dark"]{--bg:#1f2022;--surface:#2a2b2e;--sunk:#252629;--line:#45474b;--fg:#f4f5f7;--muted:#b8bbc0;
+  --green:#3fbf3a;--green-2:#3fbf3a;--green-soft:#2d4a33;--good:#3fbf3a;--good-soft:#2d4a33;--red:#f0473d;--red-2:#f0473d;--bad:#ff7a72;
+  --tab-on:#3fbf3a;--teal:#3fbf3a;--on-teal:#fff;--hdr:#151617;--panel:#2a2b2e;--bar-empty:#303134}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1f2022;--surface:#2a2b2e;--sunk:#252629;--line:#45474b;--fg:#f4f5f7;--muted:#b8bbc0;
+  --green:#3fbf3a;--green-2:#3fbf3a;--green-soft:#2d4a33;--good:#3fbf3a;--good-soft:#2d4a33;--red:#f0473d;--red-2:#f0473d;--bad:#ff7a72;
+  --tab-on:#3fbf3a;--teal:#3fbf3a;--on-teal:#fff;--hdr:#151617;--panel:#2a2b2e;--bar-empty:#303134}}
+/* double filet fin : vert, fond, rouge */
+.stripe{height:6px;background:linear-gradient(var(--green) 0 2px,var(--bg) 2px 4px,var(--red-2) 4px 6px)}
+/* logo G20 sur tuile blanche */
+.logo img{max-height:none;max-width:none;height:44px;width:auto;background:#fff;border-radius:8px;padding:4px 8px;box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+@media (max-width:640px){.logo img{height:30px;padding:2px 5px}}
+/* onglets en MAJUSCULES, petits et centrés sous le bandeau */
+nav.tabs{padding:14px 16px 4px;gap:8px}
+nav.tabs button{font:700 14px var(--body);letter-spacing:.04em;min-width:132px;padding:7px 10px;border-radius:10px;box-shadow:none}
+nav.tabs button[aria-selected="true"]{box-shadow:none}
+:root[data-theme="dark"] nav.tabs button[aria-selected="true"]{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);box-shadow:0 0 10px rgba(63,191,58,.5)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) nav.tabs button[aria-selected="true"]{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);box-shadow:0 0 10px rgba(63,191,58,.5)}}
+:root[data-theme="dark"] nav.tabs button:not([aria-selected="true"]){background:#303134;border-color:#45474b;color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) nav.tabs button:not([aria-selected="true"]){background:#303134;border-color:#45474b;color:#fff}}
+@media (max-width:640px){nav.tabs button{min-width:0;width:calc(50% - 6px)}}
+/* fenêtre des réglages : même fenêtre que GESTIME (centrée, fond assombri) */
+.overlay{background:rgba(0,0,0,.5);z-index:40}
+.reglages{top:50%;left:50%;right:auto;transform:translate(-50%,-50%);width:min(380px,calc(100vw - 40px));max-height:calc(100vh - 40px);background:var(--surface);border-radius:14px;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.reglages .head{margin-bottom:2px}
+.reglages .head h3{font:700 19px var(--body);text-shadow:none}
+.reglages .x{border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:18px;line-height:1.2;padding:2px 10px}
+.reglages h4{font:400 12px var(--body);color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin:12px 0 8px;opacity:1}
+.rbtn{gap:8px;padding:10px 12px;border-radius:8px;background:var(--surface);font:400 15px var(--body)}
+.rbtn .ic{font-size:15px;width:auto}
+.rtheme{gap:8px}.rtheme button{padding:6px 12px;border-radius:8px;background:var(--surface);font:400 15px var(--body)}
+.rtheme button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:#fff}
+.rver{font-weight:400;font-size:12px}
+.syi{display:inline-flex;align-items:center;line-height:0}
+.syi.ok{color:#237a3b}.syi.ko{color:#d3262b}.syi.wait{color:var(--muted)}
+:root[data-theme="dark"] .syi.ok{color:#4fd37a}:root[data-theme="dark"] .syi.ko{color:#ff7a74}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .syi.ok{color:#4fd37a}:root:not([data-theme="light"]) .syi.ko{color:#ff7a74}}
+.smsg{font-size:13px;color:var(--red-2);margin:4px 0 0}
+.sycfg{display:grid;gap:8px}.sycfg input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:13px var(--body)}
+#gtn{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:300;max-width:min(560px,calc(100vw - 24px));background:#d3262b;color:#fff;font:700 14px var(--body);padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer}
+/* pastille « 1 » : nouvelle version disponible (sur l'engrenage et sur le bouton Mettre à jour) */
+.ibtn.upd{position:relative}
+.ibtn.upd::after{content:"1";position:absolute;top:-7px;right:-7px;width:auto;height:17px;min-width:17px;padding:0 4px;border-radius:9px;background:#d3262b;color:#fff;border:0;box-shadow:0 0 0 2px var(--hdr);font:700 11px/17px var(--body);text-align:center}
+.rbtn .pas{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#d3262b;color:#fff;font:700 12px/20px var(--body);text-align:center}
+</style>
+
+<header class="top">
+  <div class="bar">
+    <div class="ident">
+      <div class="appico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2" fill="none"/><path d="M3 9h18M8 2v4M16 2v4" fill="none"/><path d="M7 17l3-3 2 2 5-5" fill="none"/></svg></div>
+      <div style="min-width:0">
+        <div class="apptitle">GES<b>MAR</b></div>
+        <div class="store"><span id="storeName">—</span><button class="house" id="houseBtn" aria-label="Changer de magasin" aria-haspopup="menu" title="Changer de magasin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9" fill="none"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z" fill="none"/><path d="M5 13v7h14v-7" fill="none"/><path d="M10 20v-4h4v4" fill="none"/></svg></button></div>
+      </div>
+    </div>
+    <div class="logo" id="logoSlot"></div>
+    <div class="tools">
+      <button class="ibtn" id="gearBtn" aria-label="Réglages" title="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" fill="none"/><path fill="none" d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <button class="ibtn" id="undoBtn" aria-label="Annuler la dernière modification" title="Annuler (Ctrl+Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5" fill="none"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none"/></svg></button>
+      <button class="ibtn" id="redoBtn" aria-label="Rétablir" title="Rétablir (Ctrl+Y)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5" fill="none"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" fill="none"/></svg></button>
+    </div>
+  </div>
+  <div class="stripe" aria-hidden="true"></div>
+</header>
+<nav class="tabs" role="tablist">
+    <button role="tab" data-tab="bord">Tableau de bord</button>
+    <button role="tab" data-tab="saisie">Saisie</button>
+    <button role="tab" data-tab="avoirs">Avoirs<span class="cnt" id="avCnt" hidden></span></button>
+    <button role="tab" data-tab="fourn">Fournisseurs</button>
+</nav>
+<div class="menu" id="storeMenu" role="menu" hidden></div>
+
+<main class="wrap" id="app">
+  <div class="empty-state">Chargement des données…<br><small>Les mois, les avoirs et les fournisseurs du magasin s'afficheront ici dès que la base répond.</small></div>
+</main>
+<div id="modalRoot"></div>
+<div id="toast" hidden></div>
+
+<script>
+(function(){
+const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const MC=["Janv","Févr","Mars","Avr","Mai","Juin","Juil","Août","Sept","Oct","Nov","Déc"];
+const STATUTS=[
+  ["a_reclamer","À réclamer"],["reclame","Réclamé"],["relance","Relancé"],["accepte","Accepté"],["deduit","Déduit"],["refuse","Refusé"]];
+const SLABEL=Object.fromEntries(STATUTS);
+const EN_COURS=["a_reclamer","reclame","relance","accepte"];
+const OBTENU=["accepte","deduit"];
+const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
+const APP_VERSION=21;
+const RELANCE_JOURS=7;
+const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
+const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
+
+const S={db:null,store:null,magasins:[],config:{},assets:null,modal:false,fourn:[],mois:{},avoirs:[],year:2026,tab:"bord",month:new Date().getMonth(),
+  fStat:"en_cours",fFourn:"",fText:"",edit:null,confirmDel:null,loaded:{f:false,m:false,a:false}};
+try{S.tab=localStorage.getItem("gesmar.tab")||"bord";S.store=localStorage.getItem("gesmar.store")}catch(e){}
+const P=x=>"magasins/"+S.store+"/"+x;
+const slug=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"");
+const storeNom=()=>(S.magasins.find(m=>m.id===S.store)||{}).nom||"—";
+
+const eur=new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0});
+const eur2=new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2});
+const n2=new Intl.NumberFormat("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=v=>v==null||!isFinite(v)?"—":(v*100).toFixed(1).replace(".",",")+" %";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const parseNum=s=>{s=String(s??"").trim().replace(/\s/g,"").replace(/€/g,"").replace(",",".");if(s==="")return null;const v=Number(s);return isFinite(v)?Math.round(v*100)/100:NaN};
+const todayISO=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const frDate=iso=>iso?iso.slice(8,10)+"/"+iso.slice(5,7)+"/"+iso.slice(2,4):"—";
+const daysSince=iso=>iso?Math.floor((Date.parse(todayISO())-Date.parse(iso))/864e5):null;
+const mkey=(y,m)=>y+"-"+String(m+1).padStart(2,"0");
+const $=s=>document.querySelector(s);
+
+/* ---------- affichage clair / sombre (comme GESTIME) ---------- */
+function getTheme(){try{return localStorage.getItem("gesmar.theme")}catch(e){return null}}
+function applyTheme(){const t=getTheme();if(t==="clair")document.documentElement.dataset.theme="light";else if(t==="sombre")document.documentElement.dataset.theme="dark"}
+function setTheme(t){try{localStorage.setItem("gesmar.theme",t)}catch(e){};applyTheme();render()}
+const isDark=()=>{const d=document.documentElement.dataset.theme;return d?d==="dark":!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)};
+applyTheme();
+
+/* ---------- annuler / rétablir (flèches du bandeau) ----------
+   Chaque écriture garde l'état précédent du document ; les écritures faites dans la même seconde forment une seule action. */
+const HIST={undo:[],redo:[],lastT:0,busy:false};
+const deepCopy=o=>o==null?null:JSON.parse(JSON.stringify(o));
+function wrapDb(db){
+  const rec=async(path,fn)=>{
+    if(HIST.busy||path.startsWith("config/"))return fn();
+    let before;try{const sn=await db.doc(path).get();before=sn.exists?deepCopy(sn.data()):null}catch(e){before=undefined}
+    const r=await fn();
+    if(before!==undefined){const now=Date.now(),ent={path,before};
+      if(now-HIST.lastT<800&&HIST.undo.length)HIST.undo[HIST.undo.length-1].push(ent);else HIST.undo.push([ent]);
+      HIST.lastT=now;if(HIST.undo.length>80)HIST.undo.shift();HIST.redo=[];updHist()}
+    return r};
+  const wd=path=>{const r=db.doc(path);return{id:r.id,path,get:()=>r.get(),onSnapshot:(a,b)=>r.onSnapshot(a,b),collection:p=>wc(path+"/"+p),
+    set:b=>rec(path,()=>r.set(b)),update:b=>rec(path,()=>r.update(b)),delete:()=>rec(path,()=>r.delete())}};
+  const wc=path=>{const c=db.collection(path);return{path,get:()=>c.get(),onSnapshot:(a,b)=>c.onSnapshot(a,b),
+    doc:id=>wd(id?path+"/"+id:c.doc().path),add:async b=>{const ref=wd(c.doc().path);await ref.set(b);return ref}}};
+  return{doc:wd,collection:wc,raw:db};
+}
+function updHist(){const u=$("#undoBtn"),r=$("#redoBtn");if(u)u.disabled=!HIST.undo.length||HIST.busy;if(r)r.disabled=!HIST.redo.length||HIST.busy}
+async function histStep(from,to,msg){
+  const g=from.pop();if(!g||!S.db)return;HIST.busy=true;updHist();const back=[];
+  try{for(const e of g.slice().reverse()){const ref=S.db.raw.doc(e.path);const sn=await ref.get();back.push({path:e.path,before:sn.exists?deepCopy(sn.data()):null});
+      if(e.before==null)await ref.delete();else await ref.set(e.before)}
+    to.push(back);toast(msg)}catch(err){fail(err)}finally{HIST.busy=false;updHist()}}
+const undo=()=>histStep(HIST.undo,HIST.redo,"Modification annulée");
+const redo=()=>histStep(HIST.redo,HIST.undo,"Modification rétablie");
+document.addEventListener("keydown",e=>{if(!(e.ctrlKey||e.metaKey))return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+  const k=e.key.toLowerCase();if(k==="z"&&!e.shiftKey){e.preventDefault();undo()}else if(k==="y"||(k==="z"&&e.shiftKey)){e.preventDefault();redo()}});
+
+/* ---------- mise à jour du logiciel (programme PC, comme GESTIME) ---------- */
+const majUrl=()=>window.SYNC&&window.SYNC.updateUrl;
+function majFlag(){const g=$("#gearBtn");if(g)g.classList.toggle("upd",!!majBadge())}
+async function majCheck(silent){
+  const r=await window.api.updateCheck(majUrl());
+  if(r.status==="new"){S.majNew=r.remote;majFlag();if(!silent)S.majMsg="Nouvelle version disponible ("+r.remote+"), vous avez la "+r.version+"."+(r.note?" "+r.note:"")}
+  else if(!silent){S.majMsg=r.status==="none"?"✓ Vous avez la dernière version ("+r.version+").":r.status==="noconfig"?"Adresse des mises à jour non réglée.":"⚠️ Impossible de vérifier : "+(r.msg||"pas de connexion internet")}
+  return r}
+async function majPc(){if(S.majBusy)return;S.majSeen=true;majFlag();S.majBusy=true;S.majMsg="Recherche d'une nouvelle version…";render();
+  try{const r=await majCheck(false);render();
+    if(r.status==="new"){S.majMsg="Téléchargement de la version "+r.remote+"…";render();
+      const a=await window.api.updateApply(majUrl());S.majMsg=a.status==="done"?"✓ Mise à jour installée, redémarrage…":"⚠️ "+(a.msg||"échec de la mise à jour")}
+    S.majShowReset=true}catch(e){S.majMsg="⚠️ "+(e.message||e)}
+  S.majBusy=false;render()}
+async function majReset(){try{await window.api.updateReset()}catch(e){toast("Retour impossible")}}
+
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200)}
+function fail(e){console.error(e);toast(e&&e.code==="invalid_argument"?"Enregistrement refusé : vous n'avez pas le droit de modifier ces données.":e&&e.code==="quota_exceeded"?"La base est pleine : supprimez d'anciens avoirs.":"Enregistrement impossible pour le moment. Réessayez.")}
+
+/* ---------- calculs ---------- */
+const colFourn=()=>S.fourn.filter(f=>f.colonne);
+const fName=k=>(S.fourn.find(f=>f.id===k)||{}).nom||k;
+const grp=k=>{const f=S.fourn.find(x=>x.id===k);return f&&f.groupe?f.groupe:null};
+const coef=()=>{const c=S.reglages&&+S.reglages.coefHT;return c>0.5&&c<=1?c:DEFAULT_COEF};
+function monthStats(y,m){
+  const doc=S.mois[mkey(y,m)];const r={ca:0,caTTC:0,caN1:0,achats:0,par:{},jours:0,estimes:0,avoirs:0};
+  if(doc&&doc.jours){for(const j of Object.values(doc.jours)){if(!j)continue;
+    if(j.ca||j.caHT){r.jours++;r.caTTC+=j.ca||0;if(j.caHT)r.ca+=j.caHT;else{r.ca+=j.ca*coef();r.estimes++}} if(j.caN1)r.caN1+=j.caN1;
+    for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
+  if(doc&&doc.caHTmois>0){r.ca=doc.caHTmois;r.estimes=0;r.htMois=true}
+  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m)))r.avoirs+=a.montant}
+  r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
+  r.marge=r.ca-r.achats;r.taux=r.ca?r.marge/r.ca:null;r.tauxCorr=r.ca?(r.marge+r.avoirs)/r.ca:null;r.tauxHD=r.ca?(r.marge+r.demarque)/r.ca:null;return r}
+const dayISO=(y,m,d)=>y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+/* Totaux entre deux inventaires : jours strictement après d1, jusqu'à d2 inclus (stock compté le soir de l'inventaire). */
+function periodStats(d1,d2){
+  const r={ca:0,caTTC:0,achats:0,demarque:0,jours:0,estimes:0};
+  let y=+d1.slice(0,4),m=+d1.slice(5,7)-1;const ye=+d2.slice(0,4),me=+d2.slice(5,7)-1;
+  while(y<ye||(y===ye&&m<=me)){
+    const first=dayISO(y,m,1),last=dayISO(y,m,new Date(y,m+1,0).getDate());const doc=S.mois[mkey(y,m)];
+    if(first>d1&&last<=d2){const t=monthStats(y,m);r.ca+=t.ca;r.caTTC+=t.caTTC;r.achats+=t.achats;r.demarque+=t.demarque;r.jours+=t.jours;r.estimes+=t.estimes}
+    else if(doc){
+      for(const[dd,j]of Object.entries(doc.jours||{})){const iso=dayISO(y,m,+dd);if(!j||iso<=d1||iso>d2)continue;
+        if(j.ca||j.caHT){r.jours++;r.caTTC+=j.ca||0;if(j.caHT)r.ca+=j.caHT;else{r.ca+=j.ca*coef();r.estimes++}}
+        for(const v of Object.values(j.achats||{}))r.achats+=v||0}
+      for(const x of(doc.demarque||[]))if(x.date>d1&&x.date<=d2)r.demarque+=+x.montant||0}
+    m++;if(m>11){m=0;y++}}
+  return r}
+function lastAction(a){const rel=(a.relances||[]).slice().sort();return rel.length?rel[rel.length-1]:(a.dateReclamation||a.date)}
+function isLate(a){return (a.statut==="reclame"||a.statut==="relance")&&daysSince(lastAction(a))>=RELANCE_JOURS}
+
+/* ---------- rendu ---------- */
+function render(){
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
+  $("#storeName").textContent=storeNom();
+  const ls=$("#logoSlot");const lid=S.config&&S.config.logoId;
+  const lh=lid?`<img src="/_blob/${esc(lid)}" alt="Logo">`:"";
+  if(ls.dataset.h!==lh){ls.innerHTML=lh;ls.dataset.h=lh}
+  renderModal();updHist();
+  const pend=S.avoirs.filter(a=>EN_COURS.includes(a.statut)).length;const c=$("#avCnt");c.hidden=!pend;c.textContent=pend;
+  const app=$("#app");
+  if(!S.db){app.innerHTML=`<div class="empty-state">${S.noDb?"Les données ne sont pas disponibles dans cette vue. Ouvrez la page depuis Claude en étant connecté pour voir et saisir les chiffres.":"Chargement des données…<br><small>Les mois, les avoirs et les fournisseurs s'afficheront ici dès que la base répond.</small>"}</div>`;return}
+  if(!S.magasins.length){app.innerHTML=S.magLoaded?`<div class="empty-state">Aucun magasin pour l'instant. Ouvrez les Réglages ⚙ pour créer le premier.</div>`:`<div class="empty-state">Chargement des magasins…</div>`;return}
+  const active=document.activeElement&&document.activeElement.id;
+  app.classList.toggle("wide",S.tab==="saisie");
+  app.innerHTML=({bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn}[S.tab]||vBord)();
+  if(active){const el=document.getElementById(active);if(el&&el.tagName!=="BUTTON"&&!el.closest("#modalRoot"))el.focus()}
+}
+
+function periode(mode){
+  return `<div class="periode"><button class="nav" data-per="-1" aria-label="Précédent">‹</button>${mode==="mois"?`<select id="perMois" aria-label="Mois">${MOIS.map((n,i)=>`<option value="${i}" ${i===S.month?"selected":""}>${n}</option>`).join("")}</select>`:""}<input id="perAn" type="number" inputmode="numeric" min="2000" max="2100" value="${S.year}" aria-label="Année"><button class="nav" data-per="1" aria-label="Suivant">›</button></div>`}
+
+function vBord(){
+  const y=S.year;const ms=MOIS.map((_,m)=>monthStats(y,m));const act=ms.filter(s=>s.ca>0);
+  // comparaison avec l'année précédente : CA et taux du même mois (sinon colonne N-1 saisie à la main)
+  const pv=MOIS.map((_,m)=>monthStats(y-1,m));
+  ms.forEach((s,m)=>{const p=pv[m];s.n1=p.caTTC||s.caN1||0;s.n1Taux=p.ca&&p.jours>=20?p.taux:null;s.n1Inc=p.caTTC>0&&p.jours<20});
+  const comp=ms.map((s,m)=>[s,pv[m],m]).filter(([s,p])=>s.jours>=20&&p.jours>=20);
+  const C=comp.reduce((a,[s,p])=>({n:a.n+s.caTTC,p:a.p+p.caTTC,nHT:a.nHT+s.ca,pHT:a.pHT+p.ca,nA:a.nA+s.achats,pA:a.pA+p.achats}),{n:0,p:0,nHT:0,pHT:0,nA:0,pA:0});
+  const evo=C.p?C.n/C.p-1:null, tN=C.nHT?(C.nHT-C.nA)/C.nHT:null, tP=C.pHT?(C.pHT-C.pA)/C.pHT:null;
+  const compLbl=comp.length?(comp.length===1?MOIS[comp[0][2]]:`${MC[comp[0][2]]}–${MC[comp[comp.length-1][2]]}`):"";
+  const pAct=pv.filter(p=>p.ca>0&&p.jours>=20);const PT=pAct.reduce((a,p)=>({ca:a.ca+p.ca,ac:a.ac+p.achats}),{ca:0,ac:0});const tauxPrev=PT.ca?(PT.ca-PT.ac)/PT.ca:null;
+  const pts=(a,b)=>a==null||b==null?"—":((a-b)*100>=0?"+":"−")+Math.abs((a-b)*100).toFixed(1).replace(".",",")+" pt";
+  const T=act.reduce((a,s)=>({ca:a.ca+s.ca,caTTC:a.caTTC+s.caTTC,achats:a.achats+s.achats,avoirs:a.avoirs+s.avoirs,caN1:a.caN1+s.caN1,jours:a.jours+s.jours,estimes:a.estimes+s.estimes,n1:a.n1+s.n1,dem:a.dem+s.demarque}),{ca:0,caTTC:0,achats:0,avoirs:0,caN1:0,jours:0,estimes:0,n1:0,dem:0});
+  const taux=T.ca?(T.ca-T.achats)/T.ca:null, tauxC=T.ca?(T.ca-T.achats+T.avoirs)/T.ca:null;
+  const enc=S.avoirs.filter(a=>EN_COURS.includes(a.statut));const encM=enc.reduce((s,a)=>s+(a.montant||0),0);
+  const late=S.avoirs.filter(isLate);const sansMontant=enc.filter(a=>!a.montant).length;
+  const best=act.length?act.reduce((a,b)=>a.taux>b.taux?a:b):null, worst=act.length?act.reduce((a,b)=>a.taux<b.taux?a:b):null;
+  // achats par fournisseur
+  const par={};act.forEach(s=>{for(const[k,v]of Object.entries(s.par))par[k]=(par[k]||0)+v});
+  const G={};for(const[k,v]of Object.entries(par)){const g=grp(k)||k;G[g]=G[g]||{tot:0,sub:[]};G[g].tot+=v;if(grp(k))G[g].sub.push([k,v])}
+  const parL=Object.entries(G).sort((a,b)=>b[1].tot-a[1].tot);const maxP=parL.length?parL[0][1].tot:1;
+  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
+  return `
+  ${periode("annee")}
+  <h2>Tableau de bord ${y} — ${esc(storeNom())}</h2>
+  <p class="sub">${act.length} mois avec du chiffre d'affaires saisi. Taux de marge = (CA HT − achats HT) ÷ CA HT. Quand le CA HT d'un jour n'est pas saisi, il est estimé à partir du TTC × ${String(coef()).replace(".",",")}. La version « après avoirs » ajoute les avoirs acceptés ou déduits du mois du problème.</p>
+  <div class="grid kpis">
+    <div class="kpi"><span class="lbl">CA HT cumulé</span><span class="v">${eur.format(T.ca)}</span><span class="d">TTC ${eur.format(T.caTTC)}${T.estimes?` · ${T.estimes} j. sur ${T.jours} estimés`:""}</span></div>
+    <div class="kpi"><span class="lbl">Achats cumulés</span><span class="v">${eur.format(T.achats)}</span><span class="d">${parL.length} fournisseurs</span></div>
+    <div class="kpi hl"><span class="lbl">Marge brute</span><span class="v">${eur.format(T.ca-T.achats)}</span><span class="d">Taux ${pct(taux)}${T.dem?` · démarque connue ${eur.format(T.dem)}`:""}</span></div>
+    <div class="kpi hl"><span class="lbl">Taux après avoirs</span><span class="v">${pct(tauxC)}</span><span class="d">+ ${eur.format(T.avoirs)} d'avoirs obtenus</span></div>
+    <div class="kpi ${evo==null?"":evo>=0?"hl":"alert"}"><span class="lbl">CA vs ${y-1}</span><span class="v">${evo==null?"—":(evo>=0?"+":"")+pct(evo)}</span><span class="d">${comp.length?`${compLbl}, mois comparables · marge ${pct(tN)} contre ${pct(tP)} (${pts(tN,tP)})`:`Pas de mois complet en ${y-1} à comparer`}</span></div>
+    <div class="kpi ${late.length?"alert":""}"><span class="lbl">Avoirs en cours</span><span class="v">${eur.format(encM)}</span><span class="d">${enc.length} dossier${enc.length>1?"s":""}${late.length?` · <span class="late">${late.length} à relancer</span>`:""}</span></div>
+  </div>
+  <div class="gap"></div>
+  <div class="grid two">
+    <div class="panel"><div class="band">Taux de marge par mois</div>${chart(ms,pv,y)}
+      ${best?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(best)]} (${pct(best.taux)}). Plus faible : ${MOIS[ms.indexOf(worst)]} (${pct(worst.taux)}).</p>`:""}</div>
+    <div class="panel"><div class="band">Achats ${y} par fournisseur</div>
+      ${parL.length?`<div class="hb">${parL.map(([k,g])=>hbRow(k,g.tot,false)+g.sub.sort((a,b)=>b[1]-a[1]).map(([s,v])=>hbRow(s,v,true)).join("")).join("")}</div>`:`<p class="sub">Aucun achat saisi.</p>`}
+    </div>
+  </div>
+  <div class="gap"></div>
+  ${vInventaires(y)}
+  <div class="gap"></div>
+  <div class="panel"><div class="band">Récapitulatif mensuel</div><div class="scroll"><table>
+    <thead><tr><th class="l">Mois</th><th>Jours</th><th>CA TTC</th><th>CA ${y-1}</th><th>Évol.</th><th>CA HT</th><th>Achats HT</th><th>Marge</th><th>Taux</th><th>Taux ${y-1}</th><th>Écart</th><th>Avoirs obtenus</th><th>Taux après avoirs</th></tr></thead>
+    <tbody>${ms.map((s,m)=>{const ev=s.n1&&s.caTTC&&s.jours>=20&&!s.n1Inc?(s.caTTC/s.n1-1):null;const n=(S.mois[mkey(y,m)]||{}).note;
+      return `<tr class="${s.ca?"":"muted"}"><td class="l"><a href="#" data-goto="${m}" style="color:inherit">${MOIS[m]}</a>${n?` <span title="${esc(n)}" class="pill s-a_reclamer">note</span>`:""}</td><td>${s.jours||"—"}</td><td>${s.caTTC?eur.format(s.caTTC):"—"}</td><td>${s.n1?eur.format(s.n1)+(s.n1Inc?`<span class="hist" title="Mois ${y-1} incomplet"> ⚠</span>`:""):"—"}</td>
+      <td class="${ev>0?"pos":ev<0?"neg":""}">${ev==null?"—":(ev>0?"+":"")+pct(ev)}</td><td>${s.ca?eur.format(s.ca)+(s.htMois?`<span class="hist" title="HT exact du tableau d'analyse mensuel"> ✓</span>`:"")+(s.estimes?`<span class="hist" title="${s.estimes} jour(s) estimé(s) depuis le TTC"> *</span>`:""):"—"}</td><td>${s.achats?eur.format(s.achats):"—"}</td><td>${s.ca?eur.format(s.marge):"—"}</td><td><b>${pct(s.taux)}</b></td><td>${pct(s.n1Taux)}</td><td class="${s.taux!=null&&s.n1Taux!=null&&s.jours>=20?(s.taux>=s.n1Taux?"pos":"neg"):""}">${s.ca&&s.jours>=20?pts(s.taux,s.n1Taux):"—"}</td><td>${s.avoirs?eur.format(s.avoirs):"—"}</td><td>${pct(s.tauxCorr)}</td></tr>`}).join("")}
+    <tr class="tot"><td class="l">Total</td><td></td><td>${eur.format(T.caTTC)}</td><td>${T.n1?eur.format(T.n1):"—"}</td><td></td><td>${eur.format(T.ca)}</td><td>${eur.format(T.achats)}</td><td>${eur.format(T.ca-T.achats)}</td><td>${pct(taux)}</td><td>${pct(tauxPrev)}</td><td></td><td>${eur.format(T.avoirs)}</td><td>${pct(tauxC)}</td></tr>
+    </tbody></table></div></div>
+  ${late.length||sansMontant?`<div class="gap"></div><div class="note">${late.length?`<b>${late.length} avoir${late.length>1?"s":""} sans nouvelle depuis plus de ${RELANCE_JOURS} jours.</b> `:""}${sansMontant?`${sansMontant} avoir${sansMontant>1?"s":""} en cours sans montant. `:""}<a href="#" data-tab-go="avoirs" style="color:inherit">Voir les avoirs</a></div>`:""}`;
+}
+
+function chart(ms,pv,yr){
+  const W=640,H=220,pl=34,pr=8,pt=30,pb=24;
+  const okP=p=>p.ca&&p.jours>=20?p.taux:null;
+  const vals=[...ms.map(s=>s.taux),...pv.map(okP)].filter(v=>v!=null);const mx=Math.max(0.4,...vals.map(v=>Math.ceil(v*10)/10));
+  const bw=(W-pl-pr)/12;const y=v=>pt+(H-pt-pb)*(1-v/mx);
+  let g="";for(let t=0;t<=mx+1e-9;t+=0.1){g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-6}" y="${y(t)+4}" text-anchor="end">${Math.round(t*100)}%</text>`}
+  const hasP=pv.some(p=>okP(p)!=null);
+  const bars=ms.map((s,i)=>{const cx=pl+i*bw+bw/2;const lbl=`<text x="${cx}" y="${H-6}" text-anchor="middle">${MC[i]}</text>`;
+    const w=hasP?bw*0.36:bw*0.64;const xN=hasP?cx+1:cx-w/2,xP=cx-w-1;let out="";
+    const pvv=okP(pv[i]);
+    if(hasP&&pvv!=null){const v=Math.max(0,pvv);out+=`<rect x="${xP}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--n1)"><title>${MOIS[i]} ${yr-1} : ${pct(pvv)}</title></rect>`}
+    if(s.taux==null)return out+`<rect x="${xN}" y="${y(0)-3}" width="${w}" height="3" fill="var(--bar-empty)"/>`+lbl;
+    const v=Math.max(0,s.taux);return out+`<rect x="${xN}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--accent)" opacity="${s.jours<20?0.45:1}"><title>${MOIS[i]} ${yr} : ${pct(s.taux)}${s.jours<20?" (mois incomplet)":""}</title></rect><text class="vl" x="${xN+w/2}" y="${y(v)-5}" text-anchor="middle">${(s.taux*100).toFixed(0)}</text>`+lbl}).join("");
+  const leg=hasP?`<rect x="${W-pr-150}" y="6" width="10" height="10" rx="2" fill="var(--n1)"/><text x="${W-pr-136}" y="15">${yr-1}</text><rect x="${W-pr-90}" y="6" width="10" height="10" rx="2" fill="var(--accent)"/><text x="${W-pr-76}" y="15">${yr}</text>`:"";
+  return `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:420px;display:block" role="img" aria-label="Taux de marge par mois, ${yr} comparé à ${yr-1}">${g}${bars}${leg}</svg></div>`;
+}
+
+function vInventaires(y){
+  const inv=(S.inv||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const per=[];for(let i=1;i<inv.length;i++){const a=inv[i-1],b=inv[i];const p=periodStats(a.date,b.date);
+    const marge=p.ca-p.achats, reelle=p.ca-(p.achats+(+a.valeur||0)-(+b.valeur||0));
+    per.push({a,b,p,marge,reelle,tA:p.ca?marge/p.ca:null,tR:p.ca?reelle/p.ca:null,tHD:p.ca?(reelle+p.demarque)/p.ca:null})}
+  // période en cours depuis le dernier inventaire (marge sur achats seulement)
+  const lastInv=inv[inv.length-1];const today=todayISO();
+  const cur=lastInv&&lastInv.date<today?periodStats(lastInv.date,today):null;
+  const curT=cur&&cur.ca?(cur.ca-cur.achats)/cur.ca:null;
+  return `<div class="panel flush"><div class="band">Inventaires et marge réelle<button class="pillbtn" data-act="focusInv">+ Inventaire</button></div>
+  <div style="padding:14px 16px 4px">
+    <p class="hist" style="margin:0 0 10px;max-width:90ch">Saisissez la valeur du stock (HT, au prix d'achat) à chaque inventaire. Entre deux inventaires, la <b>marge réelle</b> = CA HT − (achats + stock de début − stock de fin). Elle corrige l'effet des livraisons qui gonfle ou creuse la marge d'un mois. Le taux « hors démarque connue » montre ce que serait la marge sans la casse et les pertes notées dans la Saisie.</p>
+    <form id="invForm" class="row" style="margin-bottom:12px">
+      <label class="lbl" for="invDate">Date</label><input id="invDate" type="date" value="${esc(S.invDraft&&S.invDraft.date||"")}" required>
+      <label class="lbl" for="invVal">Stock HT (€)</label><input id="invVal" inputmode="decimal" placeholder="Ex. 185 000" style="width:130px" required>
+      <input id="invNote" placeholder="Note (facultatif)" style="flex:1;min-width:140px">
+      <button class="btn red" type="submit">Enregistrer l'inventaire</button></form>
+  </div>
+  ${inv.length?`<div class="scroll"><table>
+    <thead><tr><th class="l">Période</th><th>Stock début</th><th>Stock fin</th><th>Variation</th><th>CA HT</th><th>Achats HT</th><th>Marge sur achats</th><th>Marge réelle</th><th>Démarque connue</th><th>Hors démarque</th><th></th></tr></thead>
+    <tbody>${per.map(x=>`<tr><td class="l">${frDate(x.a.date)} → ${frDate(x.b.date)}${x.p.estimes?`<span class="hist" title="${x.p.estimes} jour(s) de CA HT estimé(s) depuis le TTC"> *</span>`:""}</td>
+      <td>${eur.format(+x.a.valeur||0)}</td><td>${eur.format(+x.b.valeur||0)}</td><td class="${(x.b.valeur-x.a.valeur)>=0?"pos":"neg"}">${((x.b.valeur-x.a.valeur)>=0?"+":"")+eur.format((+x.b.valeur||0)-(+x.a.valeur||0))}</td>
+      <td>${eur.format(x.p.ca)}</td><td>${eur.format(x.p.achats)}</td><td>${pct(x.tA)}</td><td><b>${eur.format(x.reelle)} · ${pct(x.tR)}</b></td>
+      <td>${x.p.demarque?eur.format(x.p.demarque):"—"}</td><td>${pct(x.tHD)}</td><td></td></tr>`).join("")}
+      ${cur?`<tr class="muted"><td class="l">${frDate(lastInv.date)} → aujourd'hui</td><td>${eur.format(+lastInv.valeur||0)}</td><td>?</td><td>—</td><td>${eur.format(cur.ca)}</td><td>${eur.format(cur.achats)}</td><td>${pct(curT)}</td><td>au prochain inventaire</td><td>${cur.demarque?eur.format(cur.demarque):"—"}</td><td>—</td><td></td></tr>`:""}
+    </tbody></table></div>
+    <div class="foot">Inventaires saisis : ${inv.map(i=>`<span style="white-space:nowrap">${frDate(i.date)} = <b>${eur.format(+i.valeur||0)}</b>${i.note?` (${esc(i.note)})`:""} ${S.confirmInv===i.id?`<button class="btn small danger" data-invdel="${esc(i.id)}">Confirmer</button>`:`<button class="btn small" data-invask="${esc(i.id)}" aria-label="Supprimer l'inventaire du ${frDate(i.date)}">×</button>`}</span>`).join(" · ")}${inv.length===1?" — saisissez le prochain inventaire pour obtenir la marge réelle de la période.":""}</div>`
+  :`<div class="foot" style="padding-bottom:14px">Aucun inventaire saisi. Commencez par le dernier inventaire annuel (ou le stock à l'ouverture), puis ajoutez chaque nouvel inventaire.</div>`}
+  </div>`;
+}
+
+function vSaisie(){
+  const y=S.year,m=S.month,key=mkey(y,m);const doc=S.mois[key]||{jours:{}};const J=doc.jours||{};
+  const nd=new Date(y,m+1,0).getDate();
+  const used=new Set();Object.values(J).forEach(j=>Object.keys((j&&j.achats)||{}).forEach(k=>used.add(k)));
+  const cols=colFourn().filter(f=>f.actif!==false||used.has(f.id));
+  used.forEach(k=>{if(!cols.find(f=>f.id===k)&&!S.fourn.find(f=>f.id===k))cols.push({id:k,nom:k})});
+  const retirees=S.fourn.filter(f=>!f.colonne&&!f.groupe&&!S.fourn.some(x=>x.groupe===f.id)).sort((a,b)=>(a.ordre??99)-(b.ordre??99));
+  cols.sort((a,b)=>(a.ordre??99)-(b.ordre??99));
+  // regroupe les rayons d'un même fournisseur (ex. DIAPAR) côte à côte, suivis de leur sous-total
+  const runs=[];const seen=new Set();
+  for(const f of cols){if(seen.has(f.id))continue;
+    if(f.groupe){const mem=cols.filter(x=>x.groupe===f.groupe);mem.forEach(x=>seen.add(x.id));runs.push({groupe:f.groupe,mem})}
+    else{seen.add(f.id);runs.push({mem:[f]})}}
+  const anyG=runs.some(r=>r.groupe);
+  const hasN1=Object.values(J).some(j=>j&&j.caN1)||S.showN1;
+  const st=monthStats(y,m);
+  const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal" value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
+  let rows="";
+  for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
+    const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
+    rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td><td>${cell(dd,"caHT",j.caHT,j.ca&&!j.caHT?j.ca*coef():null)}</td>${hasN1?`<td>${cell(dd,"caN1",j.caN1)}</td>`:""}
+      ${runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
+  const tf=f=>st.par[f.id]?n2.format(st.par[f.id]):"";
+  const rs="";
+  const nameCell=(f,del)=>!S.fourn.find(x=>x.id===f.id)?esc(f.nom):`<div class="fhead"><input id="rn-${esc(f.id)}" class="fname" data-rn="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur" title="${esc(f.nom)} : cliquer pour modifier le nom">${del?`<button class="fx" data-hidecol="${esc(f.id)}" title="Retirer ${esc(f.nom)} de la saisie" aria-label="Retirer ${esc(f.nom)} de la saisie">✕</button>`:""}</div>`;
+  const head1=`<tr><th class="day"${rs}>Jour</th><th${rs}>CA TTC</th><th${rs}>CA HT</th>${hasN1?`<th${rs}>CA N-1</th>`:""}${runs.map(r=>r.groupe?r.mem.map(f=>`<th class="fray">${nameCell(f,false)}</th>`).join(""):`<th class="fcol">${nameCell(r.mem[0],true)}</th>`).join("")}<th${rs}>Total achats</th></tr>`;
+  const head2="";
+  const hidAmt=retirees.map(f=>[f,st.par[f.id]||0]);
+  const totCells=runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${tf(f)}</td>`).join("")).join("");
+  return `
+  ${periode("mois")}
+  <h2>Saisie — ${MOIS[m]} ${y}</h2>
+  <p class="sub">Une ligne par jour, une colonne par fournisseur, toujours dans le même ordre. CA TTC = « C.A. Net » du tableau d'analyse ; CA HT = total HT du bloc Taxes. Si le HT est vide, l'estimation s'affiche en grisé. Chaque case s'enregistre dès que vous la quittez. Les totaux sont calculés automatiquement.</p>
+  <div class="grid kpis" style="margin-bottom:16px">
+    <div class="kpi"><span class="lbl">CA HT du mois</span><span class="v">${eur.format(st.ca)}</span><span class="d">TTC ${eur.format(st.caTTC)} · ${st.htMois?"HT du tableau mensuel":`${st.jours} j.${st.estimes?` dont ${st.estimes} estimé${st.estimes>1?"s":""}`:""}`}</span></div>
+    <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">&nbsp;</span></div>
+    <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">${st.ca?pct(st.demarque/st.ca)+" du CA HT · marge hors démarque "+pct(st.tauxHD):"&nbsp;"}</span></div>
+    <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.taux)}</span><span class="d">Marge ${eur.format(st.marge)}</span></div>
+    <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} obtenus ce mois</span></div>
+  </div>
+  <div class="row" style="margin-bottom:12px"><label class="lbl" for="mht">CA HT du mois (tableau d'analyse mensuel)</label>
+    <input id="mht" inputmode="decimal" value="${doc.caHTmois?n2.format(doc.caHTmois):""}" placeholder="Ex. 262 556,21" style="width:140px">
+    <span class="hist">${doc.caHTmois?"Ce montant remplace la somme des jours pour le calcul de la marge.":"Facultatif : s'il est rempli, il remplace la somme des CA HT journaliers."}</span></div>
+  <div class="panel flush"><div class="band">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
+    <thead>${head1}${head2}</thead>
+    <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td><td>${n2.format(st.ca)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
+  </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>`).join("")}</div>`:""}</div>
+  <div class="gap"></div>
+  <div class="row">${hasN1?"":`<button class="btn" data-act="showN1">Ajouter la colonne CA N-1</button>`}<span class="hist">Tapez les montants directement : les totaux se calculent seuls. Touche Entrée = jour suivant. Le nom d'un fournisseur se modifie dans sa case en haut de colonne (le nom complet s'affiche au survol) ; ✕ le retire de la saisie, « + Nom » en ajoute un.</span></div>
+  <div class="gap"></div>
+  <label class="lbl" for="mnote">Note du mois</label>
+  <textarea id="mnote" rows="2" style="width:100%;margin-top:4px" placeholder="Ex. facture en double, erreur du mois précédent…">${esc(doc.note||"")}</textarea>
+  <div class="gap"></div>
+  ${vDemarque(y,m,doc,st)}`;
+}
+
+function vDemarque(y,m,doc,st){
+  const L=(Array.isArray(doc.demarque)?doc.demarque:[]).map((x,i)=>({...x,i})).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const t=todayISO();const def=t.startsWith(mkey(y,m))?t:dayISO(y,m,1);
+  const parMotif={};L.forEach(x=>parMotif[x.motif]=(parMotif[x.motif]||0)+(+x.montant||0));
+  return `<div class="panel flush"><div class="band">Démarque connue — ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="focusDem">+ Démarque</button></div>
+  <form id="demForm" class="row" style="padding:12px 14px;border-bottom:1px solid var(--line)">
+    <input id="demDate" type="date" value="${def}" min="${dayISO(y,m,1)}" max="${dayISO(y,m,new Date(y,m+1,0).getDate())}" required aria-label="Date">
+    <select id="demMotif" aria-label="Motif">${DEM_MOTIFS.map(x=>`<option>${x}</option>`).join("")}</select>
+    <input id="demDetail" placeholder="Produit ou rayon (ex. yaourts, fruits & légumes)" style="flex:1;min-width:180px">
+    <input id="demMontant" inputmode="decimal" placeholder="Montant HT (prix d'achat)" style="width:170px" required>
+    <button class="btn red" type="submit">Ajouter</button></form>
+  ${L.length?`<div class="scroll"><table><thead><tr><th class="l">Date</th><th class="l">Motif</th><th class="l">Détail</th><th>Montant HT</th><th></th></tr></thead><tbody>
+    ${L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(x.motif)}</td><td class="l" style="white-space:normal">${esc(x.detail)}</td><td>${eur2.format(+x.montant||0)}</td>
+      <td>${S.confirmDem===x.i?`<button class="btn small danger" data-demdel="${x.i}">Confirmer</button>`:`<button class="btn small" data-demask="${x.i}">Supprimer</button>`}</td></tr>`).join("")}
+    <tr class="tot"><td class="l" colspan="3">Total ${Object.entries(parMotif).map(([k,v])=>`<span class="hist" style="font-weight:500">· ${esc(k)} ${eur.format(v)}</span>`).join(" ")}</td><td>${eur2.format(st.demarque)}</td><td></td></tr>
+  </tbody></table></div>`:`<div class="foot" style="padding:12px 14px">Rien de noté ce mois-ci. Notez ici la casse, les produits périmés ou abîmés, le vol constaté et la consommation interne, au prix d'achat HT. Un produit à retourner au fournisseur va plutôt dans les Avoirs.</div>`}
+  </div>`;
+}
+
+function vAvoirs(){
+  const all=S.avoirs;const cnt=k=>k==="en_cours"?all.filter(a=>EN_COURS.includes(a.statut)):k==="tous"?all:all.filter(a=>a.statut===k);
+  const sum=l=>l.reduce((s,a)=>s+(a.montant||0),0);
+  let list=cnt(S.fStat);if(S.fFourn)list=list.filter(a=>a.fournisseur===S.fFourn);
+  if(S.fText){const t=S.fText.toLowerCase();list=list.filter(a=>[a.produit,a.code,a.facture,a.infos,a.motif].join(" ").toLowerCase().includes(t))}
+  list=list.slice().sort((a,b)=>(isLate(b)-isLate(a))||String(b.date).localeCompare(String(a.date)));
+  const fl=S.fourn.filter(f=>f.avoirs!==false);
+  const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
+  return `
+  <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
+  <p class="sub">Chaque litige suit le même circuit : à réclamer, réclamé, relancé, accepté, puis déduit sur facture ou relevé. Un avoir réclamé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge.</p>
+  <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
+  <div class="row" style="margin-bottom:12px">
+    <select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${fl.map(f=>`<option value="${esc(f.id)}" ${S.fFourn===f.id?"selected":""}>${esc(f.nom)}</option>`).join("")}</select>
+    <input id="fText" type="search" placeholder="Produit, code, facture…" value="${esc(S.fText)}" style="flex:1;min-width:160px">
+    <button class="btn red" data-act="new">+ Nouvel avoir</button>
+    ${S.fFourn?`<button class="btn" data-act="recap">Copier le récap pour ${esc(fName(S.fFourn))}</button>`:""}
+  </div>
+  ${S.edit?vForm():""}
+  <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Avoir</button></div><div class="scroll"><table>
+    <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant HT</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
+    <tbody>${list.length?list.map(a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a);
+      return `<tr><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
+      <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}</td>
+      <td class="l">${esc(a.quantite)}</td><td class="l">${esc(a.motif)}</td>
+      <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
+      <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
+      <td class="l ${late?"late":""}">${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
+      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["a_reclamer","reclame","relance"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">${a.statut==="a_reclamer"?"Réclamé aujourd'hui":"Relancé aujourd'hui"}</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></td></tr>`}).join("")
+      :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « Nouvel avoir » pour en créer un.</div></td></tr>`}</tbody>
+  </table></div></div>`;
+}
+
+function vForm(){
+  const a=S.edit;const isNew=!a.id;const fl=S.fourn.filter(f=>f.avoirs!==false);
+  return `<div class="panel" style="margin-bottom:16px"><div class="band">${isNew?"Nouvel avoir":"Modifier l'avoir"}</div>
+  <form id="avForm" class="form">
+    <label>Fournisseur<select id="av-fournisseur" required>${fl.map(f=>`<option value="${esc(f.id)}" ${a.fournisseur===f.id?"selected":""}>${esc(f.nom)}</option>`).join("")}</select></label>
+    <label>Date du constat<input id="av-date" type="date" value="${esc(a.date||todayISO())}" required></label>
+    <label class="wide">Produit<input id="av-produit" value="${esc(a.produit)}" required placeholder="Ex. Danette chocolat"></label>
+    <label>Code article<input id="av-code" value="${esc(a.code)}"></label>
+    <label>N° de facture / BL<input id="av-facture" value="${esc(a.facture)}"></label>
+    <label>Quantité<input id="av-quantite" value="${esc(a.quantite)}" placeholder="Ex. 2 colis"></label>
+    <label>Motif<select id="av-motif">${MOTIFS.map(m=>`<option ${a.motif===m?"selected":""}>${m}</option>`).join("")}</select></label>
+    <label>Montant HT (€)<input id="av-montant" inputmode="decimal" value="${a.montant!=null?n2.format(a.montant):""}" placeholder="Laisser vide si inconnu"></label>
+    <label>Statut<select id="av-statut">${STATUTS.map(([k,l])=>`<option value="${k}" ${a.statut===k?"selected":""}>${l}</option>`).join("")}</select></label>
+    <label class="wide">Infos<textarea id="av-infos" rows="2">${esc(a.infos)}</textarea></label>
+    ${(a.relances||[]).length?`<div class="wide hist">Relances : ${a.relances.map(frDate).join(", ")}</div>`:""}
+    <div class="wide row"><button class="btn primary" type="submit">${isNew?"Créer l'avoir":"Enregistrer"}</button><button class="btn" type="button" data-act="cancel">Annuler</button>
+      ${isNew?"":S.confirmDel===a.id?`<button class="btn danger" type="button" data-del="${a.id}">Confirmer la suppression</button>`:`<button class="btn danger" type="button" data-askdel="${a.id}">Supprimer</button>`}</div>
+  </form></div>`;
+}
+
+function vFourn(){
+  const L=S.fourn.slice().sort((a,b)=>(a.ordre??99)-(b.ordre??99));
+  return `
+  <h2 style="margin-top:4px">Fournisseurs — ${esc(storeNom())}</h2>
+  <p class="sub">Une seule liste pour toute l'année. « Colonne marge » ajoute le fournisseur dans la saisie quotidienne, à la place indiquée par l'ordre. « Avoirs » le propose dans le suivi des avoirs. « Rattaché à » regroupe des rayons sous un même fournisseur (ex. Épicerie, A/A et Frais chez DIAPAR) : ils restent saisis séparément, avec un sous-total. Un fournisseur désactivé disparaît de la saisie mais garde son historique.</p>
+  <div class="panel flush"><div class="band">Fournisseurs<button class="pillbtn" data-act="focusAdd">+ Nom</button></div><div class="scroll"><table>
+    <thead><tr><th class="l">Ordre</th><th class="l">Nom</th><th class="l">Colonne marge</th><th class="l">Avoirs</th><th class="l">Actif</th><th class="l">Rattaché à</th><th class="l">Contact avoirs</th></tr></thead>
+    <tbody>${L.map((f,i)=>`<tr class="${f.actif===false?"muted":""}">
+      <td class="l"><div class="row" style="flex-wrap:nowrap"><button class="btn small" data-up="${f.id}" ${i?"":"disabled"} aria-label="Monter">↑</button><button class="btn small" data-down="${f.id}" ${i<L.length-1?"":"disabled"} aria-label="Descendre">↓</button></div></td>
+      <td class="l"><input id="fn-${f.id}" data-fnom="${f.id}" value="${esc(f.nom)}" style="width:160px"></td>
+      <td class="l"><input type="checkbox" data-fflag="colonne" data-id="${f.id}" ${f.colonne?"checked":""} aria-label="Colonne marge"></td>
+      <td class="l"><input type="checkbox" data-fflag="avoirs" data-id="${f.id}" ${f.avoirs!==false?"checked":""} aria-label="Avoirs"></td>
+      <td class="l"><input type="checkbox" data-fflag="actif" data-id="${f.id}" ${f.actif!==false?"checked":""} aria-label="Actif"></td>
+      <td class="l"><select id="fg-${f.id}" data-fgroupe="${f.id}" aria-label="Rattaché à"><option value="">—</option>${L.filter(p=>p.id!==f.id&&!p.groupe).map(p=>`<option value="${esc(p.id)}" ${f.groupe===p.id?"selected":""}>${esc(p.nom)}</option>`).join("")}</select></td>
+      <td class="l"><input id="fc-${f.id}" data-fcontact="${f.id}" value="${esc(f.contact)}" placeholder="Nom, e-mail ou téléphone" style="width:240px"></td></tr>`).join("")}</tbody>
+  </table></div></div>
+  <div class="gap"></div>
+  <form id="fAdd" class="row"><input id="fAddNom" placeholder="Nom du nouveau fournisseur" required style="flex:1;max-width:320px"><button class="btn primary" type="submit">Ajouter</button></form>`;
+}
+
+/* ---------- actions ---------- */
+async function saveCell(inp){
+  const d=inp.dataset.d,f=inp.dataset.f;const v=parseNum(inp.value);
+  if(Number.isNaN(v)){toast("Montant illisible : utilisez des chiffres, par ex. 1234,56");inp.focus();return}
+  const key=mkey(S.year,S.month);const doc=S.mois[key];const j=(doc&&doc.jours&&doc.jours[d])||{};
+  const old=f.startsWith("a:")?(j.achats||{})[f.slice(2)]:j[f];if((old??null)===v)return;
+  const patch=f.startsWith("a:")?{achats:{[f.slice(2)]:v}}:{[f]:v};
+  const ref=S.db.doc(P("mois/"+key));
+  try{ if(doc) await ref.update({jours:{[d]:patch}}); else await ref.set({annee:S.year,mois:S.month+1,jours:{[d]:patch}}) }catch(e){fail(e)}
+}
+async function saveAvoir(form){
+  const g=id=>document.getElementById("av-"+id).value.trim();const mt=parseNum(g("montant"));
+  if(Number.isNaN(mt)){toast("Montant illisible : utilisez des chiffres, par ex. 55,86");return}
+  const a=S.edit;const statut=g("statut");
+  const body={fournisseur:g("fournisseur"),date:g("date"),produit:g("produit"),code:g("code"),facture:g("facture"),quantite:g("quantite"),motif:g("motif"),montant:mt,statut,infos:g("infos"),
+    relances:a.relances||[],dateReclamation:a.dateReclamation||(statut!=="a_reclamer"?todayISO():null),creeLe:a.creeLe||todayISO(),majLe:todayISO()};
+  try{ if(a.id) await S.db.doc(P("avoirs/"+a.id)).set(body); else await S.db.collection(P("avoirs")).add(body);
+    S.edit=null;S.confirmDel=null;toast(a.id?"Avoir enregistré":"Avoir créé");render() }catch(e){fail(e)}
+}
+async function relancer(id){
+  const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=todayISO();
+  const patch=a.statut==="a_reclamer"?{statut:"reclame",dateReclamation:t,majLe:t}:{statut:"relance",relances:[...(a.relances||[]),t],majLe:t};
+  try{await S.db.doc(P("avoirs/"+id)).update(patch);toast(a.statut==="a_reclamer"?"Marqué réclamé aujourd'hui":"Relance notée")}catch(e){fail(e)}
+}
+async function copyRecap(){
+  const f=S.fourn.find(x=>x.id===S.fFourn);const L=S.avoirs.filter(a=>a.fournisseur===S.fFourn&&EN_COURS.includes(a.statut)).sort((a,b)=>String(a.date).localeCompare(b.date));
+  const tot=L.reduce((s,a)=>s+(a.montant||0),0);
+  const txt=`Bonjour,\n\nVoici les avoirs en attente de votre part :\n\n`+L.map(a=>`- ${frDate(a.date)} · ${a.produit}${a.code?" (code "+a.code+")":""}${a.facture?" · facture "+a.facture:""} · ${a.quantite||""} · ${a.motif} · ${a.montant?eur2.format(a.montant)+" HT":"montant à confirmer"}`).join("\n")+`\n\nTotal : ${eur2.format(tot)} HT.\nMerci de nous confirmer leur prise en compte.\n\nCordialement`;
+  try{await navigator.clipboard.writeText(txt);toast(`Récap copié (${L.length} avoir${L.length>1?"s":""})`)}catch(e){toast("Copie impossible dans cette vue")}
+}
+async function addDemarque(){
+  const v=parseNum($("#demMontant").value);if(!(v>0)){toast("Montant illisible : par ex. 12,50");return}
+  const date=$("#demDate").value;if(!date){toast("Choisissez une date");return}
+  const key=date.slice(0,7);const doc=S.mois[key];const arr=(doc&&Array.isArray(doc.demarque)?doc.demarque:[]).slice();
+  arr.push({date,motif:$("#demMotif").value,detail:$("#demDetail").value.trim(),montant:v});
+  const ref=S.db.doc(P("mois/"+key));
+  try{if(doc)await ref.update({demarque:arr});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours:{},demarque:arr});
+    $("#demMontant").value="";$("#demDetail").value="";toast("Démarque ajoutée")}catch(e){fail(e)}
+}
+async function delDemarque(i){
+  const key=mkey(S.year,S.month);const doc=S.mois[key];if(!doc||!Array.isArray(doc.demarque))return;
+  const arr=doc.demarque.slice();arr.splice(i,1);S.confirmDem=null;
+  try{await S.db.doc(P("mois/"+key)).update({demarque:arr});toast("Ligne supprimée")}catch(e){fail(e)}
+}
+async function addInventaire(){
+  const date=$("#invDate").value,v=parseNum($("#invVal").value);
+  if(!date){toast("Choisissez la date de l'inventaire");return}
+  if(v==null||Number.isNaN(v)||v<0){toast("Valeur illisible : par ex. 185000 ou 185 000,00");return}
+  try{await S.db.doc(P("inventaires/"+date)).set({date,valeur:v,note:$("#invNote").value.trim()});toast("Inventaire du "+frDate(date)+" enregistré")}catch(e){fail(e)}
+}
+async function addFournSaisie(){
+  let n=1,id="nouveau";while(S.fourn.find(f=>f.id===id)){n++;id="nouveau"+n}
+  const ordre=S.fourn.reduce((m,f)=>Math.max(m,f.ordre??0),0)+1;
+  try{await S.db.doc(P("fournisseurs/"+id)).set({nom:n>1?"NOUVEAU "+n:"NOUVEAU",ordre,actif:true,colonne:true,avoirs:true,contact:""});
+    toast("Fournisseur ajouté : tapez son nom");
+    let t=0;const go=()=>{const i=document.getElementById("rn-"+id);if(i){i.focus();i.select();i.scrollIntoView({block:"nearest",inline:"center"})}else if(t++<20)setTimeout(go,80)};go()}catch(e){fail(e)}}
+async function fUpdate(id,patch){try{await S.db.doc(P("fournisseurs/"+id)).update(patch)}catch(e){fail(e)}}
+async function fMove(id,dir){
+  const L=S.fourn.slice().sort((a,b)=>(a.ordre??99)-(b.ordre??99));const i=L.findIndex(f=>f.id===id),j=i+dir;if(j<0||j>=L.length)return;
+  [L[i],L[j]]=[L[j],L[i]];for(let k=0;k<L.length;k++){if(L[k].ordre!==k){await fUpdate(L[k].id,{ordre:k})}}
+}
+
+document.addEventListener("click",e=>{const rn=e.target.closest("[data-rename]");if(!rn)return;const id=rn.dataset.rename;S.renaming=id;render();
+  setTimeout(()=>{const i=document.getElementById("rn-"+id);if(i){i.focus();i.select()}},0)});
+document.addEventListener("focusout",e=>{if(e.target.dataset&&e.target.dataset.rn){setTimeout(()=>{if(S.renaming===e.target.dataset.rn){S.renaming=null;render()}},0)}});
+document.addEventListener("click",async e=>{
+  const t=e.target.closest("button,a");if(!t)return;
+  if(t.dataset.tab){S.tab=t.dataset.tab;S.edit=null;try{localStorage.setItem("gesmar.tab",S.tab)}catch(_){}render();return}
+  if(t.dataset.tabGo){e.preventDefault();S.tab=t.dataset.tabGo;render();return}
+  if(t.dataset.goto!=null){e.preventDefault();S.month=+t.dataset.goto;S.tab="saisie";render();return}
+  if(t.dataset.per){const d=+t.dataset.per;if(S.tab==="saisie"){S.month+=d;if(S.month<0){S.month=11;S.year--}if(S.month>11){S.month=0;S.year++}}else S.year+=d;render();return}
+  if(t.id==="houseBtn"){toggleStoreMenu();return}
+  if(t.id==="gearBtn"){S.modal=!S.modal;S.modalPanel=null;closeMenu();render();return}
+  if(t.id==="undoBtn"){undo();return}
+  if(t.id==="redoBtn"){redo();return}
+  if(t.dataset.theme){setTheme(t.dataset.theme);return}
+  if(t.dataset.panel){S.modalPanel=S.modalPanel===t.dataset.panel?null:t.dataset.panel;render();return}
+  if(t.dataset.store){switchStore(t.dataset.store);closeMenu();return}
+  if(t.dataset.logodel!=null){removeLogo();return}
+  if(t.dataset.hidecol){const f=S.fourn.find(x=>x.id===t.dataset.hidecol);fUpdate(t.dataset.hidecol,{colonne:false}).then(()=>toast((f?f.nom:"Colonne")+" retiré de la saisie (↶ pour annuler)"));return}
+  if(t.dataset.showcol){fUpdate(t.dataset.showcol,{colonne:true,actif:true});return}
+  if(t.dataset.demask!=null){S.confirmDem=+t.dataset.demask;render();return}
+  if(t.dataset.demdel!=null){delDemarque(+t.dataset.demdel);return}
+  if(t.dataset.invask){S.confirmInv=t.dataset.invask;render();return}
+  if(t.dataset.invdel){S.db.doc(P("inventaires/"+t.dataset.invdel)).delete().then(()=>{S.confirmInv=null;toast("Inventaire supprimé")},fail);return}
+  if(t.dataset.fstat){S.fStat=t.dataset.fstat;render();return}
+  if(t.dataset.relance){relancer(t.dataset.relance);return}
+  if(t.dataset.edit){const a=S.avoirs.find(x=>x.id===t.dataset.edit);S.edit=JSON.parse(JSON.stringify(a));S.confirmDel=null;render();window.scrollTo({top:0});return}
+  if(t.dataset.askdel){S.confirmDel=t.dataset.askdel;render();return}
+  if(t.dataset.del){try{await S.db.doc(P("avoirs/"+t.dataset.del)).delete();S.edit=null;S.confirmDel=null;toast("Avoir supprimé");render()}catch(err){fail(err)}return}
+  if(t.dataset.up){fMove(t.dataset.up,-1);return} if(t.dataset.down){fMove(t.dataset.down,1);return}
+  const act=t.dataset.act;
+  if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||(S.fourn.find(f=>f.avoirs!==false)||{}).id,statut:"a_reclamer",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
+  if(act==="cancel"){S.edit=null;S.confirmDel=null;render()}
+  if(act==="settings"){S.modal=true;closeMenu();render()}
+  if(act==="closeModal"){S.modal=false;S.modalPanel=null;render()}
+  if(act==="export"){exporterDonnees()}
+  if(act==="import"){if(S.pc&&typeof importPC==="function")importPC();else{const f=$("#importFile");f&&f.click()}}
+  if(act==="importPcOk"){const t=S.importPending&&S.importPending[0]&&S.importPending[0][1];S.importPending=null;S.modalPanel=null;if(t)applyImportText(t)}
+  if(act==="openFolder"){try{window.api.openFolder()}catch(e){toast("Ouverture du dossier impossible")}}
+  if(act==="majPc"){majPc()}
+  if(act==="majReset"){majReset()}
+  if(act==="importOk"){confirmImport()}
+  if(act==="importNo"){S.importPending=null;S.modalPanel=null;render()}
+  if(act==="addFourn"){addFournSaisie()}
+  if(act==="focusAdd"){const i=$("#fAddNom");i&&i.focus()}
+  if(act==="focusDem"){const i=$("#demMontant");i&&i.focus()}
+  if(act==="focusInv"){const i=$("#invDate");i&&i.focus()}
+  if(act==="recap")copyRecap();
+  if(act==="showN1"){S.showN1=true;render()}
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.id==="perAn"){const v=+t.value;if(v>=2000&&v<=2100){S.year=v;render()}return}
+  if(t.id==="perMois"){S.month=+t.value;S.confirmDem=null;render();return}
+  if(t.dataset.mgnom){const v=t.value.trim();if(v)S.db.doc("magasins/"+t.dataset.mgnom).update({nom:v.toUpperCase()}).catch(fail);return}
+  if(t.id==="logoFile"){uploadLogo(t.files&&t.files[0]);return}
+  if(t.id==="importFile"){importerDonnees(t.files&&t.files[0]);t.value="";return}
+  if(t.dataset.f){saveCell(t);return}
+  if(t.id==="fFourn"){S.fFourn=t.value;render();return}
+  if(t.dataset.fflag){fUpdate(t.dataset.id,{[t.dataset.fflag]:t.checked});return}
+  if(t.dataset.rn){const v=t.value.trim().toUpperCase(),id=t.dataset.rn;const f=S.fourn.find(x=>x.id===id);
+    if(v&&f&&v!==f.nom)fUpdate(id,{nom:v}).then(()=>toast("Renommé en "+v));else{t.value=f?f.nom:t.value}return}
+  if(t.dataset.fnom){const v=t.value.trim();if(v)fUpdate(t.dataset.fnom,{nom:v});return}
+  if(t.id==="mht"){const v=parseNum(t.value);if(Number.isNaN(v)){toast("Montant illisible : par ex. 262556,21");return}
+    const key=mkey(S.year,S.month);const ref=S.db.doc(P("mois/"+key));
+    (S.mois[key]?ref.update({caHTmois:v}):ref.set({annee:S.year,mois:S.month+1,jours:{},caHTmois:v})).then(()=>toast(v?"CA HT du mois enregistré":"CA HT du mois effacé"),fail);return}
+  if(t.id==="coefHT"){const v=parseNum(t.value);if(!(v>0.5&&v<=1)){toast("Coefficient entre 0,5 et 1, par ex. 0,917");return}
+    const ref=S.db.doc(P("reglages/general"));(S.reglages?ref.update({coefHT:v}):ref.set({coefHT:v})).then(()=>toast("Coefficient enregistré"),fail);return}
+  if(t.dataset.fgroupe){fUpdate(t.dataset.fgroupe,{groupe:t.value||null});return}
+  if(t.dataset.fcontact!=null){fUpdate(t.dataset.fcontact,{contact:t.value.trim()});return}
+  if(t.id==="mnote"){const key=mkey(S.year,S.month);const ref=S.db.doc(P("mois/"+key));(S.mois[key]?ref.update({note:t.value}):ref.set({annee:S.year,mois:S.month+1,jours:{},note:t.value})).then(()=>toast("Note enregistrée"),fail)}
+});
+document.addEventListener("input",e=>{if(e.target.id==="fText"){S.fText=e.target.value;clearTimeout(S.ti);S.ti=setTimeout(()=>{render()},250)}});
+document.addEventListener("keydown",e=>{const t=e.target;if(t.dataset&&t.dataset.rn){if(e.key==="Enter"){e.preventDefault();t.blur()}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();const f=S.fourn.find(x=>x.id===t.dataset.rn);if(f)t.value=f.nom;t.blur()}return}
+  if(t.dataset&&t.dataset.f&&(e.key==="Enter")){e.preventDefault();const d=String(+t.dataset.d+1).padStart(2,"0");const n=document.getElementById(`c-${d}-${t.dataset.f}`);t.blur();n&&n.focus()}});
+document.addEventListener("submit",async e=>{e.preventDefault();
+  if(e.target.id==="avForm")saveAvoir(e.target);
+  if(e.target.id==="mgAdd")addStore();
+  if(e.target.id==="demForm")addDemarque();
+  if(e.target.id==="invForm")addInventaire();
+  if(e.target.id==="fAdd"){const nom=$("#fAddNom").value.trim();if(!nom)return;let id=nom.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"");if(!id)id="f"+Date.now();if(S.fourn.find(f=>f.id===id))id+=Date.now()%1000;
+    try{await S.db.doc(P("fournisseurs/"+id)).set({nom:nom.toUpperCase(),ordre:S.fourn.length,actif:true,colonne:true,avoirs:true,contact:""});toast("Fournisseur ajouté")}catch(err){fail(err)}}
+});
+
+/* ---------- données ---------- */
+let pending=null;function schedule(){ // n'interrompt pas une saisie en cours
+  const a=document.activeElement;if(a&&a.dataset&&(a.dataset.f||a.dataset.fnom||a.dataset.fcontact||a.id==="mnote"||a.id==="coefHT"||a.id==="mht"||a.dataset.rn||(a.id||"").startsWith("dem")||(a.id||"").startsWith("inv")||(a.id||"").startsWith("mg")||(a.id||"").startsWith("av-"))){pending=true;return}render()}
+document.addEventListener("focusout",()=>{if(pending){pending=null;setTimeout(()=>{const a=document.activeElement;if(!(a&&a.dataset&&a.dataset.f))render();else pending=true},0)}});
+
+let unsubs=[];
+function subscribeStore(){
+  unsubs.forEach(u=>{try{u()}catch(_){}});unsubs=[];
+  S.fourn=[];S.mois={};S.avoirs=[];S.inv=[];S.reglages=null;S.confirmDem=null;S.confirmInv=null;S.fFourn="";S.edit=null;S.confirmDel=null;
+  if(!S.store)return render();
+  const db=S.db,err=e=>console.error(e);
+  unsubs.push(db.collection(P("fournisseurs")).onSnapshot(s=>{S.fourn=s.docs.map(d=>({id:d.id,...d.data()}));schedule()},err));
+  unsubs.push(db.collection(P("mois")).onSnapshot(s=>{S.mois={};s.docs.forEach(d=>S.mois[d.id]=d.data());schedule()},err));
+  unsubs.push(db.doc(P("reglages/general")).onSnapshot(d=>{S.reglages=d.exists?d.data():null;schedule()},err));
+  unsubs.push(db.collection(P("avoirs")).onSnapshot(s=>{S.avoirs=s.docs.map(d=>({id:d.id,...d.data()}));schedule()},err));
+  unsubs.push(db.collection(P("inventaires")).onSnapshot(s=>{S.inv=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date);schedule()},err));
+  render();
+}
+function switchStore(id){if(id===S.store)return;S.store=id;try{localStorage.setItem("gesmar.store",id)}catch(_){};subscribeStore();toast("Magasin : "+storeNom())}
+
+/* ---------- magasins, logo, paramètres ---------- */
+function closeMenu(){$("#storeMenu").hidden=true}
+function toggleStoreMenu(){const m=$("#storeMenu");if(!m.hidden){m.hidden=true;return}
+  m.innerHTML=S.magasins.map(g=>`<button role="menuitem" data-store="${esc(g.id)}" aria-current="${g.id===S.store}">⌂ ${esc(g.nom)}</button>`).join("");
+  const r=$("#houseBtn").getBoundingClientRect();m.style.top=(r.bottom+window.scrollY+6)+"px";m.style.left=Math.max(8,Math.min(r.left+window.scrollX,window.innerWidth-220))+"px";m.hidden=false}
+document.addEventListener("click",e=>{if(!e.target.closest("#storeMenu,#houseBtn"))closeMenu()},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();if(S.modal){S.modal=false;render()}}});
+async function addStore(){
+  const nom=$("#mgNom").value.trim();if(!nom)return;let id=slug(nom)||("m"+Date.now());if(S.magasins.find(m=>m.id===id))id+=Date.now()%1000;
+  const copy=$("#mgCopy")&&$("#mgCopy").checked;const src=S.fourn.slice();
+  try{await S.db.doc("magasins/"+id).set({nom:nom.toUpperCase(),ordre:S.magasins.length});
+    if(copy){for(const f of src){const {id:fid,...body}=f;await S.db.doc("magasins/"+id+"/fournisseurs/"+fid).set(body)}}
+    toast("Magasin "+nom.toUpperCase()+" créé");switchStore(id)}catch(e){fail(e)}
+}
+async function uploadLogo(file){
+  if(!file)return;if(!S.assets){toast("Seuls les éditeurs peuvent changer le logo.");return}
+  try{const old=S.config.logoId;const r=await S.assets.upload(file);
+    await S.db.doc("config/app").set({...S.config,logoId:r.id});
+    if(old&&old!==r.id){S.assets.delete(old).catch(()=>{})}
+    toast("Logo enregistré")}catch(e){console.error(e);toast(e&&e.code==="too_large"?"Image trop lourde (20 Mo maximum).":e&&e.code==="unsupported_type"?"Format non accepté : PNG, JPG, WebP ou SVG.":"Envoi du logo impossible pour le moment.")}
+}
+async function removeLogo(){const old=S.config.logoId;if(!old)return;
+  try{await S.db.doc("config/app").set({...S.config,logoId:null});if(S.assets)S.assets.delete(old).catch(()=>{});toast("Logo retiré")}catch(e){fail(e)}}
+const COLS_STORE=["mois","fournisseurs","avoirs","reglages","inventaires"];
+async function collectOnline(){const raw=S.db.raw,out={};
+  const cfg=await raw.doc("config/app").get();if(cfg.exists)out["config/app"]=cfg.data();
+  const mg=await raw.collection("magasins").get();
+  for(const d of mg.docs){out["magasins/"+d.id]=d.data();for(const c of COLS_STORE){const q=await raw.collection("magasins/"+d.id+"/"+c).get();q.docs.forEach(x=>out["magasins/"+d.id+"/"+c+"/"+x.id]=x.data())}}
+  return out}
+async function exporterDonnees(){
+  if(S.local&&typeof exportData==="function"){exportData();return}
+  if(!S.downloads){toast("L'export n'est pas disponible dans cette vue.");return}
+  try{const data=await collectOnline();const txt=JSON.stringify({app:"GESMAR",version:APP_VERSION,exporte:new Date().toISOString(),data},null,1);
+    const r=await S.downloads.save({filename:"GESMAR-sauvegarde-"+todayISO()+".json",data:txt});if(r&&r.status==="saved")toast("Sauvegarde exportée")}
+  catch(e){console.error(e);if(!(e&&e.code==="cancelled"))toast("Export impossible pour le moment.")}}
+function importerDonnees(file){if(!file)return;
+  if(S.local&&typeof importData==="function"){importData(file);return}
+  const rd=new FileReader();rd.onload=()=>{try{const j=JSON.parse(rd.result);const d=j&&j.data;if(!d||typeof d!=="object")throw 0;
+      S.importPending=Object.entries(d).filter(([k])=>!k.startsWith("__")&&k.split("/").length%2===0);S.modalPanel="import";render()}
+    catch(e){toast("Fichier non reconnu : choisissez un export GESMAR (.json).")}};rd.readAsText(file)}
+async function confirmImport(){const E=S.importPending||[];S.importPending=null;HIST.busy=true;let n=0;
+  try{for(const[k,v]of E){await S.db.raw.doc(k).set(v);n++}toast(n+" éléments importés")}catch(e){fail(e)}
+  finally{HIST.busy=false;HIST.undo=[];HIST.redo=[];updHist();S.modalPanel=null;render()}}
+function infoDonnees(){
+  const nb={mois:Object.keys(S.mois).length,f:S.fourn.length,av:S.avoirs.length,inv:(S.inv||[]).length};
+  const detail=`Magasin <b>${esc(storeNom())}</b> : ${nb.mois} mois, ${nb.f} fournisseurs, ${nb.av} avoirs, ${nb.inv} inventaires.`;
+  if(S.local){let ko=0;try{ko=Math.round(((typeof LS_KEY!=="undefined"&&localStorage.getItem(LS_KEY))||"").length/1024)}catch(e){}
+    return `Les données sont enregistrées <b>dans le navigateur de cet ordinateur</b> (environ ${ko} Ko), pas dans un dossier du disque. Pour les sauvegarder ou les passer sur un autre poste, utilisez <b>Exporter</b> puis <b>Importer</b>.<br>${detail}`}
+  return `Les données sont enregistrées <b>en ligne</b> et partagées avec les personnes qui ont accès à GESMAR.<br>${detail}`}
+const SY_OK='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z"/><path d="M9 13.2l2.2 2.2L15.4 11"/></svg>',SY_KO='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z"/><path d="M4 4l16 16"/></svg>',SY_WT='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z"/></svg>';
+/* Nuage en haut des réglages (comme GESTIME) : vert = synchronisé avec les autres postes, rouge = pas synchronisé. */
+function syncSt(){return S.local&&typeof SYNC!=="undefined"?SYNC.st:{state:"ok",msg:"Synchronisé en ligne"}}
+function syncIcoHtml(){const st=syncSt();const c=st.state==="ok"?"ok":st.state==="wait"?"wait":"ko";
+  const t=c==="ok"?st.msg:c==="wait"?"Synchronisation en cours…":"Non synchronisé : "+st.msg;
+  return `<span id="syncIco" class="syi ${c}" role="img" aria-label="${esc(t)}" title="${esc(t)}">${c==="ok"?SY_OK:c==="ko"?SY_KO:SY_WT}</span>`}
+const majBadge=()=>S.majNew&&!S.majSeen;
+function renderModal(){
+  const root=$("#modalRoot");
+  if(!S.modal){root.innerHTML="";return}
+  const a=document.activeElement;if(a&&root.contains(a)&&a.tagName!=="BUTTON"&&a.type!=="file"&&root.innerHTML)return; // ne pas effacer une saisie en cours
+  const lid=S.config&&S.config.logoId;const dark=isDark();const P1=S.modalPanel;
+  const cloud=syncIcoHtml();
+  root.innerHTML=`<div class="overlay" data-act="closeModalBg"></div><div class="reglages" role="dialog" aria-label="Réglages">
+    <div class="head"><h3>Réglages</h3>${cloud}<button class="x" data-act="closeModal" aria-label="Fermer">✕</button></div>
+    <h4>Données</h4>
+    <button class="rbtn" data-act="export"><span class="ic">💾</span>Exporter</button>
+    <button class="rbtn" data-act="import"><span class="ic">📂</span>Importer</button><input type="file" id="importFile" accept="application/json,.json" hidden>
+    ${P1==="importpc"&&S.importPending?`<div class="rinfo">Remplacer <b>toutes les données</b> de GESMAR par ce fichier ? Exportez d'abord une sauvegarde si vous n'êtes pas sûr.<div class="row" style="margin-top:8px"><button class="btn red small" data-act="importPcOk">Remplacer</button><button class="btn small" data-act="importNo">Annuler</button></div></div>`:""}
+    ${P1==="import"&&S.importPending?`<div class="rinfo">Importer <b>${S.importPending.length} éléments</b> ? Les données portant le même nom seront remplacées.<div class="row" style="margin-top:8px"><button class="btn red small" data-act="importOk">Importer</button><button class="btn small" data-act="importNo">Annuler</button></div></div>`:""}
+    <button class="rbtn" ${S.pc?'data-act="openFolder"':'data-panel="dossier"'}><span class="ic">📁</span>Dossier des données</button>
+    ${P1==="dossier"?`<div class="rinfo">${infoDonnees()}</div>`:""}
+    <h4>Logiciel</h4>
+    <button class="rbtn" ${S.pc&&window.api.updateCheck?'data-act="majPc"':'data-panel="maj"'} ${S.majBusy?"disabled":""}><span class="ic">🔄</span>Mettre à jour le logiciel${majBadge()?'<span class="pas" aria-label="1 nouvelle version">1</span>':""}</button>
+    <div class="rver">Version installée : ${APP_VERSION}${S.majNew?` · <span style="color:var(--red-2)">nouvelle version ${S.majNew} disponible</span>`:""}</div>
+    ${S.majMsg?`<div class="rinfo">${esc(S.majMsg)}</div>`:""}
+    ${P1==="maj"?`<div class="rinfo">${S.local?"Pour mettre à jour, remplacez ce fichier GESMAR.html par la nouvelle version et ouvrez-la dans le même navigateur : vos données sont reprises automatiquement. Exportez une sauvegarde avant, par précaution.":"La version en ligne se met à jour toute seule : vous avez la dernière version."}</div>`:""}
+    <h4>Affichage</h4>
+    <div class="rtheme"><button data-theme="clair" aria-pressed="${!dark}">☀️ Clair</button><button data-theme="sombre" aria-pressed="${dark}">🌙 Sombre</button></div>
+  </div>`;
+}
+document.addEventListener("click",e=>{if(e.target.dataset&&e.target.dataset.act==="closeModalBg"){S.modal=false;S.modalPanel=null;render()}});
+
+(async()=>{
+  const db=window.claude&&window.claude.use?await window.claude.use("db"):null;
+  if(!db){S.noDb=true;render();return}
+  S.db=wrapDb(db);render();
+  window.claude.use("assets").then(a=>{S.assets=a;render()},()=>{});
+  window.claude.use("downloads").then(d=>{S.downloads=d},()=>{});
+  db.doc("config/app").onSnapshot(d=>{S.config=d.exists?d.data():{};schedule()},e=>console.error(e));
+  db.collection("magasins").onSnapshot(s=>{
+    S.magasins=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.ordre??99)-(b.ordre??99));S.magLoaded=true;
+    if(!S.magasins.find(m=>m.id===S.store)){const first=S.magasins[0];if(first){S.store=first.id;subscribeStore()}else{S.store=null;render()}}
+    else if(!unsubs.length)subscribeStore(); else schedule();
+  },e=>console.error(e));
+})();
+render();
+})();
+</script>
