@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="23">
+<meta name="gm-version" content="24">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -297,7 +297,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=23;
+const APP_VERSION=24;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -366,7 +366,7 @@ async function majCheck(silent){
   if(r.status==="new"){S.majNew=r.remote;majFlag();if(!silent)S.majMsg="Nouvelle version disponible ("+r.remote+"), vous avez la "+r.version+"."+(r.note?" "+r.note:"")}
   else if(!silent){S.majMsg=r.status==="none"?"✓ Vous avez la dernière version ("+r.version+").":r.status==="noconfig"?"Adresse des mises à jour non réglée.":"⚠️ Impossible de vérifier : "+(r.msg||"pas de connexion internet")}
   return r}
-async function majPc(){if(S.majBusy)return;S.majSeen=true;majFlag();S.majBusy=true;S.majMsg="Recherche d'une nouvelle version…";render();
+async function majPc(){if(S.majBusy)return;S.majSeenV=S.majNew||0;majFlag();S.majBusy=true;S.majMsg="Recherche d'une nouvelle version…";render();
   try{const r=await majCheck(false);render();
     if(r.status==="new"){S.majMsg="Téléchargement de la version "+r.remote+"…";render();
       const a=await window.api.updateApply(majUrl());S.majMsg=a.status==="done"?"✓ Mise à jour installée, redémarrage…":"⚠️ "+(a.msg||"échec de la mise à jour")}
@@ -1076,7 +1076,7 @@ function syncSt(){return S.local&&typeof SYNC!=="undefined"?SYNC.st:{state:"ok",
 function syncIcoHtml(){const st=syncSt();const c=st.state==="ok"?"ok":st.state==="wait"?"wait":"ko";
   const t=c==="ok"?st.msg:c==="wait"?"Synchronisation en cours…":"Non synchronisé : "+st.msg;
   return `<span id="syncIco" class="syi ${c}" role="img" aria-label="${esc(t)}" title="${esc(t)}">${c==="ok"?SY_OK:c==="ko"?SY_KO:SY_WT}</span>`}
-const majBadge=()=>S.majNew&&!S.majSeen;
+const majBadge=()=>S.majNew&&S.majNew>(S.majSeenV||0);
 function renderModal(){
   const root=$("#modalRoot");
   if(!S.modal){root.innerHTML="";return}
@@ -1105,7 +1105,10 @@ document.addEventListener("click",e=>{if(e.target.dataset&&e.target.dataset.act=
 
 (async()=>{
   const db=LocalDB;S.local=true;S.assets=LocalAssets;S.pc=PC;
-  if(PC&&window.api.updateCheck)setTimeout(()=>majCheck(true).then(()=>render()).catch(()=>{}),4000);
+  // Vérifie au démarrage, puis toutes les 10 minutes et quand on revient sur la fenêtre (au plus une fois par minute) :
+  // la pastille « 1 » apparaît même si le logiciel est resté ouvert pendant la publication.
+  if(PC&&window.api.updateCheck){let last=0;const auto=()=>{if(Date.now()-last<60000||S.majBusy)return;last=Date.now();const was=majBadge();majCheck(true).then(()=>{if(majBadge()!==was)render()}).catch(()=>{})};
+    setTimeout(auto,4000);setInterval(()=>{last=0;auto()},600000);window.addEventListener("focus",auto);document.addEventListener("visibilitychange",()=>{if(!document.hidden)auto()})}
   S.db=wrapDb(db);render();
   setTimeout(()=>SYNC.start().catch(()=>{}),300);
   db.doc("config/app").onSnapshot(d=>{S.config=d.exists?d.data():{};schedule()},e=>console.error(e));
