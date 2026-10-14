@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="19">
+<meta name="gm-version" content="20">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -244,6 +244,7 @@ nav.tabs button[aria-selected="true"]{box-shadow:none}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .syi.ok{color:#4fd37a}:root:not([data-theme="light"]) .syi.ko{color:#ff7a74}}
 .smsg{font-size:13px;color:var(--red-2);margin:4px 0 0}
 .sycfg{display:grid;gap:8px}.sycfg input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:13px var(--body)}
+#gtn{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:300;max-width:min(560px,calc(100vw - 24px));background:#d3262b;color:#fff;font:700 14px var(--body);padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer}
 /* pastille « 1 » : nouvelle version disponible (sur l'engrenage et sur le bouton Mettre à jour) */
 .ibtn.upd{position:relative}
 .ibtn.upd::after{content:"1";position:absolute;top:-7px;right:-7px;width:auto;height:17px;min-width:17px;padding:0 4px;border-radius:9px;background:#d3262b;color:#fff;border:0;box-shadow:0 0 0 2px var(--hdr);font:700 11px/17px var(--body);text-align:center}
@@ -296,7 +297,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=19;
+const APP_VERSION=20;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -853,11 +854,20 @@ let STORE={};const META={}; // META[id] = {rev, dirty:{chemin:compteur}, base:{c
 const meta=id=>META[id]||(META[id]={rev:0,dirty:{},base:{}});
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const isObj=o=>o&&typeof o==="object"&&!Array.isArray(o);
-// Fusion case par case : ce que j'ai changé + ce que l'autre poste a changé ; si les deux ont changé la même case, la mienne gagne.
-function merge3(base,mine,theirs){if(same(mine,base))return theirs===undefined?undefined:clone(theirs);if(same(theirs,base))return mine===undefined?undefined:clone(mine);
-  if(isObj(base)&&isObj(mine)&&isObj(theirs)){const o={};for(const k of new Set([...Object.keys(base),...Object.keys(mine),...Object.keys(theirs)])){const v=merge3(base[k],mine[k],theirs[k]);if(v!==undefined)o[k]=v}return o}
-  if(base===undefined&&isObj(mine)&&isObj(theirs))return merge3({},mine,theirs);
-  return mine===undefined?undefined:clone(mine)}
+// Fusion case par case (même règle que GESTIME) : chaque poste garde ses saisies ;
+// une case tapée EN MÊME TEMPS sur deux postes est effacée partout et doit être réécrite.
+function gmMerge(base,mine,theirs,res){const J=JSON.stringify,eq=(a,b)=>J(a)===J(b),obj=o=>o&&typeof o==="object"&&!Array.isArray(o),prim=v=>v===undefined||v===null||typeof v!=="object",cp=v=>v===undefined?undefined:JSON.parse(J(v));
+  if(eq(mine,base))return cp(theirs);if(eq(theirs,base))return cp(mine);if(eq(mine,theirs))return cp(mine);
+  if(obj(mine)&&obj(theirs)){const b=obj(base)?base:{},o={};for(const k of new Set([...Object.keys(b),...Object.keys(mine),...Object.keys(theirs)])){const v=gmMerge(b[k],mine[k],theirs[k],res);if(v!==undefined)o[k]=v}return o}
+  if(Array.isArray(mine)&&Array.isArray(theirs)){const idd=a=>a.every(x=>obj(x)&&x.id!=null);
+    if(idd(mine)&&idd(theirs)){const B=new Map((Array.isArray(base)&&idd(base)?base:[]).map(x=>[x.id,x])),M=new Map(mine.map(x=>[x.id,x])),T=new Map(theirs.map(x=>[x.id,x])),out=[];
+      for(const i of [...mine.map(x=>x.id),...theirs.map(x=>x.id).filter(i=>!M.has(i))]){const v=gmMerge(B.get(i),M.get(i),T.get(i),res);if(v!==undefined)out.push(v)}return out}
+    return cp(mine)}
+  if(prim(mine)&&prim(theirs)){res.n++;return typeof mine==="string"||typeof theirs==="string"?"":undefined}
+  return cp(mine)}
+const EFF_MSG="⚠️ Une case a été tapée en même temps sur un autre poste : elle a été effacée, réécrivez-la.";
+function gmNotice(msg){let n=document.getElementById("gtn");if(!n){n=document.createElement("div");n.id="gtn";n.setAttribute("role","alert");document.body.appendChild(n);n.addEventListener("click",()=>n.remove())}
+  n.textContent=msg+"  ✕";clearTimeout(gmNotice.t);gmNotice.t=setTimeout(()=>{const x=document.getElementById("gtn");if(x)x.remove()},10000)}
 function mark(path){const m=meta(blobOf(path));if(!(path in m.dirty)&&!(path in m.base))m.base[path]=STORE[path]===undefined?null:clone(STORE[path])}
 function blobDocs(id){const o={};for(const k of Object.keys(STORE))if(blobOf(k)===id)o[k]=STORE[k];return o}
 function knownIds(){const s=new Set(DEFAULT_IDS);Object.keys(STORE).forEach(k=>s.add(blobOf(k)));Object.keys(META).forEach(k=>s.add(k));return[...s]}
@@ -929,13 +939,17 @@ const SYNC=(()=>{
   function adopt(id,row){const m=meta(id),rd=(row.data&&row.data.docs)||{};
     for(const k of Object.keys(STORE))if(blobOf(k)===id&&!(k in m.dirty)&&!(k in rd))delete STORE[k];
     for(const[k,v]of Object.entries(rd))if(!(k in m.dirty))STORE[k]=v;
+    const res={n:0};
     for(const k of Object.keys(m.dirty)){ // case par case pour les documents que ce poste a modifiés
-      const theirs=rd[k],v=(k in m.base)?merge3(m.base[k]===null?undefined:m.base[k],STORE[k],theirs):STORE[k];
+      const theirs=rd[k],v=(k in m.base)?gmMerge(m.base[k]===null?undefined:m.base[k],STORE[k],theirs,res):STORE[k];
       if(v===undefined)delete STORE[k];else STORE[k]=v;m.base[k]=theirs===undefined?null:clone(theirs)}
-    m.rev=row.rev;saveBlob(id);notify()}
+    m.rev=row.rev;
+    if(res.n){m.eff=Date.now();m.effSeen=m.eff;gmNotice(EFF_MSG)}
+    else{const e=row.data&&row.data.eff;if(e&&e>(m.effSeen||0)){if(st.started&&m.seenOnce)gmNotice(EFF_MSG);m.effSeen=e}}
+    m.seenOnce=true;saveBlob(id);notify()}
   async function push(id){const m=meta(id);
     for(let essai=0;essai<4;essai++){
-      const sent=Object.assign({},m.dirty),body={data:{app:"GESMAR",magasin:id,docs:blobDocs(id)},rev:m.rev+1,updated_at:new Date().toISOString()};
+      const sent=Object.assign({},m.dirty),body={data:{app:"GESMAR",magasin:id,docs:blobDocs(id),eff:m.eff||undefined},rev:m.rev+1,updated_at:new Date().toISOString()};
       const a=await req("gesmar?id=eq."+encodeURIComponent(id)+"&rev=eq."+m.rev,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(body)});
       if(a&&a.length){m.rev=a[0].rev;for(const[p,n]of Object.entries(sent))if(m.dirty[p]===n){delete m.dirty[p];delete m.base[p]}else m.base[p]=body.data.docs[p]===undefined?null:clone(body.data.docs[p]);saveBlob(id);return}
       const r=await pull(id);
@@ -951,12 +965,14 @@ const SYNC=(()=>{
   async function first(){ // au démarrage : on compare chaque magasin avec le serveur
     try{const all=await req("gesmar?select=id,rev");for(const x of all||[])meta(x.id)}catch(e){throw e}
     for(const id of knownIds()){const m=meta(id),r=await pull(id),n=Object.keys(blobDocs(id)).length;
+      if(r&&r.data&&r.data.eff)m.effSeen=Math.max(m.effSeen||0,r.data.eff);
       if(!r){if(n)st.pend.add(id);continue}
       if(!hasDocs(r.data)){m.rev=r.rev;if(n)st.pend.add(id);continue} // ligne vide : ce poste y envoie ses données
       if(r.rev>m.rev){if(m.rev===0&&n){try{rawSave("gesmar-"+id+"-avant-synchro",JSON.stringify({app:"GESMAR",magasin:id,docs:blobDocs(id)}))}catch(e){}}
         adopt(id,r)}
       else if(r.rev<m.rev)m.rev=r.rev; // la base a été remise à zéro : on renvoie tout
       if(Object.keys(m.dirty).length)st.pend.add(id)}
+    knownIds().forEach(id=>{meta(id).seenOnce=true});
     rawSave("gesmar-index",JSON.stringify(knownIds()))}
   async function poll(){if(!cfg()||!st.started||st.busy||st.pend.size)return;const a=document.activeElement;if(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))return;
     try{const all=await req("gesmar?select=id,rev");let ch=false;
