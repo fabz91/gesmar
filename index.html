@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="27">
+<meta name="gm-version" content="28">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -300,7 +300,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=27;
+const APP_VERSION=28;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -1112,18 +1112,19 @@ document.addEventListener("click",e=>{if(e.target.dataset&&e.target.dataset.act=
   // la pastille « 1 » apparaît même si le logiciel est resté ouvert pendant la publication.
   if(PC&&window.api.updateCheck){let last=0;const auto=()=>{if(Date.now()-last<60000||S.majBusy)return;last=Date.now();const was=majBadge();majCheck(true).then(()=>{if(majBadge()!==was)render()}).catch(()=>{})};
     setTimeout(auto,4000);setInterval(()=>{last=0;auto()},600000);window.addEventListener("focus",auto);document.addEventListener("visibilitychange",()=>{if(!document.hidden)auto()})
-    // v27 : en plus du bouton, mise à jour automatique chaque nuit à minuit (heure du PC).
-    // Contrôle chaque minute si la date a changé (PC en veille à minuit : fait au réveil, si c'est avant 6 h).
+    // v28 : en plus du bouton, mise à jour automatique chaque soir à 21 h (heure du PC).
+    // Contrôle chaque minute ; si le PC était en veille à 21 h, c'est fait au réveil (avant minuit).
+    // Logiciel ouvert après 21 h : rien ce soir-là (pas de redémarrage pendant qu'on s'en sert).
     // On n'installe jamais pendant une saisie : on attend qu'aucune case ne soit en cours de frappe.
-    // Sans internet à minuit : nouvel essai chaque minute jusqu'à 6 h du matin.
-    let jour=new Date().toDateString(),nuit=false;
-    const nuitGo=async()=>{const el=document.activeElement;
+    // Sans internet : nouvel essai chaque minute jusqu'à minuit.
+    const H=21;let fait=new Date().getHours()>=H?new Date().toDateString():"",soir=false;
+    const soirGo=async()=>{const el=document.activeElement;
       if(S.majBusy||(el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)))return;
-      if(new Date().getHours()>=6){nuit=false;return}
-      S.majBusy=true;try{const r=await window.api.updateCheck(majUrl());nuit=r.status==="error";
-        if(r.status==="new"){await new Promise(f=>setTimeout(f,2000));const x=await window.api.updateApply(majUrl());if(x.status==="done")return;nuit=true}}catch(e){nuit=true}
+      if(new Date().getHours()<H){soir=false;return}
+      S.majBusy=true;try{const r=await window.api.updateCheck(majUrl());soir=r.status==="error";
+        if(r.status==="new"){await new Promise(f=>setTimeout(f,2000));const x=await window.api.updateApply(majUrl());if(x.status==="done")return;soir=true}}catch(e){soir=true}
       S.majBusy=false};
-    setInterval(()=>{const d=new Date().toDateString();if(d!==jour){jour=d;nuit=true}if(nuit)nuitGo()},60000)}
+    setInterval(()=>{const n=new Date(),d=n.toDateString();if(n.getHours()>=H&&fait!==d){fait=d;soir=true}if(soir)soirGo()},60000)}
   S.db=wrapDb(db);render();
   setTimeout(()=>SYNC.start().catch(()=>{}),300);
   db.doc("config/app").onSnapshot(d=>{S.config=d.exists?d.data():{};schedule()},e=>console.error(e));
