@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="60">
+<meta name="gm-version" content="61">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -357,7 +357,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=60;
+const APP_VERSION=61;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -481,7 +481,7 @@ function render(){
   renderModal();updHist();
   avNorm();const pend=S.avoirs.filter(a=>EN_COURS.includes(a.statut)).length;const c=$("#avCnt");c.hidden=!pend;c.textContent=pend;
   /* v45 : triangle ⚠ quand un avoir réclamé ou relancé est sans nouvelle depuis RELANCE_JOURS jours */
-  {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=true;c.classList.toggle("blink",!!nl);c.title=nl?nl+" avoir"+(nl>1?"s":"")+" sans nouvelle depuis "+RELANCE_JOURS+" jours ou plus":""} /* v54 : seul le chiffre clignote */
+  {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=true;c.classList.remove("blink");c.title=nl?nl+" avoir"+(nl>1?"s":"")+" sans nouvelle depuis "+RELANCE_JOURS+" jours ou plus":""} /* v54 : seul le chiffre clignote */
   const app=$("#app");
   if(!S.db){app.innerHTML=`<div class="empty-state">${S.noDb?"Les données ne sont pas disponibles dans cette vue. Ouvrez la page depuis Claude en étant connecté pour voir et saisir les chiffres.":"Chargement des données…<br><small>Les mois, les avoirs et les fournisseurs s'afficheront ici dès que la base répond.</small>"}</div>`;return}
   if(!S.magasins.length){app.innerHTML=S.magLoaded?`<div class="empty-state">Aucun magasin pour l'instant. Ouvrez les Réglages ⚙ pour créer le premier.</div>`:`<div class="empty-state">Chargement des magasins…</div>`;return}
@@ -513,10 +513,13 @@ function vBord(){
   // achats par fournisseur
   const par={};act.forEach(s=>{for(const[k,v]of Object.entries(s.par))par[k]=(par[k]||0)+v});
   // v59 : MARIANO, MONTPERAL, « MARIANO/MONTPERAL (mars) », MARIANO-MONTP… réunis sur une seule ligne MARIANO-MONTPERAL
-  const MMK="__mariano_montperal",mmOf=k=>{const n=String(fName(k)||k).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();return /MARIANO|MONTP/.test(n)?MMK:k};
+  // v61 : + SAINT PRIM (les deux) et LAURANCE réunis ; HALAL et ISLA réunis en ISLA MONDIAL
+  const MMK="__mariano_montperal",SPK="__saintprim_laurance",IMK="__isla_mondial",MLAB={[MMK]:"MARIANO-MONTPERAL",[SPK]:"SAINT PRIM-LAURANCE",[IMK]:"ISLA MONDIAL"};
+  const mmOf=k=>{const n=String(fName(k)||k).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(),c=n.replace(/[^A-Z0-9]/g,"");
+    if(/MARIANO|MONTP/.test(n))return MMK;if(/^(SAINTPRIM|STPRIM|LAURANCE|LAURENCE)$/.test(c))return SPK;if(/^(HALAL|ISLA|ISLAMONDIAL)$/.test(c))return IMK;return k};
   const G={};for(const[k0,v]of Object.entries(par)){const k=mmOf(k0),g=grp(k)||k;G[g]=G[g]||{tot:0,sub:[]};G[g].tot+=v;if(grp(k))G[g].sub.push([k,v])}
   const parL=Object.entries(G).sort((a,b)=>b[1].tot-a[1].tot);const maxP=parL.length?parL[0][1].tot:1;
-  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(k===MMK?"MARIANO-MONTPERAL":fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
+  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(MLAB[k]||fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
   return `
   ${periode("annee")}
   <h2>Tableau de bord ${y} — ${esc(storeNom())}</h2>
@@ -650,7 +653,7 @@ function vSaisie(){
   <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td>${hasN1?`<td>${caN1Tot?n2.format(caN1Tot):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
-  </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>${v?"":`<button class="rdel" data-maskcol="${esc(f.id)}" title="Supprimer ${esc(f.nom)} de ce mois" aria-label="Supprimer ${esc(f.nom)} de ce mois">✕</button>`}</span>`).join("")}</div>`:""}</div>
+  </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button><button class="rdel" data-maskcol="${esc(f.id)}" data-amt="${v||0}" title="Supprimer ${esc(f.nom)} de ce mois" aria-label="Supprimer ${esc(f.nom)} de ce mois">✕</button></span>`).join("")}</div>`:""}</div>
   <div class="gap"></div>
   <div class="gap"></div>
   <label class="lbl" for="mnote">Note du mois</label>
@@ -849,7 +852,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.mv){const R0=(S._runs||[]).map(x=>x.slice()),i=R0.findIndex(x=>x.includes(t.dataset.mv)),j=i+(+t.dataset.dir);
     if(i<0||j<0||j>=R0.length)return;[R0[i],R0[j]]=[R0[j],R0[i]];
     const ups=[];R0.flat().forEach((id,k)=>{const f=S.fourn.find(x=>x.id===id);if(f&&f.ordre!==k)ups.push(fUpdate(id,{ordre:k}))});Promise.all(ups).catch(()=>{});return}
-  if(t.dataset.maskcol){const key=mkey(S.year,S.month),doc=S.mois[key],arr=(doc&&Array.isArray(doc.masques)?doc.masques:[]).slice();if(!arr.includes(t.dataset.maskcol))arr.push(t.dataset.maskcol);
+  if(t.dataset.maskcol){if(+t.dataset.amt&&!confirm("Ce fournisseur a "+eur.format(+t.dataset.amt)+" d'achats ce mois-ci. Ils resteront comptés dans les totaux, mais sa colonne ne sera plus proposée. Supprimer quand même ?"))return;const key=mkey(S.year,S.month),doc=S.mois[key],arr=(doc&&Array.isArray(doc.masques)?doc.masques:[]).slice();if(!arr.includes(t.dataset.maskcol))arr.push(t.dataset.maskcol);
     const f=S.fourn.find(x=>x.id===t.dataset.maskcol),ref=S.db.doc(P("mois/"+key));
     try{if(doc)await ref.update({masques:arr});else await ref.set({annee:S.year,mois:S.month+1,jours:{},masques:arr});toast((f?f.nom:"Fournisseur")+" supprimé de ce mois (↶ pour annuler)")}catch(e){fail(e)}return}
   if(t.dataset.showcol){fUpdate(t.dataset.showcol,{colonne:true,actif:true});return}
