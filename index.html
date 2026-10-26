@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="55">
+<meta name="gm-version" content="56">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -342,7 +342,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=55;
+const APP_VERSION=56;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -704,7 +704,7 @@ function vForm(){
   return `<div class="panel" style="margin-bottom:16px"><div class="band">${isNew?"Nouvel avoir":"Modifier l'avoir"}</div>
   <form id="avForm" class="form">
     <label>Fournisseur<select id="av-fournisseur" required>${avOptsMois(a.fournisseur)}</select></label>
-    <label>Date du constat<input id="av-date" type="date" value="${esc(a.date||todayISO())}" required></label>
+    <label>Date de facture<input id="av-date" type="date" value="${esc(a.date||todayISO())}" required></label>
     <label class="wide">Produit<input id="av-produit" value="${esc(a.produit)}" required placeholder="Ex. Danette chocolat"></label>
     <label>Code article<input id="av-code" value="${esc(a.code)}"></label>
     <label>N° de facture / BL<input id="av-facture" value="${esc(a.facture)}"></label>
