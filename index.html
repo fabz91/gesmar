@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="56">
+<meta name="gm-version" content="57">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -342,7 +342,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=56;
+const APP_VERSION=57;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -503,7 +503,6 @@ function vBord(){
   return `
   ${periode("annee")}
   <h2>Tableau de bord ${y} — ${esc(storeNom())}</h2>
-  <p class="sub">${act.length} mois avec du chiffre d'affaires saisi. Tout est en TTC : taux de marge = (CA TTC − achats TTC) ÷ CA TTC. La version « après avoirs » ajoute les avoirs acceptés ou déduits du mois du problème.</p>
   <div class="grid kpis">
     <div class="kpi"><span class="lbl">CA TTC cumulé</span><span class="v">${eur.format(T.caTTC)}</span><span class="d">${T.jours} jour${T.jours>1?"s":""} saisi${T.jours>1?"s":""}</span></div>
     <div class="kpi"><span class="lbl">Achats cumulés</span><span class="v">${eur.format(T.achats)}</span><span class="d">${parL.length} fournisseurs</span></div>
@@ -656,7 +655,7 @@ function vDemarque(y,m,doc,st){
     ${L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(x.motif)}</td><td class="l" style="white-space:normal">${esc(x.detail)}</td><td>${eur2.format(+x.montant||0)}</td>
       <td>${S.confirmDem===x.i?`<button class="btn small danger" data-demdel="${x.i}">Confirmer</button>`:`<button class="btn small" data-demask="${x.i}">Supprimer</button>`}</td></tr>`).join("")}
     <tr class="tot"><td class="l" colspan="3">Total ${Object.entries(parMotif).map(([k,v])=>`<span class="hist" style="font-weight:500">· ${esc(k)} ${eur.format(v)}</span>`).join(" ")}</td><td>${eur2.format(st.demarque)}</td><td></td></tr>
-  </tbody></table></div>`:`<div class="foot" style="padding:12px 14px">Rien de noté ce mois-ci. Notez ici la casse, les produits périmés ou abîmés, le vol constaté et la consommation interne, au prix d'achat TTC. Un produit à retourner au fournisseur va plutôt dans les Avoirs.</div>`}
+  </tbody></table></div>`:""}
   </div>`;
 }
 
@@ -681,7 +680,6 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
   const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
   return `
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
-  <p class="sub" style="max-width:none">Un avoir créé avec « + Nouveau » est <b>déclaré</b>. Sur sa ligne : <b>Relancer</b> note chaque relance, <b>Accepté</b> puis <b>Déduit</b> quand il est retiré de la facture, ou <b>Refusé</b>. La disquette copie l'avoir et ses relances pour le coller dans un e-mail, la croix le supprime.<br>Un avoir déclaré ou relancé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge avec un triangle, et le chiffre de l'onglet Avoirs clignote.</p>
   <div class="row" style="margin-bottom:10px"><select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${avOptsMois(S.fFourn)}</select></div>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   ${S.edit?vForm():""}
