@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="36">
+<meta name="gm-version" content="37">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -331,7 +331,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=36;
+const APP_VERSION=37;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -577,7 +577,7 @@ function vSaisie(){
     if(f.groupe){const mem=cols.filter(x=>x.groupe===f.groupe);mem.forEach(x=>seen.add(x.id));runs.push({groupe:f.groupe,mem})}
     else{seen.add(f.id);runs.push({mem:[f]})}}
   const anyG=runs.some(r=>r.groupe);
-  const hasN1=Object.values(J).some(j=>j&&j.caN1)||S.showN1;
+  const hasN1=true; // v37 : colonne CA N-1 toujours affichée
   const st=monthStats(y,m);
   const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal" value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
   let rows="";
@@ -610,7 +610,7 @@ function vSaisie(){
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td><td>${n2.format(st.ca)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>`).join("")}</div>`:""}</div>
   <div class="gap"></div>
-  <div class="row">${hasN1?"":`<button class="btn" data-act="showN1">Ajouter la colonne CA N-1</button>`}<span class="hist">Tapez les montants directement : les totaux se calculent seuls. Touche Entrée = jour suivant. Le nom d'un fournisseur se modifie dans sa case en haut de colonne (le nom complet s'affiche au survol) ; ✕ le retire de la saisie, « + Nom » en ajoute un.</span></div>
+  <div class="row"><span class="hist">Tapez les montants directement : les totaux se calculent seuls. Touche Entrée = jour suivant. Le nom d'un fournisseur se modifie dans sa case en haut de colonne (le nom complet s'affiche au survol) ; ✕ le retire de la saisie, « + Nom » en ajoute un.</span></div>
   <div class="gap"></div>
   <label class="lbl" for="mnote">Note du mois</label>
   <textarea id="mnote" rows="2" style="width:100%;margin-top:4px" placeholder="Ex. facture en double, erreur du mois précédent…">${esc(doc.note||"")}</textarea>
