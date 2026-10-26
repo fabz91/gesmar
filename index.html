@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="38">
+<meta name="gm-version" content="39">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -331,7 +331,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=38;
+const APP_VERSION=39;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -569,7 +569,9 @@ function vSaisie(){
   const used=new Set();Object.values(J).forEach(j=>Object.keys((j&&j.achats)||{}).forEach(k=>used.add(k)));
   const cols=colFourn().filter(f=>f.actif!==false||used.has(f.id));
   used.forEach(k=>{if(!cols.find(f=>f.id===k)&&!S.fourn.find(f=>f.id===k))cols.push({id:k,nom:k})});
-  const retirees=S.fourn.filter(f=>!f.colonne&&!f.groupe&&!S.fourn.some(x=>x.groupe===f.id)).sort((a,b)=>(a.ordre??99)-(b.ordre??99));
+  const nmK=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),visN=new Set(S.fourn.filter(f=>f.colonne).map(f=>nmK(f.nom)));
+  // v39 : une colonne retirée qui porte le même nom qu'une colonne affichée (doublon, ex. SAINT PRIM) n'est plus proposée
+  const retirees=S.fourn.filter(f=>!f.colonne&&!f.groupe&&!S.fourn.some(x=>x.groupe===f.id)&&!visN.has(nmK(f.nom))).sort((a,b)=>(a.ordre??99)-(b.ordre??99));
   cols.sort((a,b)=>(a.ordre??99)-(b.ordre??99));
   // regroupe les rayons d'un même fournisseur (ex. DIAPAR) côte à côte, suivis de leur sous-total
   const runs=[];const seen=new Set();
@@ -610,7 +612,6 @@ function vSaisie(){
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td><td>${n2.format(st.ca)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>`).join("")}</div>`:""}</div>
   <div class="gap"></div>
-  <div class="row"><span class="hist">Tapez les montants directement : les totaux se calculent seuls. Touche Entrée = jour suivant. Le nom d'un fournisseur se modifie dans sa case en haut de colonne (le nom complet s'affiche au survol) ; ✕ le retire de la saisie, « + Nom » en ajoute un.</span></div>
   <div class="gap"></div>
   <label class="lbl" for="mnote">Note du mois</label>
   <textarea id="mnote" rows="2" style="width:100%;margin-top:4px" placeholder="Ex. facture en double, erreur du mois précédent…">${esc(doc.note||"")}</textarea>
