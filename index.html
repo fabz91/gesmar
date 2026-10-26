@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="46">
+<meta name="gm-version" content="47">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -159,6 +159,9 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--surface);bor
 .hidden-cols{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 .hidden-cols button{font:600 12px var(--body);border:1px dashed var(--line);background:none;color:var(--fg);border-radius:14px;padding:3px 10px;cursor:pointer}
 .hidden-cols button:hover{border-color:var(--green-2);color:var(--green-2)}
+.rchip{display:inline-flex;align-items:center;gap:3px}
+.hidden-cols button.rdel{border:1px solid var(--line);border-radius:6px;padding:0;width:20px;height:20px;display:grid;place-items:center;color:var(--red-2);font:900 11px/1 var(--body);background:var(--sunk)}
+.hidden-cols button.rdel:hover{background:var(--red-2);border-color:var(--red-2);color:#fff}
 .sheet td.gtot{background:var(--green-soft);font-weight:700}
 /* chart */
 svg text{fill:var(--muted);font:11px var(--body)}
@@ -335,7 +338,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=46;
+const APP_VERSION=47;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -578,7 +581,8 @@ function vSaisie(){
   const nmK=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),visN=new Set(cols.map(f=>nmK(f.nom)));
   // v39 : une colonne retirée qui porte le même nom qu'une colonne affichée (doublon, ex. SAINT PRIM) n'est plus proposée
   // v41 : plus de case « actif » : un ancien fournisseur inactif apparaît aussi dans les colonnes retirées
-  const retirees=S.fourn.filter(f=>!cols.some(c=>c.id===f.id)&&!f.groupe&&!S.fourn.some(x=>x.groupe===f.id)&&!visN.has(nmK(f.nom))).sort((a,b)=>(a.ordre??99)-(b.ordre??99));
+  const masq=new Set(Array.isArray(doc.masques)?doc.masques:[]); // v47 : colonnes retirées supprimées pour ce mois seulement
+  const retirees=S.fourn.filter(f=>!masq.has(f.id)&&!cols.some(c=>c.id===f.id)&&!f.groupe&&!S.fourn.some(x=>x.groupe===f.id)&&!visN.has(nmK(f.nom))).sort((a,b)=>(a.ordre??99)-(b.ordre??99));
   cols.sort((a,b)=>(a.ordre??99)-(b.ordre??99));
   // regroupe les rayons d'un même fournisseur (ex. DIAPAR) côte à côte, suivis de leur sous-total
   const runs=[];const seen=new Set();
@@ -618,7 +622,7 @@ function vSaisie(){
   <div class="panel flush"><div class="band">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td><td>${n2.format(st.ca)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
-  </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>`).join("")}</div>`:""}</div>
+  </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>${v?"":`<button class="rdel" data-maskcol="${esc(f.id)}" title="Supprimer ${esc(f.nom)} de ce mois" aria-label="Supprimer ${esc(f.nom)} de ce mois">✕</button>`}</span>`).join("")}</div>`:""}</div>
   <div class="gap"></div>
   <div class="gap"></div>
   <label class="lbl" for="mnote">Note du mois</label>
@@ -803,6 +807,9 @@ document.addEventListener("click",async e=>{
   if(t.dataset.mv){const R0=(S._runs||[]).map(x=>x.slice()),i=R0.findIndex(x=>x.includes(t.dataset.mv)),j=i+(+t.dataset.dir);
     if(i<0||j<0||j>=R0.length)return;[R0[i],R0[j]]=[R0[j],R0[i]];
     const ups=[];R0.flat().forEach((id,k)=>{const f=S.fourn.find(x=>x.id===id);if(f&&f.ordre!==k)ups.push(fUpdate(id,{ordre:k}))});Promise.all(ups).catch(()=>{});return}
+  if(t.dataset.maskcol){const key=mkey(S.year,S.month),doc=S.mois[key],arr=(doc&&Array.isArray(doc.masques)?doc.masques:[]).slice();if(!arr.includes(t.dataset.maskcol))arr.push(t.dataset.maskcol);
+    const f=S.fourn.find(x=>x.id===t.dataset.maskcol),ref=S.db.doc(P("mois/"+key));
+    try{if(doc)await ref.update({masques:arr});else await ref.set({annee:S.year,mois:S.month+1,jours:{},masques:arr});toast((f?f.nom:"Fournisseur")+" supprimé de ce mois (↶ pour annuler)")}catch(e){fail(e)}return}
   if(t.dataset.showcol){fUpdate(t.dataset.showcol,{colonne:true,actif:true});return}
   if(t.dataset.demask!=null){S.confirmDem=+t.dataset.demask;render();return}
   if(t.dataset.demdel!=null){delDemarque(+t.dataset.demdel);return}
