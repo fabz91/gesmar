@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="52">
+<meta name="gm-version" content="53">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -341,7 +341,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=52;
+const APP_VERSION=53;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -600,7 +600,7 @@ function vSaisie(){
     else{seen.add(f.id);runs.push({mem:[f]})}}
   const anyG=runs.some(r=>r.groupe);
   const hasN1=true; // v37 : colonne CA N-1 toujours affichée
-  const st=monthStats(y,m);
+  const st=monthStats(y,m),n1st=monthStats(y-1,m),n1ca=st.caN1||n1st.caTTC; // v53 : rappel N-1 sous le CA et les achats
   const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal" value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
   let rows="";
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
@@ -622,8 +622,8 @@ function vSaisie(){
   ${periode("mois")}
   <h2>Saisie — ${MOIS[m]} ${y}</h2>
   <div class="grid kpis" style="margin-bottom:16px">
-    <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">&nbsp;</span></div>
-    <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">&nbsp;</span></div>
+    <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">CA N-1 : ${n1ca?eur.format(n1ca):"—"}</span></div>
+    <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">Achats N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
     <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">${st.ca?pct(st.demarque/st.ca)+" du CA · marge hors démarque "+pct(st.tauxHD):"&nbsp;"}</span></div>
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.taux)}</span><span class="d">Marge ${eur.format(st.marge)}</span></div>
     <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} obtenus ce mois</span></div>
@@ -664,9 +664,13 @@ function avFourn(sel){const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ
   const inSaisie=f=>(f.colonne&&f.actif!==false)||S.fourn.some(x=>x.groupe===f.id&&x.colonne&&x.actif!==false);
   const L=S.fourn.filter(f=>!f.groupe),A=L.filter(inSaisie).sort(ord),an=new Set(A.map(f=>nk(f.nom)));
   const B=L.filter(f=>!inSaisie(f)&&(!an.has(nk(f.nom))||f.id===sel)).sort(ord);return[A,B]}
+function avOptsMois(sel){const n=new Date(),k=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0");
+  const masq=new Set(Object.keys(S.mois).filter(x=>/^\d{4}-\d{2}$/.test(x)&&x<=k).flatMap(x=>Array.isArray(S.mois[x].masques)?S.mois[x].masques:[]));
+  const[A,B0]=avFourn(sel),B=B0.filter(f=>!masq.has(f.id)||f.id===sel),o=f=>`<option value="${esc(f.id)}" ${sel===f.id?"selected":""}>${esc(f.nom)}</option>`;
+  return (A.length?`<optgroup label="Dans la saisie">${A.map(o).join("")}</optgroup>`:"")+(B.length?`<optgroup label="Colonnes retirées">${B.map(o).join("")}</optgroup>`:"")}
 function avOpts(sel){const[A,B]=avFourn(sel),o=f=>`<option value="${esc(f.id)}" ${sel===f.id?"selected":""}>${esc(f.nom)}</option>`;
   return (A.length?`<optgroup label="Dans la saisie">${A.map(o).join("")}</optgroup>`:"")+(B.length?`<optgroup label="Colonnes retirées">${B.map(o).join("")}</optgroup>`:"")}
-function vAvoirs(){S.fFourn="";S.fText=""; /* v43 : ligne fournisseur / recherche / + Nouvel avoir retirée, ces filtres ne servent plus */
+function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du fournisseur revient (seul) */
   const all=S.avoirs;const cnt=k=>k==="en_cours"?all.filter(a=>EN_COURS.includes(a.statut)):k==="tous"?all:all.filter(a=>a.statut===k);
   const sum=l=>l.reduce((s,a)=>s+(a.montant||0),0);
   let list=cnt(S.fStat);if(S.fFourn)list=list.filter(a=>a.fournisseur===S.fFourn);
@@ -677,6 +681,7 @@ function vAvoirs(){S.fFourn="";S.fText=""; /* v43 : ligne fournisseur / recherch
   return `
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
   <p class="sub" style="max-width:none">Chaque litige suit le même circuit : déclaré, relancé, accepté, puis déduit sur facture ou relevé.<br>Un avoir déclaré ou relancé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge.</p>
+  <div class="row" style="margin-bottom:10px"><select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${avOpts(S.fFourn)}</select></div>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   ${S.edit?vForm():""}
   <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Nouveau</button></div><div class="scroll"><table>
@@ -688,7 +693,7 @@ function vAvoirs(){S.fFourn="";S.fText=""; /* v43 : ligne fournisseur / recherch
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
       <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
       <td class="l ${late?"late":""}">${late?`<span class="avlate" title="Sans nouvelle depuis ${ds} jours"><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span> `:""}${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
-      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["declare","relance","accepte"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${a.statut==="accepte"?`<button class="btn small" data-setst="deduit" data-id="${a.id}">Déduit</button>`:`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepté</button>`}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></td></tr>`}).join("")
+      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["declare","relance","accepte"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${a.statut==="accepte"?`<button class="btn small" data-setst="deduit" data-id="${a.id}">Déduit</button>`:`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepté</button>`}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div></td></tr>`}).join("")
       :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « Nouveau » pour en créer un.</div></td></tr>`}</tbody>
   </table></div></div>`;
 }
@@ -697,7 +702,7 @@ function vForm(){
   const a=S.edit;const isNew=!a.id;const fl=S.fourn.filter(f=>!f.groupe); /* v41 : tous les fournisseurs (Épicerie, A/A, Frais passent par DIAPAR) */
   return `<div class="panel" style="margin-bottom:16px"><div class="band">${isNew?"Nouvel avoir":"Modifier l'avoir"}</div>
   <form id="avForm" class="form">
-    <label>Fournisseur<select id="av-fournisseur" required>${avOpts(a.fournisseur)}</select></label>
+    <label>Fournisseur<select id="av-fournisseur" required>${avOptsMois(a.fournisseur)}</select></label>
     <label>Date du constat<input id="av-date" type="date" value="${esc(a.date||todayISO())}" required></label>
     <label class="wide">Produit<input id="av-produit" value="${esc(a.produit)}" required placeholder="Ex. Danette chocolat"></label>
     <label>Code article<input id="av-code" value="${esc(a.code)}"></label>
@@ -831,7 +836,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.setst){setStatut(t.dataset.id,t.dataset.setst);return}
   if(t.dataset.edit){const a=S.avoirs.find(x=>x.id===t.dataset.edit);S.edit=JSON.parse(JSON.stringify(a));S.confirmDel=null;render();window.scrollTo({top:0});return}
   if(t.dataset.askdel){S.confirmDel=t.dataset.askdel;render();return}
-  if(t.dataset.del){try{await S.db.doc(P("avoirs/"+t.dataset.del)).delete();S.edit=null;S.confirmDel=null;toast("Avoir supprimé");render()}catch(err){fail(err)}return}
+  if(t.dataset.del){try{await S.db.doc(P("avoirs/"+t.dataset.del)).delete();S.edit=null;S.confirmDel=null;toast("Avoir supprimé (↶ pour annuler)");render()}catch(err){fail(err)}return}
   if(t.dataset.up){fMove(t.dataset.up,-1);return} if(t.dataset.down){fMove(t.dataset.down,1);return}
   const act=t.dataset.act;
   if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||((avFourn()[0][0])||S.fourn.find(f=>!f.groupe)||{}).id,statut:"declare",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
