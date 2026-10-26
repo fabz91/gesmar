@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="30">
+<meta name="gm-version" content="31">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -238,6 +238,7 @@ nav.tabs button[aria-selected="true"]{box-shadow:none}
 .rtheme{gap:8px}.rtheme button{padding:6px 12px;border-radius:8px;background:var(--surface);font:400 15px var(--body)}
 .rtheme button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:#fff}
 .rver{font-weight:400;font-size:12px}
+.rmaj{font-size:12px;color:var(--muted);margin:2px 0 4px 2px}
 .syi{display:inline-flex;align-items:center;line-height:0}
 .syi.ok{color:#237a3b}.syi.ko{color:#d3262b}.syi.wait{color:var(--muted)}
 :root[data-theme="dark"] .syi.ok{color:#4fd37a}:root[data-theme="dark"] .syi.ko{color:#ff7a74}
@@ -300,7 +301,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=30;
+const APP_VERSION=31;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -366,13 +367,13 @@ const majUrl=()=>window.SYNC&&window.SYNC.updateUrl;
 function majFlag(){const g=$("#gearBtn");if(g)g.classList.toggle("upd",!!majBadge())}
 async function majCheck(silent){
   const r=await window.api.updateCheck(majUrl());
-  if(r.status==="new"){S.majNew=r.remote;majFlag();if(!silent)S.majMsg="Nouvelle version disponible ("+r.remote+"), vous avez la "+r.version+"."+(r.note?" "+r.note:"")}
-  else if(!silent){S.majMsg=r.status==="none"?"✓ Vous avez la dernière version ("+r.version+").":r.status==="noconfig"?"Adresse des mises à jour non réglée.":"⚠️ Impossible de vérifier : "+(r.msg||"pas de connexion internet")}
+  if(r.status==="new"){S.majNew=r.remote;majFlag();S.majMsg="🔔 Nouvelle version disponible ("+r.remote+"), vous avez la "+r.version+"."+(r.note?" "+r.note:"")}
+  else if(!silent){S.majMsg=r.status==="none"?"✓ Vous avez la dernière version ("+r.version+").":r.status==="noconfig"?"Adresse des mises à jour non réglée (voir LISEZ-MOI.txt).":"⚠️ Impossible de vérifier : "+(r.msg||"pas de connexion")}
   return r}
-async function majPc(){if(S.majBusy)return;S.majSeenV=S.majNew||0;majFlag();S.majBusy=true;S.majMsg="Recherche d'une nouvelle version…";render();
+async function majPc(){if(S.majBusy)return;S.majSeenV=S.majNew||0;majFlag();S.majBusy=true;S.majMsg="Recherche…";render();
   try{const r=await majCheck(false);render();
-    if(r.status==="new"){S.majMsg="Téléchargement de la version "+r.remote+"…";render();
-      const a=await window.api.updateApply(majUrl());S.majMsg=a.status==="done"?"✓ Mise à jour installée, redémarrage…":"⚠️ "+(a.msg||"échec de la mise à jour")}
+    if(r.status==="new"){S.majMsg="Téléchargement…";render();
+      const a=await window.api.updateApply(majUrl());S.majMsg=a.status==="done"?"✓ Mise à jour installée, redémarrage…":"⚠️ "+(a.msg||"échec")}
     S.majShowReset=true}catch(e){S.majMsg="⚠️ "+(e.message||e)}
   S.majBusy=false;render()}
 async function majReset(){try{await window.api.updateReset()}catch(e){toast("Retour impossible")}}
@@ -777,7 +778,7 @@ document.addEventListener("click",async e=>{
   const act=t.dataset.act;
   if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||(S.fourn.find(f=>f.avoirs!==false)||{}).id,statut:"a_reclamer",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
   if(act==="cancel"){S.edit=null;S.confirmDel=null;render()}
-  if(act==="settings"){S.modal=true;closeMenu();render()}
+  if(act==="settings"){S.modal=true;if(!S.majBusy)S.majMsg="";closeMenu();render()}
   if(act==="closeModal"){S.modal=false;S.modalPanel=null;render()}
   if(act==="export"){exporterDonnees()}
   if(act==="import"){if(S.pc&&typeof importPC==="function")importPC();else{const f=$("#importFile");f&&f.click()}}
@@ -1097,8 +1098,7 @@ function renderModal(){
     ${P1==="dossier"?`<div class="rinfo">${infoDonnees()}</div>`:""}
     <h4>Logiciel</h4>
     <button class="rbtn" ${S.pc&&window.api.updateCheck?'data-act="majPc"':'data-panel="maj"'} ${S.majBusy?"disabled":""}><span class="ic">🔄</span>Mettre à jour le logiciel${majBadge()?'<span class="pas" aria-label="1 nouvelle version">1</span>':""}</button>
-    <div class="rver">Version installée : ${APP_VERSION}${S.majNew?` · <span style="color:var(--red-2)">nouvelle version ${S.majNew} disponible</span>`:""}</div>
-    ${S.majMsg?`<div class="rinfo">${esc(S.majMsg)}</div>`:""}
+    ${S.pc?`<div class="rmaj">${esc(S.majMsg||("Version installée : "+APP_VERSION))}</div>`:""}
     ${P1==="maj"?`<div class="rinfo">${S.local?"Pour mettre à jour, remplacez ce fichier GESMAR.html par la nouvelle version et ouvrez-la dans le même navigateur : vos données sont reprises automatiquement. Exportez une sauvegarde avant, par précaution.":"La version en ligne se met à jour toute seule : vous avez la dernière version."}</div>`:""}
     <h4>Affichage</h4>
     <div class="rtheme"><button data-theme="clair" aria-pressed="${!dark}">☀️ Clair</button><button data-theme="sombre" aria-pressed="${dark}">🌙 Sombre</button></div>
