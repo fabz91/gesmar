@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="39">
+<meta name="gm-version" content="40">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -331,7 +331,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=39;
+const APP_VERSION=40;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -421,7 +421,7 @@ function monthStats(y,m){
   if(doc&&doc.jours){for(const j of Object.values(doc.jours)){if(!j)continue;
     if(j.ca||j.caHT){r.jours++;r.caTTC+=j.ca||0;if(j.caHT)r.ca+=j.caHT;else{r.ca+=j.ca*coef();r.estimes++}} if(j.caN1)r.caN1+=j.caN1;
     for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
-  if(doc&&doc.caHTmois>0){r.ca=doc.caHTmois;r.estimes=0;r.htMois=true}
+  /* v40 : le CA HT du mois (tableau d'analyse) n'est plus utilisé : CA HT = HT saisi par jour, sinon TTC × coefficient */
   for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m)))r.avoirs+=a.montant}
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
   r.marge=r.ca-r.achats;r.taux=r.ca?r.marge/r.ca:null;r.tauxCorr=r.ca?(r.marge+r.avoirs)/r.ca:null;r.tauxHD=r.ca?(r.marge+r.demarque)/r.ca:null;return r}
@@ -604,9 +604,6 @@ function vSaisie(){
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.taux)}</span><span class="d">Marge ${eur.format(st.marge)}</span></div>
     <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} obtenus ce mois</span></div>
   </div>
-  <div class="row" style="margin-bottom:12px"><label class="lbl" for="mht">CA HT du mois (tableau d'analyse mensuel)</label>
-    <input id="mht" inputmode="decimal" value="${doc.caHTmois?n2.format(doc.caHTmois):""}" placeholder="Ex. 262 556,21" style="width:140px">
-    <span class="hist">${doc.caHTmois?"Ce montant remplace la somme des jours pour le calcul de la marge.":"Facultatif : s'il est rempli, il remplace la somme des CA HT journaliers."}</span></div>
   <div class="panel flush"><div class="band">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td><td>${n2.format(st.ca)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
