@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="42">
+<meta name="gm-version" content="43">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -330,7 +330,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=42;
+const APP_VERSION=43;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -642,7 +642,7 @@ function avFourn(sel){const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ
   const B=L.filter(f=>!inSaisie(f)&&(!an.has(nk(f.nom))||f.id===sel)).sort(ord);return[A,B]}
 function avOpts(sel){const[A,B]=avFourn(sel),o=f=>`<option value="${esc(f.id)}" ${sel===f.id?"selected":""}>${esc(f.nom)}</option>`;
   return (A.length?`<optgroup label="Dans la saisie">${A.map(o).join("")}</optgroup>`:"")+(B.length?`<optgroup label="Colonnes retirées">${B.map(o).join("")}</optgroup>`:"")}
-function vAvoirs(){
+function vAvoirs(){S.fFourn="";S.fText=""; /* v43 : ligne fournisseur / recherche / + Nouvel avoir retirée, ces filtres ne servent plus */
   const all=S.avoirs;const cnt=k=>k==="en_cours"?all.filter(a=>EN_COURS.includes(a.statut)):k==="tous"?all:all.filter(a=>a.statut===k);
   const sum=l=>l.reduce((s,a)=>s+(a.montant||0),0);
   let list=cnt(S.fStat);if(S.fFourn)list=list.filter(a=>a.fournisseur===S.fFourn);
@@ -654,14 +654,8 @@ function vAvoirs(){
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
   <p class="sub">Chaque litige suit le même circuit : à réclamer, réclamé, relancé, accepté, puis déduit sur facture ou relevé. Un avoir réclamé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge.</p>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
-  <div class="row" style="margin-bottom:12px">
-    <select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${avOpts(S.fFourn)}</select>
-    <input id="fText" type="search" placeholder="Produit, code, facture…" value="${esc(S.fText)}" style="flex:1;min-width:160px">
-    <button class="btn red" data-act="new">+ Nouvel avoir</button>
-    ${S.fFourn?`<button class="btn" data-act="recap">Copier le récap pour ${esc(fName(S.fFourn))}</button>`:""}
-  </div>
   ${S.edit?vForm():""}
-  <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Avoir</button></div><div class="scroll"><table>
+  <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Nouveau</button></div><div class="scroll"><table>
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant HT</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
     <tbody>${list.length?list.map(a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a);
       return `<tr><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
@@ -671,7 +665,7 @@ function vAvoirs(){
       <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
       <td class="l ${late?"late":""}">${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
       <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["a_reclamer","reclame","relance"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">${a.statut==="a_reclamer"?"Réclamé aujourd'hui":"Relancé aujourd'hui"}</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></td></tr>`}).join("")
-      :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « Nouvel avoir » pour en créer un.</div></td></tr>`}</tbody>
+      :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « + Nouveau » pour en créer un.</div></td></tr>`}</tbody>
   </table></div></div>`;
 }
 
