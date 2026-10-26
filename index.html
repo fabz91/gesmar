@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="50">
+<meta name="gm-version" content="51">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -338,7 +338,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=50;
+const APP_VERSION=51;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -431,9 +431,9 @@ const coef=()=>{const c=S.reglages&&+S.reglages.coefHT;return c>0.5&&c<=1?c:DEFA
 function monthStats(y,m){
   const doc=S.mois[mkey(y,m)];const r={ca:0,caTTC:0,caN1:0,achats:0,par:{},jours:0,estimes:0,avoirs:0};
   if(doc&&doc.jours){for(const j of Object.values(doc.jours)){if(!j)continue;
-    if(j.ca||j.caHT){r.jours++;r.caTTC+=j.ca||0;if(j.caHT)r.ca+=j.caHT;else{r.ca+=j.ca*coef();r.estimes++}} if(j.caN1)r.caN1+=j.caN1;
+    if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */ if(j.caN1)r.caN1+=j.caN1;
     for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
-  /* v40 : le CA HT du mois (tableau d'analyse) n'est plus utilisé : CA HT = HT saisi par jour, sinon TTC × coefficient */
+  /* v51 : plus de HT : le CA HT du mois et le HT par jour ne sont plus utilisés */
   for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m)))r.avoirs+=a.montant}
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
   r.marge=r.ca-r.achats;r.taux=r.ca?r.marge/r.ca:null;r.tauxCorr=r.ca?(r.marge+r.avoirs)/r.ca:null;r.tauxHD=r.ca?(r.marge+r.demarque)/r.ca:null;return r}
@@ -447,7 +447,7 @@ function periodStats(d1,d2){
     if(first>d1&&last<=d2){const t=monthStats(y,m);r.ca+=t.ca;r.caTTC+=t.caTTC;r.achats+=t.achats;r.demarque+=t.demarque;r.jours+=t.jours;r.estimes+=t.estimes}
     else if(doc){
       for(const[dd,j]of Object.entries(doc.jours||{})){const iso=dayISO(y,m,+dd);if(!j||iso<=d1||iso>d2)continue;
-        if(j.ca||j.caHT){r.jours++;r.caTTC+=j.ca||0;if(j.caHT)r.ca+=j.caHT;else{r.ca+=j.ca*coef();r.estimes++}}
+        if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */
         for(const v of Object.values(j.achats||{}))r.achats+=v||0}
       for(const x of(doc.demarque||[]))if(x.date>d1&&x.date<=d2)r.demarque+=+x.montant||0}
     m++;if(m>11){m=0;y++}}
@@ -499,9 +499,9 @@ function vBord(){
   return `
   ${periode("annee")}
   <h2>Tableau de bord ${y} — ${esc(storeNom())}</h2>
-  <p class="sub">${act.length} mois avec du chiffre d'affaires saisi. Taux de marge = (CA HT − achats HT) ÷ CA HT. Quand le CA HT d'un jour n'est pas saisi, il est estimé à partir du TTC × ${String(coef()).replace(".",",")}. La version « après avoirs » ajoute les avoirs acceptés ou déduits du mois du problème.</p>
+  <p class="sub">${act.length} mois avec du chiffre d'affaires saisi. Tout est en TTC : taux de marge = (CA TTC − achats TTC) ÷ CA TTC. La version « après avoirs » ajoute les avoirs acceptés ou déduits du mois du problème.</p>
   <div class="grid kpis">
-    <div class="kpi"><span class="lbl">CA HT cumulé</span><span class="v">${eur.format(T.ca)}</span><span class="d">TTC ${eur.format(T.caTTC)}${T.estimes?` · ${T.estimes} j. sur ${T.jours} estimés`:""}</span></div>
+    <div class="kpi"><span class="lbl">CA TTC cumulé</span><span class="v">${eur.format(T.caTTC)}</span><span class="d">${T.jours} jour${T.jours>1?"s":""} saisi${T.jours>1?"s":""}</span></div>
     <div class="kpi"><span class="lbl">Achats cumulés</span><span class="v">${eur.format(T.achats)}</span><span class="d">${parL.length} fournisseurs</span></div>
     <div class="kpi hl"><span class="lbl">Marge brute</span><span class="v">${eur.format(T.ca-T.achats)}</span><span class="d">Taux ${pct(taux)}${T.dem?` · démarque connue ${eur.format(T.dem)}`:""}</span></div>
     <div class="kpi hl"><span class="lbl">Taux après avoirs</span><span class="v">${pct(tauxC)}</span><span class="d">+ ${eur.format(T.avoirs)} d'avoirs obtenus</span></div>
@@ -520,11 +520,11 @@ function vBord(){
   ${vInventaires(y)}
   <div class="gap"></div>
   <div class="panel"><div class="band">Récapitulatif mensuel</div><div class="scroll"><table>
-    <thead><tr><th class="l">Mois</th><th>Jours</th><th>CA TTC</th><th>CA ${y-1}</th><th>Évol.</th><th>CA HT</th><th>Achats HT</th><th>Marge</th><th>Taux</th><th>Taux ${y-1}</th><th>Écart</th><th>Avoirs obtenus</th><th>Taux après avoirs</th></tr></thead>
+    <thead><tr><th class="l">Mois</th><th>Jours</th><th>CA TTC</th><th>CA ${y-1}</th><th>Évol.</th><th>Achats</th><th>Marge</th><th>Taux</th><th>Taux ${y-1}</th><th>Écart</th><th>Avoirs obtenus</th><th>Taux après avoirs</th></tr></thead>
     <tbody>${ms.map((s,m)=>{const ev=s.n1&&s.caTTC&&s.jours>=20&&!s.n1Inc?(s.caTTC/s.n1-1):null;const n=(S.mois[mkey(y,m)]||{}).note;
       return `<tr class="${s.ca?"":"muted"}"><td class="l"><a href="#" data-goto="${m}" style="color:inherit">${MOIS[m]}</a>${n?` <span title="${esc(n)}" class="pill s-a_reclamer">note</span>`:""}</td><td>${s.jours||"—"}</td><td>${s.caTTC?eur.format(s.caTTC):"—"}</td><td>${s.n1?eur.format(s.n1)+(s.n1Inc?`<span class="hist" title="Mois ${y-1} incomplet"> ⚠</span>`:""):"—"}</td>
-      <td class="${ev>0?"pos":ev<0?"neg":""}">${ev==null?"—":(ev>0?"+":"")+pct(ev)}</td><td>${s.ca?eur.format(s.ca)+(s.htMois?`<span class="hist" title="HT exact du tableau d'analyse mensuel"> ✓</span>`:"")+(s.estimes?`<span class="hist" title="${s.estimes} jour(s) estimé(s) depuis le TTC"> *</span>`:""):"—"}</td><td>${s.achats?eur.format(s.achats):"—"}</td><td>${s.ca?eur.format(s.marge):"—"}</td><td><b>${pct(s.taux)}</b></td><td>${pct(s.n1Taux)}</td><td class="${s.taux!=null&&s.n1Taux!=null&&s.jours>=20?(s.taux>=s.n1Taux?"pos":"neg"):""}">${s.ca&&s.jours>=20?pts(s.taux,s.n1Taux):"—"}</td><td>${s.avoirs?eur.format(s.avoirs):"—"}</td><td>${pct(s.tauxCorr)}</td></tr>`}).join("")}
-    <tr class="tot"><td class="l">Total</td><td></td><td>${eur.format(T.caTTC)}</td><td>${T.n1?eur.format(T.n1):"—"}</td><td></td><td>${eur.format(T.ca)}</td><td>${eur.format(T.achats)}</td><td>${eur.format(T.ca-T.achats)}</td><td>${pct(taux)}</td><td>${pct(tauxPrev)}</td><td></td><td>${eur.format(T.avoirs)}</td><td>${pct(tauxC)}</td></tr>
+      <td class="${ev>0?"pos":ev<0?"neg":""}">${ev==null?"—":(ev>0?"+":"")+pct(ev)}</td><td>${s.achats?eur.format(s.achats):"—"}</td><td>${s.ca?eur.format(s.marge):"—"}</td><td><b>${pct(s.taux)}</b></td><td>${pct(s.n1Taux)}</td><td class="${s.taux!=null&&s.n1Taux!=null&&s.jours>=20?(s.taux>=s.n1Taux?"pos":"neg"):""}">${s.ca&&s.jours>=20?pts(s.taux,s.n1Taux):"—"}</td><td>${s.avoirs?eur.format(s.avoirs):"—"}</td><td>${pct(s.tauxCorr)}</td></tr>`}).join("")}
+    <tr class="tot"><td class="l">Total</td><td></td><td>${eur.format(T.caTTC)}</td><td>${T.n1?eur.format(T.n1):"—"}</td><td></td><td>${eur.format(T.achats)}</td><td>${eur.format(T.ca-T.achats)}</td><td>${pct(taux)}</td><td>${pct(tauxPrev)}</td><td></td><td>${eur.format(T.avoirs)}</td><td>${pct(tauxC)}</td></tr>
     </tbody></table></div></div>
   ${late.length||sansMontant?`<div class="gap"></div><div class="note">${late.length?`<b>${late.length} avoir${late.length>1?"s":""} sans nouvelle depuis plus de ${RELANCE_JOURS} jours.</b> `:""}${sansMontant?`${sansMontant} avoir${sansMontant>1?"s":""} en cours sans montant. `:""}<a href="#" data-tab-go="avoirs" style="color:inherit">Voir les avoirs</a></div>`:""}`;
 }
@@ -557,16 +557,16 @@ function vInventaires(y){
   const curT=cur&&cur.ca?(cur.ca-cur.achats)/cur.ca:null;
   return `<div class="panel flush"><div class="band">Inventaires et marge réelle<button class="pillbtn" data-act="focusInv">+ Inventaire</button></div>
   <div style="padding:14px 16px 4px">
-    <p class="hist" style="margin:0 0 10px;max-width:90ch">Saisissez la valeur du stock (HT, au prix d'achat) à chaque inventaire. Entre deux inventaires, la <b>marge réelle</b> = CA HT − (achats + stock de début − stock de fin). Elle corrige l'effet des livraisons qui gonfle ou creuse la marge d'un mois. Le taux « hors démarque connue » montre ce que serait la marge sans la casse et les pertes notées dans la Saisie.</p>
+    <p class="hist" style="margin:0 0 10px;max-width:90ch">Saisissez la valeur du stock (TTC, au prix d'achat) à chaque inventaire. Entre deux inventaires, la <b>marge réelle</b> = CA TTC − (achats + stock de début − stock de fin). Elle corrige l'effet des livraisons qui gonfle ou creuse la marge d'un mois. Le taux « hors démarque connue » montre ce que serait la marge sans la casse et les pertes notées dans la Saisie.</p>
     <form id="invForm" class="row" style="margin-bottom:12px">
       <label class="lbl" for="invDate">Date</label><input id="invDate" type="date" value="${esc(S.invDraft&&S.invDraft.date||"")}" required>
-      <label class="lbl" for="invVal">Stock HT (€)</label><input id="invVal" inputmode="decimal" placeholder="Ex. 185 000" style="width:130px" required>
+      <label class="lbl" for="invVal">Stock TTC (€)</label><input id="invVal" inputmode="decimal" placeholder="Ex. 185 000" style="width:130px" required>
       <input id="invNote" placeholder="Note (facultatif)" style="flex:1;min-width:140px">
       <button class="btn red" type="submit">Enregistrer l'inventaire</button></form>
   </div>
   ${inv.length?`<div class="scroll"><table>
-    <thead><tr><th class="l">Période</th><th>Stock début</th><th>Stock fin</th><th>Variation</th><th>CA HT</th><th>Achats HT</th><th>Marge sur achats</th><th>Marge réelle</th><th>Démarque connue</th><th>Hors démarque</th><th></th></tr></thead>
-    <tbody>${per.map(x=>`<tr><td class="l">${frDate(x.a.date)} → ${frDate(x.b.date)}${x.p.estimes?`<span class="hist" title="${x.p.estimes} jour(s) de CA HT estimé(s) depuis le TTC"> *</span>`:""}</td>
+    <thead><tr><th class="l">Période</th><th>Stock début</th><th>Stock fin</th><th>Variation</th><th>CA TTC</th><th>Achats</th><th>Marge sur achats</th><th>Marge réelle</th><th>Démarque connue</th><th>Hors démarque</th><th></th></tr></thead>
+    <tbody>${per.map(x=>`<tr><td class="l">${frDate(x.a.date)} → ${frDate(x.b.date)}</td>
       <td>${eur.format(+x.a.valeur||0)}</td><td>${eur.format(+x.b.valeur||0)}</td><td class="${(x.b.valeur-x.a.valeur)>=0?"pos":"neg"}">${((x.b.valeur-x.a.valeur)>=0?"+":"")+eur.format((+x.b.valeur||0)-(+x.a.valeur||0))}</td>
       <td>${eur.format(x.p.ca)}</td><td>${eur.format(x.p.achats)}</td><td>${pct(x.tA)}</td><td><b>${eur.format(x.reelle)} · ${pct(x.tR)}</b></td>
       <td>${x.p.demarque?eur.format(x.p.demarque):"—"}</td><td>${pct(x.tHD)}</td><td></td></tr>`).join("")}
@@ -602,7 +602,7 @@ function vSaisie(){
   let rows="";
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
     const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
-    rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td><td>${cell(dd,"caHT",j.caHT,j.ca&&!j.caHT?j.ca*coef():null)}</td>${hasN1?`<td>${cell(dd,"caN1",j.caN1)}</td>`:""}
+    rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td>${hasN1?`<td>${cell(dd,"caN1",j.caN1)}</td>`:""}
       ${runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
   const tf=f=>st.par[f.id]?n2.format(st.par[f.id]):"";
   const rs="";
@@ -611,7 +611,7 @@ function vSaisie(){
   const nameCell=(f,del,ri)=>{if(!S.fourn.find(x=>x.id===f.id))return esc(f.nom);const n=esc(f.nom),first=ri===0,last=ri===runs.length-1;
     const mv=(d,lab,dis)=>`<button class="fmv" data-mv="${esc(f.id)}" data-dir="${d}" ${dis?"disabled":""} title="${lab}" aria-label="${lab}">${d<0?"‹":"›"}</button>`;
     return `<div class="fhead">${!del?`<div class="fctl" style="height:20px" aria-hidden="true"></div>`:`<div class="fctl">${mv(-1,"Déplacer "+n+" vers la gauche",first)}${del?`<button class="fx" data-hidecol="${esc(f.id)}" title="Retirer ${n} de la saisie" aria-label="Retirer ${n} de la saisie">✕</button>`:""}${mv(1,"Déplacer "+n+" vers la droite",last)}</div>`}<input id="rn-${esc(f.id)}" class="fname" data-rn="${esc(f.id)}" value="${n}" aria-label="Nom du fournisseur" title="${n} : cliquer pour modifier le nom"></div>`};
-  const head1=`<tr><th class="day"${rs}>Jour</th><th${rs}>CA TTC</th><th${rs}>CA HT</th>${hasN1?`<th${rs}>CA N-1</th>`:""}${runs.map((r,ri)=>r.groupe?r.mem.map(f=>`<th class="fray">${nameCell(f,false,ri)}</th>`).join(""):`<th class="fcol">${nameCell(r.mem[0],true,ri)}</th>`).join("")}<th${rs}>Total achats</th></tr>`;
+  const head1=`<tr><th class="day"${rs}>Jour</th><th${rs}>CA TTC</th>${hasN1?`<th${rs}>CA N-1</th>`:""}${runs.map((r,ri)=>r.groupe?r.mem.map(f=>`<th class="fray">${nameCell(f,false,ri)}</th>`).join(""):`<th class="fcol">${nameCell(r.mem[0],true,ri)}</th>`).join("")}<th${rs}>Total achats</th></tr>`;
   const head2="";
   const hidAmt=retirees.map(f=>[f,st.par[f.id]||0]);
   const totCells=runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${tf(f)}</td>`).join("")).join("");
@@ -619,15 +619,15 @@ function vSaisie(){
   ${periode("mois")}
   <h2>Saisie — ${MOIS[m]} ${y}</h2>
   <div class="grid kpis" style="margin-bottom:16px">
-    <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">HT ${eur.format(st.ca)}</span></div>
+    <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">&nbsp;</span></div>
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">&nbsp;</span></div>
-    <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">${st.ca?pct(st.demarque/st.ca)+" du CA HT · marge hors démarque "+pct(st.tauxHD):"&nbsp;"}</span></div>
+    <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">${st.ca?pct(st.demarque/st.ca)+" du CA · marge hors démarque "+pct(st.tauxHD):"&nbsp;"}</span></div>
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.taux)}</span><span class="d">Marge ${eur.format(st.marge)}</span></div>
     <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} obtenus ce mois</span></div>
   </div>
   <div class="panel flush"><div class="band">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
-    <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td><td>${n2.format(st.ca)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
+    <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>${v?"":`<button class="rdel" data-maskcol="${esc(f.id)}" title="Supprimer ${esc(f.nom)} de ce mois" aria-label="Supprimer ${esc(f.nom)} de ce mois">✕</button>`}</span>`).join("")}</div>`:""}</div>
   <div class="gap"></div>
   <div class="gap"></div>
@@ -646,13 +646,13 @@ function vDemarque(y,m,doc,st){
     <input id="demDate" type="date" value="${def}" min="${dayISO(y,m,1)}" max="${dayISO(y,m,new Date(y,m+1,0).getDate())}" required aria-label="Date">
     <select id="demMotif" aria-label="Motif">${DEM_MOTIFS.map(x=>`<option>${x}</option>`).join("")}</select>
     <input id="demDetail" placeholder="Produit ou rayon (ex. yaourts, fruits & légumes)" style="flex:1;min-width:180px">
-    <input id="demMontant" inputmode="decimal" placeholder="Montant HT (prix d'achat)" style="width:170px" required>
+    <input id="demMontant" inputmode="decimal" placeholder="Montant TTC (prix d'achat)" style="width:170px" required>
     <button class="btn red" type="submit">Ajouter</button></form>
-  ${L.length?`<div class="scroll"><table><thead><tr><th class="l">Date</th><th class="l">Motif</th><th class="l">Détail</th><th>Montant HT</th><th></th></tr></thead><tbody>
+  ${L.length?`<div class="scroll"><table><thead><tr><th class="l">Date</th><th class="l">Motif</th><th class="l">Détail</th><th>Montant TTC</th><th></th></tr></thead><tbody>
     ${L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(x.motif)}</td><td class="l" style="white-space:normal">${esc(x.detail)}</td><td>${eur2.format(+x.montant||0)}</td>
       <td>${S.confirmDem===x.i?`<button class="btn small danger" data-demdel="${x.i}">Confirmer</button>`:`<button class="btn small" data-demask="${x.i}">Supprimer</button>`}</td></tr>`).join("")}
     <tr class="tot"><td class="l" colspan="3">Total ${Object.entries(parMotif).map(([k,v])=>`<span class="hist" style="font-weight:500">· ${esc(k)} ${eur.format(v)}</span>`).join(" ")}</td><td>${eur2.format(st.demarque)}</td><td></td></tr>
-  </tbody></table></div>`:`<div class="foot" style="padding:12px 14px">Rien de noté ce mois-ci. Notez ici la casse, les produits périmés ou abîmés, le vol constaté et la consommation interne, au prix d'achat HT. Un produit à retourner au fournisseur va plutôt dans les Avoirs.</div>`}
+  </tbody></table></div>`:`<div class="foot" style="padding:12px 14px">Rien de noté ce mois-ci. Notez ici la casse, les produits périmés ou abîmés, le vol constaté et la consommation interne, au prix d'achat TTC. Un produit à retourner au fournisseur va plutôt dans les Avoirs.</div>`}
   </div>`;
 }
 
@@ -677,7 +677,7 @@ function vAvoirs(){S.fFourn="";S.fText=""; /* v43 : ligne fournisseur / recherch
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   ${S.edit?vForm():""}
   <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Nouveau</button></div><div class="scroll"><table>
-    <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant HT</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
+    <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant TTC</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
     <tbody>${list.length?list.map(a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a);
       return `<tr><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
       <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}</td>
@@ -701,7 +701,7 @@ function vForm(){
     <label>N° de facture / BL<input id="av-facture" value="${esc(a.facture)}"></label>
     <label>Quantité<input id="av-quantite" value="${esc(a.quantite)}" placeholder="Ex. 2 colis"></label>
     <label>Motif<select id="av-motif">${MOTIFS.map(m=>`<option ${a.motif===m?"selected":""}>${m}</option>`).join("")}</select></label>
-    <label>Montant HT (€)<input id="av-montant" inputmode="decimal" value="${a.montant!=null?n2.format(a.montant):""}" placeholder="Laisser vide si inconnu"></label>
+    <label>Montant TTC (€)<input id="av-montant" inputmode="decimal" value="${a.montant!=null?n2.format(a.montant):""}" placeholder="Laisser vide si inconnu"></label>
     <label>Statut<select id="av-statut">${STATUTS.map(([k,l])=>`<option value="${k}" ${a.statut===k?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="wide">Infos<textarea id="av-infos" rows="2">${esc(a.infos)}</textarea></label>
     ${(a.relances||[]).length?`<div class="wide hist">Relances : ${a.relances.map(frDate).join(", ")}</div>`:""}
@@ -757,7 +757,7 @@ async function relancer(id){
 async function copyRecap(){
   const f=S.fourn.find(x=>x.id===S.fFourn);const L=S.avoirs.filter(a=>a.fournisseur===S.fFourn&&EN_COURS.includes(a.statut)).sort((a,b)=>String(a.date).localeCompare(b.date));
   const tot=L.reduce((s,a)=>s+(a.montant||0),0);
-  const txt=`Bonjour,\n\nVoici les avoirs en attente de votre part :\n\n`+L.map(a=>`- ${frDate(a.date)} · ${a.produit}${a.code?" (code "+a.code+")":""}${a.facture?" · facture "+a.facture:""} · ${a.quantite||""} · ${a.motif} · ${a.montant?eur2.format(a.montant)+" HT":"montant à confirmer"}`).join("\n")+`\n\nTotal : ${eur2.format(tot)} HT.\nMerci de nous confirmer leur prise en compte.\n\nCordialement`;
+  const txt=`Bonjour,\n\nVoici les avoirs en attente de votre part :\n\n`+L.map(a=>`- ${frDate(a.date)} · ${a.produit}${a.code?" (code "+a.code+")":""}${a.facture?" · facture "+a.facture:""} · ${a.quantite||""} · ${a.motif} · ${a.montant?eur2.format(a.montant)+" TTC":"montant à confirmer"}`).join("\n")+`\n\nTotal : ${eur2.format(tot)} TTC.\nMerci de nous confirmer leur prise en compte.\n\nCordialement`;
   try{await navigator.clipboard.writeText(txt);toast(`Récap copié (${L.length} avoir${L.length>1?"s":""})`)}catch(e){toast("Copie impossible dans cette vue")}
 }
 async function addDemarque(){
