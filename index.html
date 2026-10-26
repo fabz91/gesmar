@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="40">
+<meta name="gm-version" content="41">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -311,7 +311,6 @@ nav.tabs button{line-height:1.4}
     <button role="tab" data-tab="bord">Tableau de bord</button>
     <button role="tab" data-tab="saisie">Saisie</button>
     <button role="tab" data-tab="avoirs">Avoirs<span class="cnt" id="avCnt" hidden></span></button>
-    <button role="tab" data-tab="fourn">Fournisseurs</button>
 </nav>
 <div class="menu" id="storeMenu" role="menu" hidden></div>
 
@@ -331,14 +330,14 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=40;
+const APP_VERSION=41;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
 
 const S={db:null,store:null,magasins:[],config:{},assets:null,modal:false,fourn:[],mois:{},avoirs:[],year:2026,tab:"bord",month:new Date().getMonth(),
   fStat:"en_cours",fFourn:"",fText:"",edit:null,confirmDel:null,loaded:{f:false,m:false,a:false}};
-try{S.tab=localStorage.getItem("gesmar.tab")||"bord";S.store=localStorage.getItem("gesmar.store")}catch(e){}
+try{S.tab=localStorage.getItem("gesmar.tab")||"bord";if(!["bord","saisie","avoirs"].includes(S.tab))S.tab="bord";S.store=localStorage.getItem("gesmar.store")}catch(e){}
 const P=x=>"magasins/"+S.store+"/"+x;
 const slug=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"");
 const storeNom=()=>(S.magasins.find(m=>m.id===S.store)||{}).nom||"—";
@@ -454,7 +453,7 @@ function render(){
   if(!S.magasins.length){app.innerHTML=S.magLoaded?`<div class="empty-state">Aucun magasin pour l'instant. Ouvrez les Réglages ⚙ pour créer le premier.</div>`:`<div class="empty-state">Chargement des magasins…</div>`;return}
   const active=document.activeElement&&document.activeElement.id;
   app.classList.toggle("wide",S.tab==="saisie");
-  app.innerHTML=({bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn}[S.tab]||vBord)();
+  app.innerHTML=({bord:vBord,saisie:vSaisie,avoirs:vAvoirs}[S.tab]||vBord)(); // v41 : onglet Fournisseurs supprimé
   if(active){const el=document.getElementById(active);if(el&&el.tagName!=="BUTTON"&&!el.closest("#modalRoot"))el.focus()}
 }
 
@@ -569,9 +568,10 @@ function vSaisie(){
   const used=new Set();Object.values(J).forEach(j=>Object.keys((j&&j.achats)||{}).forEach(k=>used.add(k)));
   const cols=colFourn().filter(f=>f.actif!==false||used.has(f.id));
   used.forEach(k=>{if(!cols.find(f=>f.id===k)&&!S.fourn.find(f=>f.id===k))cols.push({id:k,nom:k})});
-  const nmK=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),visN=new Set(S.fourn.filter(f=>f.colonne).map(f=>nmK(f.nom)));
+  const nmK=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),visN=new Set(cols.map(f=>nmK(f.nom)));
   // v39 : une colonne retirée qui porte le même nom qu'une colonne affichée (doublon, ex. SAINT PRIM) n'est plus proposée
-  const retirees=S.fourn.filter(f=>!f.colonne&&!f.groupe&&!S.fourn.some(x=>x.groupe===f.id)&&!visN.has(nmK(f.nom))).sort((a,b)=>(a.ordre??99)-(b.ordre??99));
+  // v41 : plus de case « actif » : un ancien fournisseur inactif apparaît aussi dans les colonnes retirées
+  const retirees=S.fourn.filter(f=>!cols.some(c=>c.id===f.id)&&!f.groupe&&!S.fourn.some(x=>x.groupe===f.id)&&!visN.has(nmK(f.nom))).sort((a,b)=>(a.ordre??99)-(b.ordre??99));
   cols.sort((a,b)=>(a.ordre??99)-(b.ordre??99));
   // regroupe les rayons d'un même fournisseur (ex. DIAPAR) côte à côte, suivis de leur sous-total
   const runs=[];const seen=new Set();
@@ -641,7 +641,7 @@ function vAvoirs(){
   let list=cnt(S.fStat);if(S.fFourn)list=list.filter(a=>a.fournisseur===S.fFourn);
   if(S.fText){const t=S.fText.toLowerCase();list=list.filter(a=>[a.produit,a.code,a.facture,a.infos,a.motif].join(" ").toLowerCase().includes(t))}
   list=list.slice().sort((a,b)=>(isLate(b)-isLate(a))||String(b.date).localeCompare(String(a.date)));
-  const fl=S.fourn.filter(f=>f.avoirs!==false);
+  const fl=S.fourn.filter(f=>!f.groupe); /* v41 : tous les fournisseurs (Épicerie, A/A, Frais passent par DIAPAR) */
   const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
   return `
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
@@ -669,7 +669,7 @@ function vAvoirs(){
 }
 
 function vForm(){
-  const a=S.edit;const isNew=!a.id;const fl=S.fourn.filter(f=>f.avoirs!==false);
+  const a=S.edit;const isNew=!a.id;const fl=S.fourn.filter(f=>!f.groupe); /* v41 : tous les fournisseurs (Épicerie, A/A, Frais passent par DIAPAR) */
   return `<div class="panel" style="margin-bottom:16px"><div class="band">${isNew?"Nouvel avoir":"Modifier l'avoir"}</div>
   <form id="avForm" class="form">
     <label>Fournisseur<select id="av-fournisseur" required>${fl.map(f=>`<option value="${esc(f.id)}" ${a.fournisseur===f.id?"selected":""}>${esc(f.nom)}</option>`).join("")}</select></label>
@@ -800,7 +800,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.del){try{await S.db.doc(P("avoirs/"+t.dataset.del)).delete();S.edit=null;S.confirmDel=null;toast("Avoir supprimé");render()}catch(err){fail(err)}return}
   if(t.dataset.up){fMove(t.dataset.up,-1);return} if(t.dataset.down){fMove(t.dataset.down,1);return}
   const act=t.dataset.act;
-  if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||(S.fourn.find(f=>f.avoirs!==false)||{}).id,statut:"a_reclamer",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
+  if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||(S.fourn.find(f=>!f.groupe)||{}).id,statut:"a_reclamer",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
   if(act==="cancel"){S.edit=null;S.confirmDel=null;render()}
   if(act==="settings"){S.modal=true;if(!S.majBusy)S.majMsg="";closeMenu();render()}
   if(act==="closeModal"){S.modal=false;S.modalPanel=null;render()}
