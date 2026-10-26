@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="59">
+<meta name="gm-version" content="60">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -357,7 +357,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=59;
+const APP_VERSION=60;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -1094,13 +1094,47 @@ async function exportData(){ // Nom du fichier : GESMAR-AAAA-MM-JJ.json (PC et n
   const blob=new Blob([j],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="GESMAR-"+todayISO()+".json";document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast("Sauvegarde exportée")}
-function applyImportText(t){try{const j=JSON.parse(t);const d=j&&j.data;if(!d||typeof d!=="object")throw 0;
+// v60 : fichier « GESMAR-AJOUT » préparé par Claude (relevés d'avoirs, tableau de marge Excel) : on AJOUTE / met à jour
+// sans rien effacer. Mois : chaque case remplie dans le fichier remplace celle du logiciel (CA, CA N-1, achats d'un fournisseur),
+// les autres cases ne bougent pas. Avoirs : ajoutés sauf s'ils existent déjà (même fournisseur, produit, date et code).
+const ajNk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();
+function isAjout(t){try{const j=JSON.parse(t);return j&&j.app==="GESMAR-AJOUT"?j:null}catch(e){return null}}
+async function applyAjout(j){
+  if(!S.db||!S.store){toast("Données pas encore chargées, réessayez dans un instant");return}
+  if(j.magasin&&j.magasin!==S.store){const g=S.magasins.find(m=>m.id===j.magasin);toast("Ce fichier concerne "+(g?g.nom:j.magasin)+" : changez de magasin (maison) puis réimportez");return}
+  const nM=(j.mois||[]).length,nA=(j.avoirs||[]).length;
+  if(!confirm("Ajouter au magasin "+storeNom()+" :\n- "+nM+" mois du tableau de marge (les cases remplies dans le fichier remplacent celles du logiciel, les autres ne bougent pas)\n- "+nA+" avoir(s) (sauf ceux déjà présents)\n\nRien n'est effacé. Continuer ?"))return;
+  const fIndex=()=>{const m={};S.fourn.slice().sort((a,b)=>(b.colonne&&b.actif!==false)-(a.colonne&&a.actif!==false)).forEach(f=>{const k=ajNk(f.nom);if(!(k in m))m[k]=f.id});return m};
+  let FI=fIndex(),crees=0;
+  const fid=async nom=>{const k=ajNk(nom);if(FI[k])return FI[k];let id=k.toLowerCase().slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.toLowerCase().slice(0,26)+n}
+    const ordre=S.fourn.reduce((m,f)=>Math.max(m,f.ordre??0),0)+1;await S.db.doc(P("fournisseurs/"+id)).set({nom:String(nom).toUpperCase(),ordre,actif:true,colonne:false,avoirs:true,contact:""});
+    S.fourn.push({id,nom:String(nom).toUpperCase(),ordre,actif:true,colonne:false});FI[k]=id;crees++;return id};
+  let cases=0,avOk=0,avDeja=0;
+  try{
+    for(const mo of (j.mois||[])){const key=mo.cle,doc=S.mois[key],jours=JSON.parse(JSON.stringify((doc&&doc.jours)||{}));
+      for(const[d,v]of Object.entries(mo.jours||{})){const jj=jours[d]||{};
+        if(v.ca!=null){jj.ca=v.ca;cases++} if(v.caN1!=null){jj.caN1=v.caN1;cases++}
+        for(const[nom,val]of Object.entries(v.achats||{})){jj.achats=Object.assign({},jj.achats||{});
+          // même nom sur plusieurs fiches (ex. ancien et nouveau SAINT PRIM) : on garde la case déjà remplie ce jour-là, sinon la colonne affichée ; jamais de doublon
+          const same=S.fourn.filter(f=>ajNk(f.nom)===ajNk(nom)).map(f=>f.id),id=same.find(x=>x in jj.achats)||await fid(nom);
+          same.forEach(x=>{if(x!==id)delete jj.achats[x]});jj.achats[id]=val;cases++}
+        jours[d]=jj}
+      const ref=S.db.doc(P("mois/"+key));if(doc)await ref.update({jours});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours})}
+    for(const a of (j.avoirs||[])){const id=await fid(a.fournisseur);
+      const deja=S.avoirs.some(x=>x.fournisseur===id&&ajNk(x.produit)===ajNk(a.produit)&&String(x.date||"")===String(a.date||"")&&ajNk(x.code)===ajNk(a.code));
+      if(deja){avDeja++;continue}
+      const t=todayISO();await S.db.collection(P("avoirs")).add({fournisseur:id,date:a.date||t,produit:a.produit||"",code:a.code||"",facture:a.facture||"",quantite:a.quantite||"",motif:a.motif||"Autre",
+        montant:a.montant==null?null:a.montant,statut:a.statut||"declare",infos:a.infos||"",relances:a.relances||[],dateReclamation:a.dateReclamation||a.date||t,creeLe:t,majLe:t});avOk++}
+    toast("Ajout terminé : "+cases+" case(s) mises à jour, "+avOk+" avoir(s) ajouté(s)"+(avDeja?", "+avDeja+" déjà présent(s)":"")+(crees?", "+crees+" fournisseur(s) créé(s)":""));render()
+  }catch(e){fail(e)}}
+function applyImportText(t){const aj=isAjout(t);if(aj){applyAjout(aj);return}
+  try{const j=JSON.parse(t);const d=j&&j.data;if(!d||typeof d!=="object")throw 0;
     const before=Object.keys(STORE);STORE=clone(d);for(const k of Object.keys(STORE))if(k.startsWith("__meta/"))delete STORE[k];
     for(const id in META)META[id].base={};before.forEach(k=>{const m=meta(blobOf(k));m.dirty[k]=(m.dirty[k]||0)+1});SYNC.markAll();
     rawSave("gesmar-index",JSON.stringify(knownIds()));S.store=null;try{localStorage.removeItem("gesmar.store")}catch(_){};toast("Sauvegarde importée");setTimeout(()=>location.reload(),1500)}
   catch(e){toast("Fichier non reconnu : choisissez un export GESMAR (.json).")}}
 function importData(file){if(!file)return;const r=new FileReader();r.onload=()=>applyImportText(r.result);r.readAsText(file)}
-function importPC(){window.api.importData().then(t=>{if(t){S.importPending=[["__fichier__",t]];S.modalPanel="importpc";render()}}).catch(()=>toast("Import impossible"))}
+function importPC(){window.api.importData().then(t=>{if(t){const aj=isAjout(t);if(aj){applyAjout(aj);return}S.importPending=[["__fichier__",t]];S.modalPanel="importpc";render()}}).catch(()=>toast("Import impossible"))}
 
 let unsubs=[];
 function subscribeStore(){
