@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="41">
+<meta name="gm-version" content="42">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -330,7 +330,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=41;
+const APP_VERSION=42;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -635,6 +635,13 @@ function vDemarque(y,m,doc,st){
   </div>`;
 }
 
+// v42 : fournisseurs des avoirs : d'abord ceux de la saisie, puis ceux des colonnes retirées (doublons de nom écartés)
+function avFourn(sel){const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),ord=(a,b)=>(a.ordre??99)-(b.ordre??99)||String(a.nom).localeCompare(String(b.nom));
+  const inSaisie=f=>(f.colonne&&f.actif!==false)||S.fourn.some(x=>x.groupe===f.id&&x.colonne&&x.actif!==false);
+  const L=S.fourn.filter(f=>!f.groupe),A=L.filter(inSaisie).sort(ord),an=new Set(A.map(f=>nk(f.nom)));
+  const B=L.filter(f=>!inSaisie(f)&&(!an.has(nk(f.nom))||f.id===sel)).sort(ord);return[A,B]}
+function avOpts(sel){const[A,B]=avFourn(sel),o=f=>`<option value="${esc(f.id)}" ${sel===f.id?"selected":""}>${esc(f.nom)}</option>`;
+  return (A.length?`<optgroup label="Dans la saisie">${A.map(o).join("")}</optgroup>`:"")+(B.length?`<optgroup label="Colonnes retirées">${B.map(o).join("")}</optgroup>`:"")}
 function vAvoirs(){
   const all=S.avoirs;const cnt=k=>k==="en_cours"?all.filter(a=>EN_COURS.includes(a.statut)):k==="tous"?all:all.filter(a=>a.statut===k);
   const sum=l=>l.reduce((s,a)=>s+(a.montant||0),0);
@@ -648,7 +655,7 @@ function vAvoirs(){
   <p class="sub">Chaque litige suit le même circuit : à réclamer, réclamé, relancé, accepté, puis déduit sur facture ou relevé. Un avoir réclamé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge.</p>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   <div class="row" style="margin-bottom:12px">
-    <select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${fl.map(f=>`<option value="${esc(f.id)}" ${S.fFourn===f.id?"selected":""}>${esc(f.nom)}</option>`).join("")}</select>
+    <select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${avOpts(S.fFourn)}</select>
     <input id="fText" type="search" placeholder="Produit, code, facture…" value="${esc(S.fText)}" style="flex:1;min-width:160px">
     <button class="btn red" data-act="new">+ Nouvel avoir</button>
     ${S.fFourn?`<button class="btn" data-act="recap">Copier le récap pour ${esc(fName(S.fFourn))}</button>`:""}
@@ -672,7 +679,7 @@ function vForm(){
   const a=S.edit;const isNew=!a.id;const fl=S.fourn.filter(f=>!f.groupe); /* v41 : tous les fournisseurs (Épicerie, A/A, Frais passent par DIAPAR) */
   return `<div class="panel" style="margin-bottom:16px"><div class="band">${isNew?"Nouvel avoir":"Modifier l'avoir"}</div>
   <form id="avForm" class="form">
-    <label>Fournisseur<select id="av-fournisseur" required>${fl.map(f=>`<option value="${esc(f.id)}" ${a.fournisseur===f.id?"selected":""}>${esc(f.nom)}</option>`).join("")}</select></label>
+    <label>Fournisseur<select id="av-fournisseur" required>${avOpts(a.fournisseur)}</select></label>
     <label>Date du constat<input id="av-date" type="date" value="${esc(a.date||todayISO())}" required></label>
     <label class="wide">Produit<input id="av-produit" value="${esc(a.produit)}" required placeholder="Ex. Danette chocolat"></label>
     <label>Code article<input id="av-code" value="${esc(a.code)}"></label>
@@ -800,7 +807,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.del){try{await S.db.doc(P("avoirs/"+t.dataset.del)).delete();S.edit=null;S.confirmDel=null;toast("Avoir supprimé");render()}catch(err){fail(err)}return}
   if(t.dataset.up){fMove(t.dataset.up,-1);return} if(t.dataset.down){fMove(t.dataset.down,1);return}
   const act=t.dataset.act;
-  if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||(S.fourn.find(f=>!f.groupe)||{}).id,statut:"a_reclamer",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
+  if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||((avFourn()[0][0])||S.fourn.find(f=>!f.groupe)||{}).id,statut:"a_reclamer",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
   if(act==="cancel"){S.edit=null;S.confirmDel=null;render()}
   if(act==="settings"){S.modal=true;if(!S.majBusy)S.majMsg="";closeMenu();render()}
   if(act==="closeModal"){S.modal=false;S.modalPanel=null;render()}
