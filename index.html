@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="34">
+<meta name="gm-version" content="35">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -331,7 +331,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=34;
+const APP_VERSION=35;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -595,7 +595,6 @@ function vSaisie(){
   return `
   ${periode("mois")}
   <h2>Saisie — ${MOIS[m]} ${y}</h2>
-  <p class="sub">Une ligne par jour, une colonne par fournisseur, toujours dans le même ordre. CA TTC = « C.A. Net » du tableau d'analyse ; CA HT = total HT du bloc Taxes. Si le HT est vide, l'estimation s'affiche en grisé. Chaque case s'enregistre dès que vous la quittez. Les totaux sont calculés automatiquement.</p>
   <div class="grid kpis" style="margin-bottom:16px">
     <div class="kpi"><span class="lbl">CA HT du mois</span><span class="v">${eur.format(st.ca)}</span><span class="d">TTC ${eur.format(st.caTTC)} · ${st.htMois?"HT du tableau mensuel":`${st.jours} j.${st.estimes?` dont ${st.estimes} estimé${st.estimes>1?"s":""}`:""}`}</span></div>
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">&nbsp;</span></div>
