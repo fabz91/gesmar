@@ -12,8 +12,6 @@ CE QUE CONTIENT CE DOSSIER
                           réglages de l'installateur (NSIS)
   installer.nsh           réglages complémentaires de l'installateur
   icon.ico / icon.png     l'icône
-  seed.json               vos données de départ (BREDIS, CLAMART) pour le premier lancement
-                          -> fichier PRIVÉ : ne le mettez jamais sur GitHub
   CREER-INSTALLATEUR.bat  le fichier à double-cliquer pour tout fabriquer
 
 
@@ -42,7 +40,8 @@ OÙ SONT LES DONNÉES
   Une copie de sécurité est faite chaque jour dans donnees\sauvegardes
   (les 30 derniers jours sont gardés).
   Au premier lancement, GESMAR reprend l'ancien fichier gesmar.json s'il existe,
-  sinon les données de seed.json.
+  puis récupère tout seul les données de BREDIS et CLAMART en ligne (Supabase),
+  si config.js contient l'adresse et la clé. Il faut donc internet au premier lancement.
   Réglages > Exporter crée une sauvegarde complète à garder sur une clé USB.
 
 

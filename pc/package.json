@@ -18,20 +18,36 @@
     "appId": "fr.fabz91.gesmar",
     "productName": "GESMAR",
     "copyright": "fabz91",
-    "directories": { "output": "dist" },
-    "files": ["main.js", "core.js", "preload.js", "config.js", "index.html", "seed.json", "icon.png", "icon.ico", "package.json"],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "core.js",
+      "preload.js",
+      "config.js",
+      "index.html",
+      "icon.png",
+      "icon.ico",
+      "package.json"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "icon.ico",
-      "artifactName": "GESMAR-Installateur-${version}.${ext}"
+      "artifactName": "GESMAR-Installateur-${version}.${ext}",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": "always",
-      "createStartMenuShortcut": true,
-      "shortcutName": "GESMAR",
       "installerIcon": "icon.ico",
       "uninstallerIcon": "icon.ico",
       "installerHeaderIcon": "icon.ico",
@@ -39,6 +55,12 @@
       "runAfterFinish": true,
       "language": "1036",
       "include": "installer.nsh"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "icon.ico",
+        "to": "icon.ico"
+      }
+    ]
   }
 }

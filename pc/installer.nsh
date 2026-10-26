@@ -8,6 +8,10 @@
 
 !macro customInstall
   DetailPrint "Vos données GESMAR restent dans $APPDATA\GESMAR\donnees"
+  ; Raccourcis avec l'icône GESMAR (l'exe lui-même garde l'icône par défaut, comme GESTIME)
+  CreateShortCut "$DESKTOP\GESMAR.lnk" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "" "$INSTDIR\resources\icon.ico" 0
+  CreateDirectory "$SMPROGRAMS"
+  CreateShortCut "$SMPROGRAMS\GESMAR.lnk" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "" "$INSTDIR\resources\icon.ico" 0
 !macroend
 
 !macro customUnInstall
