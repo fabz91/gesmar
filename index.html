@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="24">
+<meta name="gm-version" content="25">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -248,6 +248,9 @@ nav.tabs button[aria-selected="true"]{box-shadow:none}
 /* pastille « 1 » : nouvelle version disponible (sur l'engrenage et sur le bouton Mettre à jour) */
 .ibtn.upd{position:relative}
 .ibtn.upd::after{content:"1";position:absolute;top:-7px;right:-7px;width:auto;height:17px;min-width:17px;padding:0 4px;border-radius:9px;background:#d3262b;color:#fff;border:0;box-shadow:0 0 0 2px var(--hdr);font:700 11px/17px var(--body);text-align:center}
+/* v25 : la pastille « 1 » clignote pour être bien visible (comme GESTIME v30) */
+@keyframes updBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(1.2)}}
+.ibtn.upd::after,.rbtn .pas{animation:updBlink 1s ease-in-out infinite}
 .rbtn .pas{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#d3262b;color:#fff;font:700 12px/20px var(--body);text-align:center}
 [hidden]{display:none!important} img{max-width:100%}
 body{margin:0}
@@ -297,7 +300,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=24;
+const APP_VERSION=25;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
