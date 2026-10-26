@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="53">
+<meta name="gm-version" content="54">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -68,6 +68,7 @@ nav.tabs button{font:800 13px var(--display);letter-spacing:.05em;text-transform
 nav.tabs button:hover{border-color:var(--tab-on)}
 nav.tabs button[aria-selected="true"]{background:var(--tab-on);border-color:var(--tab-on);color:#fff;box-shadow:0 2px 8px rgba(60,180,75,.35)}
 .avlate{display:inline-flex;vertical-align:-3px;margin-left:5px}.avlate[hidden]{display:none}.avlate svg.warn{width:17px;height:17px;display:block} /* v45 */
+nav.tabs .cnt.blink{animation:updBlink 1s ease-in-out infinite}
 nav.tabs .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--red-2);color:var(--on-red);font-size:11px;letter-spacing:0}
 @media (max-width:640px){
   .bar{grid-template-columns:1fr auto}
@@ -317,9 +318,9 @@ nav.tabs button{line-height:1.4}
   <div class="stripe" aria-hidden="true"></div>
 </header>
 <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="bord">Tableau de bord</button>
     <button role="tab" data-tab="saisie">Saisie</button>
     <button role="tab" data-tab="avoirs">Avoirs<span class="cnt" id="avCnt" hidden></span><span class="avlate" id="avLate" hidden><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span></button>
+    <button role="tab" data-tab="bord">Tableau de bord</button>
 </nav>
 <div class="menu" id="storeMenu" role="menu" hidden></div>
 
@@ -341,14 +342,14 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=53;
+const APP_VERSION=54;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
 
-const S={db:null,store:null,magasins:[],config:{},assets:null,modal:false,fourn:[],mois:{},avoirs:[],year:2026,tab:"bord",month:new Date().getMonth(),
+const S={db:null,store:null,magasins:[],config:{},assets:null,modal:false,fourn:[],mois:{},avoirs:[],year:2026,tab:"saisie",month:new Date().getMonth(),
   fStat:"en_cours",fFourn:"",fText:"",edit:null,confirmDel:null,loaded:{f:false,m:false,a:false}};
-try{S.tab=localStorage.getItem("gesmar.tab")||"bord";if(!["bord","saisie","avoirs"].includes(S.tab))S.tab="bord";S.store=localStorage.getItem("gesmar.store")}catch(e){}
+try{S.tab=localStorage.getItem("gesmar.tab")||"saisie";if(!["bord","saisie","avoirs"].includes(S.tab))S.tab="bord";S.store=localStorage.getItem("gesmar.store")}catch(e){}
 const P=x=>"magasins/"+S.store+"/"+x;
 const slug=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"");
 const storeNom=()=>(S.magasins.find(m=>m.id===S.store)||{}).nom||"—";
@@ -465,7 +466,7 @@ function render(){
   renderModal();updHist();
   avNorm();const pend=S.avoirs.filter(a=>EN_COURS.includes(a.statut)).length;const c=$("#avCnt");c.hidden=!pend;c.textContent=pend;
   /* v45 : triangle ⚠ quand un avoir réclamé ou relancé est sans nouvelle depuis RELANCE_JOURS jours */
-  {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=!nl;w.title=nl?nl+" avoir"+(nl>1?"s":"")+" sans nouvelle depuis "+RELANCE_JOURS+" jours ou plus":""}
+  {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=true;c.classList.toggle("blink",!!nl);c.title=nl?nl+" avoir"+(nl>1?"s":"")+" sans nouvelle depuis "+RELANCE_JOURS+" jours ou plus":""} /* v54 : seul le chiffre clignote */
   const app=$("#app");
   if(!S.db){app.innerHTML=`<div class="empty-state">${S.noDb?"Les données ne sont pas disponibles dans cette vue. Ouvrez la page depuis Claude en étant connecté pour voir et saisir les chiffres.":"Chargement des données…<br><small>Les mois, les avoirs et les fournisseurs s'afficheront ici dès que la base répond.</small>"}</div>`;return}
   if(!S.magasins.length){app.innerHTML=S.magLoaded?`<div class="empty-state">Aucun magasin pour l'instant. Ouvrez les Réglages ⚙ pour créer le premier.</div>`:`<div class="empty-state">Chargement des magasins…</div>`;return}
@@ -664,7 +665,7 @@ function avFourn(sel){const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ
   const inSaisie=f=>(f.colonne&&f.actif!==false)||S.fourn.some(x=>x.groupe===f.id&&x.colonne&&x.actif!==false);
   const L=S.fourn.filter(f=>!f.groupe),A=L.filter(inSaisie).sort(ord),an=new Set(A.map(f=>nk(f.nom)));
   const B=L.filter(f=>!inSaisie(f)&&(!an.has(nk(f.nom))||f.id===sel)).sort(ord);return[A,B]}
-function avOptsMois(sel){const n=new Date(),k=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0");
+function avOptsMois(sel){const k="2026-10"; /* v54 : base = fournisseurs d'octobre 2026 (saisie + retirés), puis ceux créés ou retirés ensuite restent */
   const masq=new Set(Object.keys(S.mois).filter(x=>/^\d{4}-\d{2}$/.test(x)&&x<=k).flatMap(x=>Array.isArray(S.mois[x].masques)?S.mois[x].masques:[]));
   const[A,B0]=avFourn(sel),B=B0.filter(f=>!masq.has(f.id)||f.id===sel),o=f=>`<option value="${esc(f.id)}" ${sel===f.id?"selected":""}>${esc(f.nom)}</option>`;
   return (A.length?`<optgroup label="Dans la saisie">${A.map(o).join("")}</optgroup>`:"")+(B.length?`<optgroup label="Colonnes retirées">${B.map(o).join("")}</optgroup>`:"")}
@@ -680,8 +681,8 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
   const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
   return `
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
-  <p class="sub" style="max-width:none">Chaque litige suit le même circuit : déclaré, relancé, accepté, puis déduit sur facture ou relevé.<br>Un avoir déclaré ou relancé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge.</p>
-  <div class="row" style="margin-bottom:10px"><select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${avOpts(S.fFourn)}</select></div>
+  <p class="sub" style="max-width:none">Un avoir créé avec « + Nouveau » est <b>déclaré</b>. Sur sa ligne : <b>Relancer</b> note chaque relance, <b>Accepté</b> puis <b>Déduit</b> quand il est retiré de la facture, ou <b>Refusé</b>. La disquette copie l'avoir et ses relances pour le coller dans un e-mail, la croix le supprime.<br>Un avoir déclaré ou relancé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge avec un triangle, et le chiffre de l'onglet Avoirs clignote.</p>
+  <div class="row" style="margin-bottom:10px"><select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${avOptsMois(S.fFourn)}</select></div>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   ${S.edit?vForm():""}
   <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Nouveau</button></div><div class="scroll"><table>
@@ -693,7 +694,7 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
       <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
       <td class="l ${late?"late":""}">${late?`<span class="avlate" title="Sans nouvelle depuis ${ds} jours"><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span> `:""}${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
-      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["declare","relance","accepte"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${a.statut==="accepte"?`<button class="btn small" data-setst="deduit" data-id="${a.id}">Déduit</button>`:`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepté</button>`}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div></td></tr>`}).join("")
+      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["declare","relance","accepte"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${a.statut==="accepte"?`<button class="btn small" data-setst="deduit" data-id="${a.id}">Déduit</button>`:`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepté</button>`}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="btn small" data-copy="${a.id}" title="Copier cet avoir pour un e-mail" aria-label="Copier cet avoir pour un e-mail" style="padding:2px 7px">💾</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div></td></tr>`}).join("")
       :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « Nouveau » pour en créer un.</div></td></tr>`}</tbody>
   </table></div></div>`;
 }
@@ -757,6 +758,15 @@ async function saveAvoir(form){
   try{ if(a.id) await S.db.doc(P("avoirs/"+a.id)).set(body); else await S.db.collection(P("avoirs")).add(body);
     S.edit=null;S.confirmDel=null;toast(a.id?"Avoir enregistré":"Avoir créé");render() }catch(e){fail(e)}
 }
+// v54 : texte d'un avoir à coller dans un e-mail (avec le détail des relances)
+function avTexte(a){const d=x=>x?frDate(x):"";const rel=(a.relances||[]).slice().sort();
+  return [`Avoir ${fName(a.fournisseur)} — ${a.produit||""}`,
+    a.code?`Code article : ${a.code}`:"",a.facture?`N° de facture / BL : ${a.facture}`:"",a.quantite?`Quantité : ${a.quantite}`:"",a.motif?`Motif : ${a.motif}`:"",
+    `Montant : ${a.montant?eur2.format(a.montant)+" TTC":"à confirmer"}`,a.date?`Constaté le ${d(a.date)}`:"",a.dateReclamation?`Déclaré le ${d(a.dateReclamation)}`:"",
+    rel.length?`Relances (${rel.length}) : ${rel.map(d).join(", ")}`:"",`Statut : ${SLABEL[a.statut]||a.statut}`,a.infos?`Infos : ${a.infos}`:""].filter(Boolean).join("\n")}
+async function avCopier(id){const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=avTexte(a);
+  try{await navigator.clipboard.writeText(t)}catch(e){const x=document.createElement("textarea");x.value=t;document.body.appendChild(x);x.select();try{document.execCommand("copy")}catch(_){}x.remove()}
+  toast("Avoir copié : collez-le dans votre e-mail (Ctrl+V)")}
 async function setStatut(id,st){const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=todayISO();
   try{await S.db.doc(P("avoirs/"+id)).update({statut:st,majLe:t});toast(st==="accepte"?"Avoir accepté":st==="deduit"?"Avoir déduit":"Avoir refusé")}catch(e){fail(e)}}
 async function relancer(id){
@@ -833,6 +843,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.invdel){S.db.doc(P("inventaires/"+t.dataset.invdel)).delete().then(()=>{S.confirmInv=null;toast("Inventaire supprimé")},fail);return}
   if(t.dataset.fstat){S.fStat=t.dataset.fstat;render();return}
   if(t.dataset.relance){relancer(t.dataset.relance);return}
+  if(t.dataset.copy){avCopier(t.dataset.copy);return}
   if(t.dataset.setst){setStatut(t.dataset.id,t.dataset.setst);return}
   if(t.dataset.edit){const a=S.avoirs.find(x=>x.id===t.dataset.edit);S.edit=JSON.parse(JSON.stringify(a));S.confirmDel=null;render();window.scrollTo({top:0});return}
   if(t.dataset.askdel){S.confirmDel=t.dataset.askdel;render();return}
