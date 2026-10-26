@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="61">
+<meta name="gm-version" content="62">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -357,7 +357,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=61;
+const APP_VERSION=62;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -447,11 +447,13 @@ const colFourn=()=>S.fourn.filter(f=>f.colonne);
 const fName=k=>(S.fourn.find(f=>f.id===k)||{}).nom||k;
 const grp=k=>{const f=S.fourn.find(x=>x.id===k);return f&&f.groupe?f.groupe:null};
 const coef=()=>{const c=S.reglages&&+S.reglages.coefHT;return c>0.5&&c<=1?c:DEFAULT_COEF};
-function monthStats(y,m){
+// v62 : un fournisseur supprimé (✕ des colonnes retirées) n'est plus compté à partir de ce mois-là (les mois d'avant gardent ses montants)
+function masqUpTo(key){return new Set(Object.keys(S.mois).filter(x=>/^\d{4}-\d{2}$/.test(x)&&x<=key).flatMap(x=>Array.isArray(S.mois[x].masques)?S.mois[x].masques:[]))}
+function monthStats(y,m){const MQ=masqUpTo(mkey(y,m));
   const doc=S.mois[mkey(y,m)];const r={ca:0,caTTC:0,caN1:0,achats:0,par:{},jours:0,estimes:0,avoirs:0};
   if(doc&&doc.jours){for(const j of Object.values(doc.jours)){if(!j)continue;
     if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */ if(j.caN1)r.caN1+=j.caN1;
-    for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
+    for(const [k,v] of Object.entries(j.achats||{})){if(v&&!MQ.has(k)){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
   /* v51 : plus de HT : le CA HT du mois et le HT par jour ne sont plus utilisés */
   for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m)))r.avoirs+=a.montant}
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
@@ -467,7 +469,7 @@ function periodStats(d1,d2){
     else if(doc){
       for(const[dd,j]of Object.entries(doc.jours||{})){const iso=dayISO(y,m,+dd);if(!j||iso<=d1||iso>d2)continue;
         if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */
-        for(const v of Object.values(j.achats||{}))r.achats+=v||0}
+        {const MQ=masqUpTo(mkey(y,m));for(const[k,v]of Object.entries(j.achats||{}))if(!MQ.has(k))r.achats+=v||0}}
       for(const x of(doc.demarque||[]))if(x.date>d1&&x.date<=d2)r.demarque+=+x.montant||0}
     m++;if(m>11){m=0;y++}}
   return r}
@@ -627,7 +629,7 @@ function vSaisie(){
   const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal" value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
   let rows="";
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
-    const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
+    const MQd=masqUpTo(key),tot=Object.entries(a).reduce((s,[k,v])=>s+(MQd.has(k)?0:(v||0)),0);const wd=new Date(y,m,d).getDay();
     rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td>${hasN1?`<td>${cell(dd,"caN1",n1Day(dd,j))}</td>`:""}
       ${runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
   const tf=f=>st.par[f.id]?n2.format(st.par[f.id]):"";
@@ -852,7 +854,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.mv){const R0=(S._runs||[]).map(x=>x.slice()),i=R0.findIndex(x=>x.includes(t.dataset.mv)),j=i+(+t.dataset.dir);
     if(i<0||j<0||j>=R0.length)return;[R0[i],R0[j]]=[R0[j],R0[i]];
     const ups=[];R0.flat().forEach((id,k)=>{const f=S.fourn.find(x=>x.id===id);if(f&&f.ordre!==k)ups.push(fUpdate(id,{ordre:k}))});Promise.all(ups).catch(()=>{});return}
-  if(t.dataset.maskcol){if(+t.dataset.amt&&!confirm("Ce fournisseur a "+eur.format(+t.dataset.amt)+" d'achats ce mois-ci. Ils resteront comptés dans les totaux, mais sa colonne ne sera plus proposée. Supprimer quand même ?"))return;const key=mkey(S.year,S.month),doc=S.mois[key],arr=(doc&&Array.isArray(doc.masques)?doc.masques:[]).slice();if(!arr.includes(t.dataset.maskcol))arr.push(t.dataset.maskcol);
+  if(t.dataset.maskcol){if(+t.dataset.amt&&!confirm("Ce fournisseur a "+eur.format(+t.dataset.amt)+" d'achats ce mois-ci. Ils ne seront plus comptés, ce mois-ci ni les suivants (les mois d'avant ne changent pas). Supprimer quand même ?"))return;const key=mkey(S.year,S.month),doc=S.mois[key],arr=(doc&&Array.isArray(doc.masques)?doc.masques:[]).slice();if(!arr.includes(t.dataset.maskcol))arr.push(t.dataset.maskcol);
     const f=S.fourn.find(x=>x.id===t.dataset.maskcol),ref=S.db.doc(P("mois/"+key));
     try{if(doc)await ref.update({masques:arr});else await ref.set({annee:S.year,mois:S.month+1,jours:{},masques:arr});toast((f?f.nom:"Fournisseur")+" supprimé de ce mois (↶ pour annuler)")}catch(e){fail(e)}return}
   if(t.dataset.showcol){fUpdate(t.dataset.showcol,{colonne:true,actif:true});return}
