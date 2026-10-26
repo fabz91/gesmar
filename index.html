@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="32">
+<meta name="gm-version" content="33">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -265,7 +265,7 @@ body{margin:0}
       <div class="appico" aria-hidden="true"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="gmIco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#45b65e"/><stop offset="1" stop-color="#1b7433"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#gmIco)"/><g fill="none" stroke="#fff" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="16" width="38" height="35" rx="5.5"/><path d="M13 26.5h38M23 10.5v9M41 10.5v9"/></g><path d="M20 44l8-7.5 6 4.5 10.5-10" fill="none" stroke="#e3262b" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div style="min-width:0">
         <div class="apptitle">GES<b>MAR</b></div>
-        <div class="store"><span id="storeName">—</span><button class="house" id="houseBtn" aria-label="Changer de magasin" aria-haspopup="menu" title="Changer de magasin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9" fill="none"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z" fill="none"/><path d="M5 13v7h14v-7" fill="none"/><path d="M10 20v-4h4v4" fill="none"/></svg></button></div>
+        <div class="store"><span id="storeName">—</span><button class="house" id="houseBtn" aria-label="Changer de magasin" aria-haspopup="menu" title="Changer de magasin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg></button></div>
       </div>
     </div>
     <div class="logo" id="logoSlot"></div>
@@ -301,7 +301,7 @@ const SLABEL=Object.fromEntries(STATUTS);
 const EN_COURS=["a_reclamer","reclame","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=32;
+const APP_VERSION=33;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
