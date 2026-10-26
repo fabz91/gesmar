@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="65">
+<meta name="gm-version" content="66">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -357,7 +357,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=65;
+const APP_VERSION=66;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -1109,12 +1109,12 @@ async function applyAjout(j){
   if(!S.db||!S.store){toast("Données pas encore chargées, réessayez dans un instant");return}
   if(j.magasin&&j.magasin!==S.store){const g=S.magasins.find(m=>m.id===j.magasin);toast("Ce fichier concerne "+(g?g.nom:j.magasin)+" : changez de magasin (maison) puis réimportez");return}
   const ms=(j.mois||[]).map(m=>MOIS[+m.cle.slice(5,7)-1]+" "+m.cle.slice(0,4)+(m.remplacer?" (remplacé)":"")).join(", "),nA=(j.avoirs||[]).length;
-  if(!confirm("Importer dans "+storeNom()+" :\n- "+(ms||"aucun mois")+"\n  CA et achats du mois = ceux du fichier (CA N-1, démarque et note gardés)"+(nA?"\n- "+nA+" avoir(s) (sauf ceux déjà présents)":"")+"\n\nContinuer ?"))return;
+  if(!confirm("Importer dans "+storeNom()+" :"+(ms?"\n- "+ms+"\n  CA et achats du mois = ceux du fichier (CA N-1, démarque et note gardés)":"")+(nA?"\n- "+nA+" avoir(s) (sauf ceux déjà présents)":"")+"\n\nContinuer ?"))return;
   const FI={};S.fourn.filter(f=>!f.groupe||true).slice().sort((a,b)=>(b.colonne&&b.actif!==false)-(a.colonne&&a.actif!==false)).forEach(f=>{const k=ajNk(f.nom);if(!(k in FI))FI[k]=f.id});
   let crees=0;
-  const fid=async nom=>{const k=ajNk(nom);if(FI[k])return FI[k];let id=k.toLowerCase().slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.toLowerCase().slice(0,26)+n}
+  const fid=async(nom,col=true)=>{const k=ajNk(nom);if(FI[k])return FI[k];let id=k.toLowerCase().slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.toLowerCase().slice(0,26)+n}
     const ordre=S.fourn.reduce((m,f)=>Math.max(m,f.ordre??0),0)+1,nm=String(nom).toUpperCase();
-    await S.db.doc(P("fournisseurs/"+id)).set({nom:nm,ordre,actif:true,colonne:true,avoirs:true,contact:""});S.fourn.push({id,nom:nm,ordre,actif:true,colonne:true});FI[k]=id;crees++;return id};
+    await S.db.doc(P("fournisseurs/"+id)).set({nom:nm,ordre,actif:true,colonne:col,avoirs:true,contact:""});S.fourn.push({id,nom:nm,ordre,actif:true,colonne:col});FI[k]=id;crees++;return id};
   let cases=0,avOk=0,avDeja=0;
   try{
     for(const mo of (j.mois||[])){const key=mo.cle,doc=S.mois[key],old=(doc&&doc.jours)||{};
@@ -1126,11 +1126,11 @@ async function applyAjout(j){
           same.forEach(x=>{if(x!==id)delete jj.achats[x]});jj.achats[id]=val;cases++}
         jours[d]=jj}
       const ref=S.db.doc(P("mois/"+key));if(doc)await ref.update({jours});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours})}
-    for(const a of (j.avoirs||[])){const id=await fid(a.fournisseur);
+    for(const a of (j.avoirs||[])){const id=await fid(a.fournisseur,false);
       if(S.avoirs.some(x=>x.fournisseur===id&&ajNk(x.produit)===ajNk(a.produit)&&String(x.date||"")===String(a.date||"")&&ajNk(x.code)===ajNk(a.code))){avDeja++;continue}
       const t=todayISO();await S.db.collection(P("avoirs")).add({fournisseur:id,date:a.date||t,produit:a.produit||"",code:a.code||"",facture:a.facture||"",quantite:a.quantite||"",motif:a.motif||"Autre",
         montant:a.montant==null?null:a.montant,statut:a.statut||"declare",infos:a.infos||"",relances:a.relances||[],dateReclamation:a.dateReclamation||a.date||t,creeLe:t,majLe:t});avOk++}
-    toast("Import terminé : "+cases+" case(s)"+(nA?", "+avOk+" avoir(s) ajouté(s)"+(avDeja?", "+avDeja+" déjà présent(s)":""):"")+(crees?", "+crees+" fournisseur(s) créé(s)":""));render()
+    toast("Import terminé : "+[cases?cases+" case(s)":"",nA?avOk+" avoir(s) ajouté(s)"+(avDeja?", "+avDeja+" déjà présent(s)":""):"",crees?crees+" fournisseur(s) créé(s)":""].filter(Boolean).join(", "));render()
   }catch(e){fail(e)}}
 function applyImportText(t){const aj=isAjout(t);if(aj){applyAjout(aj);return}
   try{const j=JSON.parse(t);const d=j&&j.data;if(!d||typeof d!=="object")throw 0;
