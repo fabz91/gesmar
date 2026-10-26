@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="58">
+<meta name="gm-version" content="59">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -357,7 +357,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=58;
+const APP_VERSION=59;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -512,9 +512,11 @@ function vBord(){
   const best=act.length?act.reduce((a,b)=>a.taux>b.taux?a:b):null, worst=act.length?act.reduce((a,b)=>a.taux<b.taux?a:b):null;
   // achats par fournisseur
   const par={};act.forEach(s=>{for(const[k,v]of Object.entries(s.par))par[k]=(par[k]||0)+v});
-  const G={};for(const[k,v]of Object.entries(par)){const g=grp(k)||k;G[g]=G[g]||{tot:0,sub:[]};G[g].tot+=v;if(grp(k))G[g].sub.push([k,v])}
+  // v59 : MARIANO, MONTPERAL, « MARIANO/MONTPERAL (mars) », MARIANO-MONTP… réunis sur une seule ligne MARIANO-MONTPERAL
+  const MMK="__mariano_montperal",mmOf=k=>{const n=String(fName(k)||k).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();return /MARIANO|MONTP/.test(n)?MMK:k};
+  const G={};for(const[k0,v]of Object.entries(par)){const k=mmOf(k0),g=grp(k)||k;G[g]=G[g]||{tot:0,sub:[]};G[g].tot+=v;if(grp(k))G[g].sub.push([k,v])}
   const parL=Object.entries(G).sort((a,b)=>b[1].tot-a[1].tot);const maxP=parL.length?parL[0][1].tot:1;
-  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
+  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(k===MMK?"MARIANO-MONTPERAL":fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
   return `
   ${periode("annee")}
   <h2>Tableau de bord ${y} — ${esc(storeNom())}</h2>
@@ -535,8 +537,6 @@ function vBord(){
     </div>
   </div>
   <div class="gap"></div>
-  ${vInventaires(y)}
-  <div class="gap"></div>
   <div class="panel"><div class="band">Récapitulatif mensuel</div><div class="scroll"><table>
     <thead><tr><th class="l">Mois</th><th>Jours</th><th>CA TTC</th><th>CA ${y-1}</th><th>Évol.</th><th>Achats</th><th>Marge</th><th>Taux</th><th>Taux ${y-1}</th><th>Écart</th><th>Avoirs obtenus</th><th>Taux après avoirs</th></tr></thead>
     <tbody>${ms.map((s,m)=>{const ev=s.n1&&s.caTTC&&s.jours>=20&&!s.n1Inc?(s.caTTC/s.n1-1):null;const n=(S.mois[mkey(y,m)]||{}).note;
@@ -544,6 +544,8 @@ function vBord(){
       <td class="${ev>0?"pos":ev<0?"neg":""}">${ev==null?"—":(ev>0?"+":"")+pct(ev)}</td><td>${s.achats?eur.format(s.achats):"—"}</td><td>${s.ca?eur.format(s.marge):"—"}</td><td><b>${pct(s.taux)}</b></td><td>${pct(s.n1Taux)}</td><td class="${s.taux!=null&&s.n1Taux!=null&&s.jours>=20?(s.taux>=s.n1Taux?"pos":"neg"):""}">${s.ca&&s.jours>=20?pts(s.taux,s.n1Taux):"—"}</td><td>${s.avoirs?eur.format(s.avoirs):"—"}</td><td>${pct(s.tauxCorr)}</td></tr>`}).join("")}
     <tr class="tot"><td class="l">Total</td><td></td><td>${eur.format(T.caTTC)}</td><td>${T.n1?eur.format(T.n1):"—"}</td><td></td><td>${eur.format(T.achats)}</td><td>${eur.format(T.ca-T.achats)}</td><td>${pct(taux)}</td><td>${pct(tauxPrev)}</td><td></td><td>${eur.format(T.avoirs)}</td><td>${pct(tauxC)}</td></tr>
     </tbody></table></div></div>
+  <div class="gap"></div>
+  ${vInventaires(y)}
   ${late.length||sansMontant?`<div class="gap"></div><div class="note">${late.length?`<b>${late.length} avoir${late.length>1?"s":""} sans nouvelle depuis plus de ${RELANCE_JOURS} jours.</b> `:""}${sansMontant?`${sansMontant} avoir${sansMontant>1?"s":""} en cours sans montant. `:""}<a href="#" data-tab-go="avoirs" style="color:inherit">Voir les avoirs</a></div>`:""}`;
 }
 
@@ -575,7 +577,6 @@ function vInventaires(y){
   const curT=cur&&cur.ca?(cur.ca-cur.achats)/cur.ca:null;
   return `<div class="panel flush"><div class="band">Inventaires et marge réelle<button class="pillbtn" data-act="focusInv">+ Inventaire</button></div>
   <div style="padding:14px 16px 4px">
-    <p class="hist" style="margin:0 0 10px;max-width:90ch">Saisissez la valeur du stock (TTC, au prix d'achat) à chaque inventaire. Entre deux inventaires, la <b>marge réelle</b> = CA TTC − (achats + stock de début − stock de fin). Elle corrige l'effet des livraisons qui gonfle ou creuse la marge d'un mois. Le taux « hors démarque connue » montre ce que serait la marge sans la casse et les pertes notées dans la Saisie.</p>
     <form id="invForm" class="row" style="margin-bottom:12px">
       <label class="lbl" for="invDate">Date</label><input id="invDate" type="date" value="${esc(S.invDraft&&S.invDraft.date||"")}" required>
       <label class="lbl" for="invVal">Stock TTC (€)</label><input id="invVal" inputmode="decimal" placeholder="Ex. 185 000" style="width:130px" required>
@@ -615,12 +616,16 @@ function vSaisie(){
     else{seen.add(f.id);runs.push({mem:[f]})}}
   const anyG=runs.some(r=>r.groupe);
   const hasN1=true; // v37 : colonne CA N-1 toujours affichée
-  const st=monthStats(y,m),n1st=monthStats(y-1,m),n1ca=st.caN1||n1st.caTTC; // v53 : rappel N-1 sous le CA et les achats
+  const st=monthStats(y,m),n1st=monthStats(y-1,m);
+  // v59 : CA N-1 de chaque jour repris automatiquement du même jour l'an dernier (sauf s'il a été tapé à la main)
+  const J1=((S.mois[mkey(y-1,m)]||{}).jours)||{},n1Day=(dd,j)=>j.caN1!=null&&j.caN1!==""?j.caN1:((J1[dd]&&J1[dd].ca)||null);
+  let caN1Tot=0;for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");caN1Tot+=+(n1Day(dd,J[dd]||{})||0)}
+  const n1ca=caN1Tot||n1st.caTTC; // v53 : rappel N-1 sous le CA et les achats
   const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal" value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
   let rows="";
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
     const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
-    rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td>${hasN1?`<td>${cell(dd,"caN1",j.caN1)}</td>`:""}
+    rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td>${hasN1?`<td>${cell(dd,"caN1",n1Day(dd,j))}</td>`:""}
       ${runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
   const tf=f=>st.par[f.id]?n2.format(st.par[f.id]):"";
   const rs="";
@@ -644,7 +649,7 @@ function vSaisie(){
   </div>
   <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
-    <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td>${hasN1?`<td>${st.caN1?n2.format(st.caN1):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
+    <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td>${hasN1?`<td>${caN1Tot?n2.format(caN1Tot):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>${v?"":`<button class="rdel" data-maskcol="${esc(f.id)}" title="Supprimer ${esc(f.nom)} de ce mois" aria-label="Supprimer ${esc(f.nom)} de ce mois">✕</button>`}</span>`).join("")}</div>`:""}</div>
   <div class="gap"></div>
   <div class="gap"></div>
@@ -904,7 +909,9 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("input",e=>{if(e.target.id==="fText"){S.fText=e.target.value;clearTimeout(S.ti);S.ti=setTimeout(()=>{render()},250)}});
 document.addEventListener("keydown",e=>{const t=e.target;if(t.dataset&&t.dataset.rn){if(e.key==="Enter"){e.preventDefault();t.blur()}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();const f=S.fourn.find(x=>x.id===t.dataset.rn);if(f)t.value=f.nom;t.blur()}return}
-  if(t.dataset&&t.dataset.f&&(e.key==="Enter")){e.preventDefault();const d=String(+t.dataset.d+1).padStart(2,"0");const n=document.getElementById(`c-${d}-${t.dataset.f}`);t.blur();n&&n.focus()}});
+  if(t.dataset&&t.dataset.f&&(e.key==="Enter")){e.preventDefault();const d=String(+t.dataset.d+1).padStart(2,"0"),id=`c-${d}-${t.dataset.f}`;const n=document.getElementById(id);t.blur();if(n){n.focus();n.select&&n.select()}
+    // v59 : l'enregistrement redessine le tableau et faisait perdre la case : on la reprend pendant 2 s si plus rien n'est sélectionné
+    const t0=Date.now(),again=()=>{const a=document.activeElement;if(!a||a===document.body){const x=document.getElementById(id);if(x){x.focus();x.select&&x.select()}}if(Date.now()-t0<2000)setTimeout(again,60)};setTimeout(again,60)}});
 document.addEventListener("submit",async e=>{e.preventDefault();
   if(e.target.id==="avForm")saveAvoir(e.target);
   if(e.target.id==="mgAdd")addStore();
