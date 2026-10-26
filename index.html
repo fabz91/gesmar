@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="62">
+<meta name="gm-version" content="63">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -357,7 +357,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=62;
+const APP_VERSION=63;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -447,13 +447,11 @@ const colFourn=()=>S.fourn.filter(f=>f.colonne);
 const fName=k=>(S.fourn.find(f=>f.id===k)||{}).nom||k;
 const grp=k=>{const f=S.fourn.find(x=>x.id===k);return f&&f.groupe?f.groupe:null};
 const coef=()=>{const c=S.reglages&&+S.reglages.coefHT;return c>0.5&&c<=1?c:DEFAULT_COEF};
-// v62 : un fournisseur supprimé (✕ des colonnes retirées) n'est plus compté à partir de ce mois-là (les mois d'avant gardent ses montants)
-function masqUpTo(key){return new Set(Object.keys(S.mois).filter(x=>/^\d{4}-\d{2}$/.test(x)&&x<=key).flatMap(x=>Array.isArray(S.mois[x].masques)?S.mois[x].masques:[]))}
-function monthStats(y,m){const MQ=masqUpTo(mkey(y,m));
+function monthStats(y,m){
   const doc=S.mois[mkey(y,m)];const r={ca:0,caTTC:0,caN1:0,achats:0,par:{},jours:0,estimes:0,avoirs:0};
   if(doc&&doc.jours){for(const j of Object.values(doc.jours)){if(!j)continue;
     if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */ if(j.caN1)r.caN1+=j.caN1;
-    for(const [k,v] of Object.entries(j.achats||{})){if(v&&!MQ.has(k)){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
+    for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
   /* v51 : plus de HT : le CA HT du mois et le HT par jour ne sont plus utilisés */
   for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m)))r.avoirs+=a.montant}
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
@@ -469,7 +467,7 @@ function periodStats(d1,d2){
     else if(doc){
       for(const[dd,j]of Object.entries(doc.jours||{})){const iso=dayISO(y,m,+dd);if(!j||iso<=d1||iso>d2)continue;
         if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */
-        {const MQ=masqUpTo(mkey(y,m));for(const[k,v]of Object.entries(j.achats||{}))if(!MQ.has(k))r.achats+=v||0}}
+        for(const v of Object.values(j.achats||{}))r.achats+=v||0}
       for(const x of(doc.demarque||[]))if(x.date>d1&&x.date<=d2)r.demarque+=+x.montant||0}
     m++;if(m>11){m=0;y++}}
   return r}
@@ -483,7 +481,7 @@ function render(){
   renderModal();updHist();
   avNorm();const pend=S.avoirs.filter(a=>EN_COURS.includes(a.statut)).length;const c=$("#avCnt");c.hidden=!pend;c.textContent=pend;
   /* v45 : triangle ⚠ quand un avoir réclamé ou relancé est sans nouvelle depuis RELANCE_JOURS jours */
-  {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=true;c.classList.remove("blink");c.title=nl?nl+" avoir"+(nl>1?"s":"")+" sans nouvelle depuis "+RELANCE_JOURS+" jours ou plus":""} /* v54 : seul le chiffre clignote */
+  {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=true;c.classList.toggle("blink",!!nl);c.title=nl?nl+" avoir"+(nl>1?"s":"")+" sans nouvelle depuis "+RELANCE_JOURS+" jours ou plus":""} /* v54 : seul le chiffre clignote */
   const app=$("#app");
   if(!S.db){app.innerHTML=`<div class="empty-state">${S.noDb?"Les données ne sont pas disponibles dans cette vue. Ouvrez la page depuis Claude en étant connecté pour voir et saisir les chiffres.":"Chargement des données…<br><small>Les mois, les avoirs et les fournisseurs s'afficheront ici dès que la base répond.</small>"}</div>`;return}
   if(!S.magasins.length){app.innerHTML=S.magLoaded?`<div class="empty-state">Aucun magasin pour l'instant. Ouvrez les Réglages ⚙ pour créer le premier.</div>`:`<div class="empty-state">Chargement des magasins…</div>`;return}
@@ -515,13 +513,10 @@ function vBord(){
   // achats par fournisseur
   const par={};act.forEach(s=>{for(const[k,v]of Object.entries(s.par))par[k]=(par[k]||0)+v});
   // v59 : MARIANO, MONTPERAL, « MARIANO/MONTPERAL (mars) », MARIANO-MONTP… réunis sur une seule ligne MARIANO-MONTPERAL
-  // v61 : + SAINT PRIM (les deux) et LAURANCE réunis ; HALAL et ISLA réunis en ISLA MONDIAL
-  const MMK="__mariano_montperal",SPK="__saintprim_laurance",IMK="__isla_mondial",MLAB={[MMK]:"MARIANO-MONTPERAL",[SPK]:"SAINT PRIM-LAURANCE",[IMK]:"ISLA MONDIAL"};
-  const mmOf=k=>{const n=String(fName(k)||k).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(),c=n.replace(/[^A-Z0-9]/g,"");
-    if(/MARIANO|MONTP/.test(n))return MMK;if(/^(SAINTPRIM|STPRIM|LAURANCE|LAURENCE)$/.test(c))return SPK;if(/^(HALAL|ISLA|ISLAMONDIAL)$/.test(c))return IMK;return k};
+  const MMK="__mariano_montperal",mmOf=k=>{const n=String(fName(k)||k).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();return /MARIANO|MONTP/.test(n)?MMK:k};
   const G={};for(const[k0,v]of Object.entries(par)){const k=mmOf(k0),g=grp(k)||k;G[g]=G[g]||{tot:0,sub:[]};G[g].tot+=v;if(grp(k))G[g].sub.push([k,v])}
   const parL=Object.entries(G).sort((a,b)=>b[1].tot-a[1].tot);const maxP=parL.length?parL[0][1].tot:1;
-  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(MLAB[k]||fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
+  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(k===MMK?"MARIANO-MONTPERAL":fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
   return `
   ${periode("annee")}
   <h2>Tableau de bord ${y} — ${esc(storeNom())}</h2>
@@ -629,7 +624,7 @@ function vSaisie(){
   const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal" value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
   let rows="";
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
-    const MQd=masqUpTo(key),tot=Object.entries(a).reduce((s,[k,v])=>s+(MQd.has(k)?0:(v||0)),0);const wd=new Date(y,m,d).getDay();
+    const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
     rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td>${hasN1?`<td>${cell(dd,"caN1",n1Day(dd,j))}</td>`:""}
       ${runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
   const tf=f=>st.par[f.id]?n2.format(st.par[f.id]):"";
@@ -655,7 +650,7 @@ function vSaisie(){
   <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td>${hasN1?`<td>${caN1Tot?n2.format(caN1Tot):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
-  </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button><button class="rdel" data-maskcol="${esc(f.id)}" data-amt="${v||0}" title="Supprimer ${esc(f.nom)} de ce mois" aria-label="Supprimer ${esc(f.nom)} de ce mois">✕</button></span>`).join("")}</div>`:""}</div>
+  </table></div>${retirees.length?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour réafficher) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Réafficher ${esc(f.nom)} dans la saisie">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button>${v?"":`<button class="rdel" data-maskcol="${esc(f.id)}" title="Supprimer ${esc(f.nom)} de ce mois" aria-label="Supprimer ${esc(f.nom)} de ce mois">✕</button>`}</span>`).join("")}</div>`:""}</div>
   <div class="gap"></div>
   <div class="gap"></div>
   <label class="lbl" for="mnote">Note du mois</label>
@@ -854,7 +849,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.mv){const R0=(S._runs||[]).map(x=>x.slice()),i=R0.findIndex(x=>x.includes(t.dataset.mv)),j=i+(+t.dataset.dir);
     if(i<0||j<0||j>=R0.length)return;[R0[i],R0[j]]=[R0[j],R0[i]];
     const ups=[];R0.flat().forEach((id,k)=>{const f=S.fourn.find(x=>x.id===id);if(f&&f.ordre!==k)ups.push(fUpdate(id,{ordre:k}))});Promise.all(ups).catch(()=>{});return}
-  if(t.dataset.maskcol){if(+t.dataset.amt&&!confirm("Ce fournisseur a "+eur.format(+t.dataset.amt)+" d'achats ce mois-ci. Ils ne seront plus comptés, ce mois-ci ni les suivants (les mois d'avant ne changent pas). Supprimer quand même ?"))return;const key=mkey(S.year,S.month),doc=S.mois[key],arr=(doc&&Array.isArray(doc.masques)?doc.masques:[]).slice();if(!arr.includes(t.dataset.maskcol))arr.push(t.dataset.maskcol);
+  if(t.dataset.maskcol){const key=mkey(S.year,S.month),doc=S.mois[key],arr=(doc&&Array.isArray(doc.masques)?doc.masques:[]).slice();if(!arr.includes(t.dataset.maskcol))arr.push(t.dataset.maskcol);
     const f=S.fourn.find(x=>x.id===t.dataset.maskcol),ref=S.db.doc(P("mois/"+key));
     try{if(doc)await ref.update({masques:arr});else await ref.set({annee:S.year,mois:S.month+1,jours:{},masques:arr});toast((f?f.nom:"Fournisseur")+" supprimé de ce mois (↶ pour annuler)")}catch(e){fail(e)}return}
   if(t.dataset.showcol){fUpdate(t.dataset.showcol,{colonne:true,actif:true});return}
@@ -1099,47 +1094,13 @@ async function exportData(){ // Nom du fichier : GESMAR-AAAA-MM-JJ.json (PC et n
   const blob=new Blob([j],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="GESMAR-"+todayISO()+".json";document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast("Sauvegarde exportée")}
-// v60 : fichier « GESMAR-AJOUT » préparé par Claude (relevés d'avoirs, tableau de marge Excel) : on AJOUTE / met à jour
-// sans rien effacer. Mois : chaque case remplie dans le fichier remplace celle du logiciel (CA, CA N-1, achats d'un fournisseur),
-// les autres cases ne bougent pas. Avoirs : ajoutés sauf s'ils existent déjà (même fournisseur, produit, date et code).
-const ajNk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();
-function isAjout(t){try{const j=JSON.parse(t);return j&&j.app==="GESMAR-AJOUT"?j:null}catch(e){return null}}
-async function applyAjout(j){
-  if(!S.db||!S.store){toast("Données pas encore chargées, réessayez dans un instant");return}
-  if(j.magasin&&j.magasin!==S.store){const g=S.magasins.find(m=>m.id===j.magasin);toast("Ce fichier concerne "+(g?g.nom:j.magasin)+" : changez de magasin (maison) puis réimportez");return}
-  const nM=(j.mois||[]).length,nA=(j.avoirs||[]).length;
-  if(!confirm("Ajouter au magasin "+storeNom()+" :\n- "+nM+" mois du tableau de marge (les cases remplies dans le fichier remplacent celles du logiciel, les autres ne bougent pas)\n- "+nA+" avoir(s) (sauf ceux déjà présents)\n\nRien n'est effacé. Continuer ?"))return;
-  const fIndex=()=>{const m={};S.fourn.slice().sort((a,b)=>(b.colonne&&b.actif!==false)-(a.colonne&&a.actif!==false)).forEach(f=>{const k=ajNk(f.nom);if(!(k in m))m[k]=f.id});return m};
-  let FI=fIndex(),crees=0;
-  const fid=async nom=>{const k=ajNk(nom);if(FI[k])return FI[k];let id=k.toLowerCase().slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.toLowerCase().slice(0,26)+n}
-    const ordre=S.fourn.reduce((m,f)=>Math.max(m,f.ordre??0),0)+1;await S.db.doc(P("fournisseurs/"+id)).set({nom:String(nom).toUpperCase(),ordre,actif:true,colonne:false,avoirs:true,contact:""});
-    S.fourn.push({id,nom:String(nom).toUpperCase(),ordre,actif:true,colonne:false});FI[k]=id;crees++;return id};
-  let cases=0,avOk=0,avDeja=0;
-  try{
-    for(const mo of (j.mois||[])){const key=mo.cle,doc=S.mois[key],jours=JSON.parse(JSON.stringify((doc&&doc.jours)||{}));
-      for(const[d,v]of Object.entries(mo.jours||{})){const jj=jours[d]||{};
-        if(v.ca!=null){jj.ca=v.ca;cases++} if(v.caN1!=null){jj.caN1=v.caN1;cases++}
-        for(const[nom,val]of Object.entries(v.achats||{})){jj.achats=Object.assign({},jj.achats||{});
-          // même nom sur plusieurs fiches (ex. ancien et nouveau SAINT PRIM) : on garde la case déjà remplie ce jour-là, sinon la colonne affichée ; jamais de doublon
-          const same=S.fourn.filter(f=>ajNk(f.nom)===ajNk(nom)).map(f=>f.id),id=same.find(x=>x in jj.achats)||await fid(nom);
-          same.forEach(x=>{if(x!==id)delete jj.achats[x]});jj.achats[id]=val;cases++}
-        jours[d]=jj}
-      const ref=S.db.doc(P("mois/"+key));if(doc)await ref.update({jours});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours})}
-    for(const a of (j.avoirs||[])){const id=await fid(a.fournisseur);
-      const deja=S.avoirs.some(x=>x.fournisseur===id&&ajNk(x.produit)===ajNk(a.produit)&&String(x.date||"")===String(a.date||"")&&ajNk(x.code)===ajNk(a.code));
-      if(deja){avDeja++;continue}
-      const t=todayISO();await S.db.collection(P("avoirs")).add({fournisseur:id,date:a.date||t,produit:a.produit||"",code:a.code||"",facture:a.facture||"",quantite:a.quantite||"",motif:a.motif||"Autre",
-        montant:a.montant==null?null:a.montant,statut:a.statut||"declare",infos:a.infos||"",relances:a.relances||[],dateReclamation:a.dateReclamation||a.date||t,creeLe:t,majLe:t});avOk++}
-    toast("Ajout terminé : "+cases+" case(s) mises à jour, "+avOk+" avoir(s) ajouté(s)"+(avDeja?", "+avDeja+" déjà présent(s)":"")+(crees?", "+crees+" fournisseur(s) créé(s)":""));render()
-  }catch(e){fail(e)}}
-function applyImportText(t){const aj=isAjout(t);if(aj){applyAjout(aj);return}
-  try{const j=JSON.parse(t);const d=j&&j.data;if(!d||typeof d!=="object")throw 0;
+function applyImportText(t){try{const j=JSON.parse(t);const d=j&&j.data;if(!d||typeof d!=="object")throw 0;
     const before=Object.keys(STORE);STORE=clone(d);for(const k of Object.keys(STORE))if(k.startsWith("__meta/"))delete STORE[k];
     for(const id in META)META[id].base={};before.forEach(k=>{const m=meta(blobOf(k));m.dirty[k]=(m.dirty[k]||0)+1});SYNC.markAll();
     rawSave("gesmar-index",JSON.stringify(knownIds()));S.store=null;try{localStorage.removeItem("gesmar.store")}catch(_){};toast("Sauvegarde importée");setTimeout(()=>location.reload(),1500)}
   catch(e){toast("Fichier non reconnu : choisissez un export GESMAR (.json).")}}
 function importData(file){if(!file)return;const r=new FileReader();r.onload=()=>applyImportText(r.result);r.readAsText(file)}
-function importPC(){window.api.importData().then(t=>{if(t){const aj=isAjout(t);if(aj){applyAjout(aj);return}S.importPending=[["__fichier__",t]];S.modalPanel="importpc";render()}}).catch(()=>toast("Import impossible"))}
+function importPC(){window.api.importData().then(t=>{if(t){S.importPending=[["__fichier__",t]];S.modalPanel="importpc";render()}}).catch(()=>toast("Import impossible"))}
 
 let unsubs=[];
 function subscribeStore(){
