@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="51">
+<meta name="gm-version" content="52">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -114,6 +114,7 @@ tr.muted td{color:var(--muted)}
 .pos{color:var(--good)} .neg{color:var(--bad)}
 .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:700;white-space:nowrap}
 .s-a_reclamer{background:var(--warn-soft);color:var(--warn)}
+.s-declare{background:var(--warn-soft);color:var(--warn)}
 .s-reclame,.s-relance{background:var(--info-soft);color:var(--info)}
 .s-accepte,.s-deduit{background:var(--good-soft);color:var(--good)}
 .s-refuse{background:var(--bad-soft);color:var(--bad)}
@@ -333,12 +334,14 @@ nav.tabs button{line-height:1.4}
 const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const MC=["Janv","Févr","Mars","Avr","Mai","Juin","Juil","Août","Sept","Oct","Nov","Déc"];
 const STATUTS=[
-  ["a_reclamer","À réclamer"],["reclame","Réclamé"],["relance","Relancé"],["accepte","Accepté"],["deduit","Déduit"],["refuse","Refusé"]];
-const SLABEL=Object.fromEntries(STATUTS);
-const EN_COURS=["a_reclamer","reclame","relance","accepte"];
+  ["declare","Déclaré"],["relance","Relancé"],["accepte","Accepté"],["deduit","Déduit"],["refuse","Refusé"]];
+const SLABEL=Object.assign({a_reclamer:"Déclaré",reclame:"Déclaré"},Object.fromEntries(STATUTS));
+// v52 : « À réclamer » et « Réclamé » deviennent « Déclaré » (en mémoire ; enregistré à la prochaine modification)
+const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="reclame")a.statut="declare"});
+const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=51;
+const APP_VERSION=52;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -453,14 +456,14 @@ function periodStats(d1,d2){
     m++;if(m>11){m=0;y++}}
   return r}
 function lastAction(a){const rel=(a.relances||[]).slice().sort();return rel.length?rel[rel.length-1]:(a.dateReclamation||a.date)}
-function isLate(a){return (a.statut==="reclame"||a.statut==="relance")&&daysSince(lastAction(a))>=RELANCE_JOURS}
+function isLate(a){return (a.statut==="declare"||a.statut==="relance")&&daysSince(lastAction(a))>=RELANCE_JOURS}
 
 /* ---------- rendu ---------- */
 function render(){
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
   $("#storeName").textContent=storeNom();
   renderModal();updHist();
-  const pend=S.avoirs.filter(a=>EN_COURS.includes(a.statut)).length;const c=$("#avCnt");c.hidden=!pend;c.textContent=pend;
+  avNorm();const pend=S.avoirs.filter(a=>EN_COURS.includes(a.statut)).length;const c=$("#avCnt");c.hidden=!pend;c.textContent=pend;
   /* v45 : triangle ⚠ quand un avoir réclamé ou relancé est sans nouvelle depuis RELANCE_JOURS jours */
   {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=!nl;w.title=nl?nl+" avoir"+(nl>1?"s":"")+" sans nouvelle depuis "+RELANCE_JOURS+" jours ou plus":""}
   const app=$("#app");
@@ -673,7 +676,7 @@ function vAvoirs(){S.fFourn="";S.fText=""; /* v43 : ligne fournisseur / recherch
   const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
   return `
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
-  <p class="sub" style="max-width:none">Chaque litige suit le même circuit : à réclamer, réclamé, relancé, accepté, puis déduit sur facture ou relevé.<br>Un avoir réclamé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge.</p>
+  <p class="sub" style="max-width:none">Chaque litige suit le même circuit : déclaré, relancé, accepté, puis déduit sur facture ou relevé.<br>Un avoir déclaré ou relancé sans nouvelle depuis ${RELANCE_JOURS} jours passe en rouge.</p>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   ${S.edit?vForm():""}
   <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Nouveau</button></div><div class="scroll"><table>
@@ -685,7 +688,7 @@ function vAvoirs(){S.fFourn="";S.fText=""; /* v43 : ligne fournisseur / recherch
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
       <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
       <td class="l ${late?"late":""}">${late?`<span class="avlate" title="Sans nouvelle depuis ${ds} jours"><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span> `:""}${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
-      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["a_reclamer","reclame","relance"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">${a.statut==="a_reclamer"?"Réclamé aujourd'hui":"Relancé aujourd'hui"}</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></td></tr>`}).join("")
+      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["declare","relance","accepte"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${a.statut==="accepte"?`<button class="btn small" data-setst="deduit" data-id="${a.id}">Déduit</button>`:`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepté</button>`}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></td></tr>`}).join("")
       :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « Nouveau » pour en créer un.</div></td></tr>`}</tbody>
   </table></div></div>`;
 }
@@ -745,14 +748,16 @@ async function saveAvoir(form){
   if(Number.isNaN(mt)){toast("Montant illisible : utilisez des chiffres, par ex. 55,86");return}
   const a=S.edit;const statut=g("statut");
   const body={fournisseur:g("fournisseur"),date:g("date"),produit:g("produit"),code:g("code"),facture:g("facture"),quantite:g("quantite"),motif:g("motif"),montant:mt,statut,infos:g("infos"),
-    relances:a.relances||[],dateReclamation:a.dateReclamation||(statut!=="a_reclamer"?todayISO():null),creeLe:a.creeLe||todayISO(),majLe:todayISO()};
+    relances:a.relances||[],dateReclamation:a.dateReclamation||todayISO(),creeLe:a.creeLe||todayISO(),majLe:todayISO()};
   try{ if(a.id) await S.db.doc(P("avoirs/"+a.id)).set(body); else await S.db.collection(P("avoirs")).add(body);
     S.edit=null;S.confirmDel=null;toast(a.id?"Avoir enregistré":"Avoir créé");render() }catch(e){fail(e)}
 }
+async function setStatut(id,st){const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=todayISO();
+  try{await S.db.doc(P("avoirs/"+id)).update({statut:st,majLe:t});toast(st==="accepte"?"Avoir accepté":st==="deduit"?"Avoir déduit":"Avoir refusé")}catch(e){fail(e)}}
 async function relancer(id){
   const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=todayISO();
-  const patch=a.statut==="a_reclamer"?{statut:"reclame",dateReclamation:t,majLe:t}:{statut:"relance",relances:[...(a.relances||[]),t],majLe:t};
-  try{await S.db.doc(P("avoirs/"+id)).update(patch);toast(a.statut==="a_reclamer"?"Marqué réclamé aujourd'hui":"Relance notée")}catch(e){fail(e)}
+  const patch={statut:a.statut==="accepte"?"accepte":"relance",relances:[...(a.relances||[]),t],majLe:t}; // v52 : Relancer garde Accepté, sinon passe en Relancé
+  try{await S.db.doc(P("avoirs/"+id)).update(patch);toast("Relance notée")}catch(e){fail(e)}
 }
 async function copyRecap(){
   const f=S.fourn.find(x=>x.id===S.fFourn);const L=S.avoirs.filter(a=>a.fournisseur===S.fFourn&&EN_COURS.includes(a.statut)).sort((a,b)=>String(a.date).localeCompare(b.date));
@@ -823,12 +828,13 @@ document.addEventListener("click",async e=>{
   if(t.dataset.invdel){S.db.doc(P("inventaires/"+t.dataset.invdel)).delete().then(()=>{S.confirmInv=null;toast("Inventaire supprimé")},fail);return}
   if(t.dataset.fstat){S.fStat=t.dataset.fstat;render();return}
   if(t.dataset.relance){relancer(t.dataset.relance);return}
+  if(t.dataset.setst){setStatut(t.dataset.id,t.dataset.setst);return}
   if(t.dataset.edit){const a=S.avoirs.find(x=>x.id===t.dataset.edit);S.edit=JSON.parse(JSON.stringify(a));S.confirmDel=null;render();window.scrollTo({top:0});return}
   if(t.dataset.askdel){S.confirmDel=t.dataset.askdel;render();return}
   if(t.dataset.del){try{await S.db.doc(P("avoirs/"+t.dataset.del)).delete();S.edit=null;S.confirmDel=null;toast("Avoir supprimé");render()}catch(err){fail(err)}return}
   if(t.dataset.up){fMove(t.dataset.up,-1);return} if(t.dataset.down){fMove(t.dataset.down,1);return}
   const act=t.dataset.act;
-  if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||((avFourn()[0][0])||S.fourn.find(f=>!f.groupe)||{}).id,statut:"a_reclamer",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
+  if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||((avFourn()[0][0])||S.fourn.find(f=>!f.groupe)||{}).id,statut:"declare",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
   if(act==="cancel"){S.edit=null;S.confirmDel=null;render()}
   if(act==="settings"){S.modal=true;if(!S.majBusy)S.majMsg="";closeMenu();render()}
   if(act==="closeModal"){S.modal=false;S.modalPanel=null;render()}
