@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="72">
+<meta name="gm-version" content="73">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -364,7 +364,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=72;
+const APP_VERSION=73;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -521,21 +521,15 @@ function vBord(){
   const best=act.length?act.reduce((a,b)=>a.taux>b.taux?a:b):null, worst=act.length?act.reduce((a,b)=>a.taux<b.taux?a:b):null;
   // achats par fournisseur
   const par={};act.forEach(s=>{for(const[k,v]of Object.entries(s.par))par[k]=(par[k]||0)+v});
-  // v68 : MARIANO et MONTPERAL séparés (une colonne commune « MARIANO/MONTPERAL » est partagée moitié-moitié), fournisseurs de même nom réunis (SAINT PRIM),
-  // HALAL et ISLA MONDIAL affichés « ISLA DELICE », DIAPAR en premier puis l'ordre de la saisie ; seuls les fournisseurs avec des achats dans l'année sont affichés
+  // v73 : plus aucun regroupement par nom (SAINT PRIM, ISLA, MARIANO, MONTPERAL : chaque fournisseur sur sa ligne) ;
+  // DIAPAR en premier (avec ses rayons), puis l'ordre de la saisie ; seuls les fournisseurs avec des achats dans l'année sont affichés
   const nkD=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();
-  const VK={__mariano:"MARIANO",__montperal:"MONTPERAL",__isla:"ISLA DELICE"};
-  const parts=k=>{const n=nkD(fName(k));const ma=/MARIANO/.test(n),mo=/MONTP/.test(n);
-    if(ma&&mo)return [["__mariano",.5],["__montperal",.5]];if(ma)return [["__mariano",1]];if(mo)return [["__montperal",1]];
-    if(n==="HALAL"||n==="ISLAMONDIAL"||n==="ISLADELIS"||n==="ISLADELICE")return [["__isla",1]];
-    const f=S.fourn.find(x=>x.id===k);if(!f)return [[k,1]];const same=S.fourn.filter(x=>nkD(x.nom)===n).sort((a,b)=>(a.ordre??99)-(b.ordre??99));return [[same.length?same[0].id:k,1]]};
-  const ordOne=k=>{if(VK[k]){const o=S.fourn.filter(f=>parts(f.id).some(p=>p[0]===k)).map(f=>f.ordre).filter(x=>x!=null);return o.length?Math.min(...o):999}
-    const o=S.fourn.filter(f=>f.id===k||f.groupe===k).map(f=>f.ordre).filter(x=>x!=null);return o.length?Math.min(...o):999};
-  const ordOf=k=>nkD(VK[k]||fName(k))==="DIAPAR"?-1:ordOne(k);
-  const G={};for(const[k0,v0]of Object.entries(par))for(const[k,w]of parts(k0)){const v=v0*w,g=grp(k)||k;G[g]=G[g]||{tot:0,sub:{}};G[g].tot+=v;if(grp(k))G[g].sub[k]=(G[g].sub[k]||0)+v}
+  const ordOne=k=>{const o=S.fourn.filter(f=>f.id===k||f.groupe===k).map(f=>f.ordre).filter(x=>x!=null);return o.length?Math.min(...o):999};
+  const ordOf=k=>nkD(fName(k))==="DIAPAR"?-1:ordOne(k);
+  const G={};for(const[k,v]of Object.entries(par)){const g=grp(k)||k;G[g]=G[g]||{tot:0,sub:{}};G[g].tot+=v;if(grp(k))G[g].sub[k]=(G[g].sub[k]||0)+v}
   Object.values(G).forEach(g=>g.sub=Object.entries(g.sub).filter(x=>Math.abs(x[1])>=0.005));
   const parL=Object.entries(G).filter(x=>Math.abs(x[1].tot)>=0.005).sort((a,b)=>ordOf(a[0])-ordOf(b[0])||b[1].tot-a[1].tot);const maxP=parL.length?Math.max(...parL.map(x=>x[1].tot)):1;
-  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(VK[k]||fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
+  const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
   return `
   ${periode("annee")}
   <h2>Tableau de bord ${y} — ${esc(storeNom())}</h2>
