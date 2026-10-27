@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="83">
+<meta name="gm-version" content="84">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -365,7 +365,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=83;
+const APP_VERSION=84;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -548,10 +548,10 @@ function vBord(){
   <div class="grid kpis">
     <div class="kpi"><span class="lbl">CA TTC cumulé</span><span class="v">${eur.format(T.caTTC)}</span><span class="d">${T.jours} jour${T.jours>1?"s":""} saisi${T.jours>1?"s":""}</span></div>
     <div class="kpi"><span class="lbl">Achats cumulés</span><span class="v">${eur.format(T.achats)}</span><span class="d">${parL.length} fournisseurs</span></div>
+    <div class="kpi ${T.dem?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(T.dem)}</span><span class="d">${T.ca?pct(T.dem/T.ca)+" du CA · marge hors démarque "+pct((T.ca-T.achats+T.dem)/T.ca):"&nbsp;"}</span></div>
     <div class="kpi hl"><span class="lbl">Marge brute</span><span class="v">${eur.format(T.ca-T.achats)}</span><span class="d">Taux ${pct(taux)}${T.dem?` · démarque connue ${eur.format(T.dem)}`:""}</span></div>
     <div class="kpi hl"><span class="lbl">Taux après avoirs</span><span class="v">${pct(tauxC)}</span><span class="d">+ ${eur.format(T.avoirs)} TTC d'avoirs obtenus</span></div>
     <div class="kpi ${evo==null?"":evo>=0?"hl":"alert"}"><span class="lbl">CA vs ${y-1}</span><span class="v">${evo==null?"—":(evo>=0?"+":"")+pct(evo)}</span><span class="d">${comp.length?`${compLbl}, mois comparables · marge ${pct(tN)} contre ${pct(tP)} (${pts(tN,tP)})`:`Pas de mois complet en ${y-1} à comparer`}</span></div>
-    <div class="kpi ${late.length?"alert":""}"><span class="lbl">Avoirs en cours HT</span><span class="v">${eur.format(encM)}</span><span class="d">${enc.length} dossier${enc.length>1?"s":""}${late.length?` · <span class="late">${late.length} à relancer</span>`:""}</span></div>
   </div>
   <div class="gap"></div>
   <div class="grid two">
@@ -771,16 +771,17 @@ function vFourn(){
   const ligne=f=>{const u=fUsage(f.id),fixe=isRayon(f)||isParent(f);
     return `<tr><td class="l"><input id="fn-${esc(f.id)}" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" style="width:220px" aria-label="Nom du fournisseur"></td>
       <td class="l"><input id="fc-${esc(f.id)}" data-fcontact="${esc(f.id)}" value="${esc(f.contact||"")}" placeholder="Téléphone" inputmode="tel" style="width:180px" aria-label="Téléphone de ${esc(f.nom)}"></td>
+      <td class="l"><input id="fm-${esc(f.id)}" data-fmail="${esc(f.id)}" value="${esc(f.mail||"")}" placeholder="Mail" type="email" inputmode="email" style="width:240px" aria-label="Mail de ${esc(f.nom)}"></td>
       <td class="l">${[mt(f)?`<b>${eur.format(mt(f))}</b> en ${an}`:"",isParent(f)?"":u.ans.length?"Achats "+u.ans.join(", "):"Aucun achat",u.av?`${u.av} avoir${u.av>1?"s":""}`:""].filter(Boolean).join(" · ")}</td>
       <td style="text-align:right">${fixe?"":isInactif(f)?`<button class="btn small" data-fback="${esc(f.id)}">Remettre</button>`:`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</td></tr>`};
   return `
   <h2 style="margin-top:4px">Fournisseurs — ${esc(storeNom())}</h2>
   <form id="fAdd" class="row" style="margin-bottom:12px"><input id="fAddNom" placeholder="Nom du nouveau fournisseur" required style="flex:1;max-width:320px"><button class="btn primary" type="submit">Ajouter</button></form>
   <div class="panel flush"><div class="band">Fournisseurs (${act.length})</div><div class="scroll"><table>
-    <thead><tr><th class="l">Nom</th><th class="l">Téléphone</th><th class="l">Utilisation</th><th></th></tr></thead>
-    <tbody>${act.map(ligne).join("")||`<tr><td colspan="4" class="l"><div class="empty-state">Aucun fournisseur.</div></td></tr>`}</tbody></table></div></div>
+    <thead><tr><th class="l">Nom</th><th class="l">Téléphone</th><th class="l">Mail <span style="font-weight:500;text-transform:none">(avoir auto)</span></th><th class="l">Utilisation</th><th></th></tr></thead>
+    <tbody>${act.map(ligne).join("")||`<tr><td colspan="5" class="l"><div class="empty-state">Aucun fournisseur.</div></td></tr>`}</tbody></table></div></div>
   ${ina.length?`<div class="gap"></div><div class="panel flush"><div class="band">Fournisseurs inactifs (${ina.length})</div><div class="scroll"><table>
-    <thead><tr><th class="l">Nom</th><th class="l">Téléphone</th><th class="l">Utilisation</th><th></th></tr></thead>
+    <thead><tr><th class="l">Nom</th><th class="l">Téléphone</th><th class="l">Mail <span style="font-weight:500;text-transform:none">(avoir auto)</span></th><th class="l">Utilisation</th><th></th></tr></thead>
     <tbody>${ina.map(ligne).join("")}</tbody></table></div></div>`:""}`;
 }
 
@@ -944,6 +945,7 @@ document.addEventListener("change",e=>{
     const ref=S.db.doc(P("reglages/general"));(S.reglages?ref.update({coefHT:v}):ref.set({coefHT:v})).then(()=>toast("Coefficient enregistré"),fail);return}
   if(t.dataset.fgroupe){fUpdate(t.dataset.fgroupe,{groupe:t.value||null});return}
   if(t.dataset.fcontact!=null){fUpdate(t.dataset.fcontact,{contact:t.value.trim()});return}
+  if(t.dataset.fmail!=null){fUpdate(t.dataset.fmail,{mail:t.value.trim()});return}
   if(t.id==="mnote"){const key=mkey(S.year,S.month);const ref=S.db.doc(P("mois/"+key));(S.mois[key]?ref.update({note:t.value}):ref.set({annee:S.year,mois:S.month+1,jours:{},note:t.value})).then(()=>toast("Note enregistrée"),fail)}
 });
 document.addEventListener("input",e=>{if(e.target.id==="fText"){S.fText=e.target.value;clearTimeout(S.ti);S.ti=setTimeout(()=>{render()},250)}});
@@ -956,12 +958,12 @@ document.addEventListener("submit",async e=>{e.preventDefault();
   if(e.target.id==="demForm")addDemarque();
   if(e.target.id==="invForm")addInventaire();
   if(e.target.id==="fAdd"){const nom=$("#fAddNom").value.trim();if(!nom)return;const nkx=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();const ex=S.fourn.find(f=>nkx(f.nom)===nkx(nom));if(ex){if(ex.supprime||ex.actif===false){fUpdate(ex.id,{supprime:false,actif:true});toast(ex.nom+" remis dans la liste")}else toast(ex.nom+" existe déjà");return}let id=nom.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"");if(!id)id="f"+Date.now();if(S.fourn.find(f=>f.id===id))id+=Date.now()%1000;
-    try{await S.db.doc(P("fournisseurs/"+id)).set({nom:nom.toUpperCase(),ordre:S.fourn.length,actif:true,colonne:false,avoirs:true,contact:""});toast("Fournisseur ajouté : choisissez-le avec « + Fournisseur » dans la saisie");$("#fAddNom")&&($("#fAddNom").value="")}catch(err){fail(err)}}
+    try{await S.db.doc(P("fournisseurs/"+id)).set({nom:nom.toUpperCase(),ordre:S.fourn.length,actif:true,colonne:false,avoirs:true,contact:"",mail:""});toast("Fournisseur ajouté : choisissez-le avec « + Fournisseur » dans la saisie");$("#fAddNom")&&($("#fAddNom").value="")}catch(err){fail(err)}}
 });
 
 /* ---------- données ---------- */
 let pending=null;function schedule(){ // n'interrompt pas une saisie en cours
-  const a=document.activeElement;if(a&&a.dataset&&(a.dataset.f||a.dataset.fnom||a.dataset.fcontact||a.id==="mnote"||a.id==="coefHT"||a.id==="mht"||a.dataset.rn||(a.id||"").startsWith("dem")||(a.id||"").startsWith("inv")||(a.id||"").startsWith("mg")||(a.id||"").startsWith("av-"))){pending=true;return}render()}
+  const a=document.activeElement;if(a&&a.dataset&&(a.dataset.f||a.dataset.fnom||a.dataset.fcontact||a.dataset.fmail||a.id==="mnote"||a.id==="coefHT"||a.id==="mht"||a.dataset.rn||(a.id||"").startsWith("dem")||(a.id||"").startsWith("inv")||(a.id||"").startsWith("mg")||(a.id||"").startsWith("av-"))){pending=true;return}render()}
 document.addEventListener("focusout",()=>{if(pending){pending=null;setTimeout(()=>{const a=document.activeElement;if(!(a&&a.dataset&&a.dataset.f))render();else pending=true},0)}});
 
 
