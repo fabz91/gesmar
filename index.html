@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="75">
+<meta name="gm-version" content="76">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -364,7 +364,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=75;
+const APP_VERSION=76;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1118,11 +1118,15 @@ async function exportData(){ // Nom du fichier : GESMAR-AAAA-MM-JJ.json (PC et n
 // Fournisseurs reconnus par leur nom (la colonne affichée d'abord) ; un nom inconnu crée une colonne. Avoirs : ajoutés sauf doublon.
 const ajNk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();
 function isAjout(t){try{const j=JSON.parse(t);return j&&j.app==="GESMAR-AJOUT"?j:null}catch(e){return null}}
+// v76 : fenêtre de confirmation dans la page. La fenêtre confirm() de Windows bloquait ensuite les cases de la saisie dans le programme PC.
+function askConfirm(msg){return new Promise(res=>{const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:grid;place-items:center;padding:16px";
+  o.innerHTML=`<div style="background:var(--surface,#fff);color:var(--fg,#18231b);border-radius:12px;max-width:520px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.3)"><div style="white-space:pre-wrap;font-size:14px;line-height:1.5">${esc(msg)}</div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn" data-r="0">Annuler</button><button class="btn primary" data-r="1">Continuer</button></div></div>`;
+  o.addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(b||e.target===o){o.remove();res(!!(b&&b.dataset.r==="1"))}});document.body.appendChild(o);o.querySelector('[data-r="1"]').focus()})}
 async function applyAjout(j){
   if(!S.db||!S.store){toast("Données pas encore chargées, réessayez dans un instant");return}
   if(j.magasin&&j.magasin!==S.store){const g=S.magasins.find(m=>m.id===j.magasin);toast("Ce fichier concerne "+(g?g.nom:j.magasin)+" : changez de magasin (maison) puis réimportez");return}
   const ms=(j.mois||[]).map(m=>MOIS[+m.cle.slice(5,7)-1]+" "+m.cle.slice(0,4)+(m.remplacer?" (remplacé)":"")).join(", "),nA=(j.avoirs||[]).length;
-  if(!confirm("Importer dans "+storeNom()+" :"+(ms?"\n- "+((j.mois||[]).length>3?(j.mois.length+" mois, de "+MOIS[+j.mois[0].cle.slice(5,7)-1].toLowerCase()+" "+j.mois[0].cle.slice(0,4)+" à "+MOIS[+j.mois[j.mois.length-1].cle.slice(5,7)-1].toLowerCase()+" "+j.mois[j.mois.length-1].cle.slice(0,4)):ms)+"\n  CA, achats et colonnes de chaque mois = ceux du fichier"+((j.mois||[]).some(m=>m.effacerN1)?" (CA N-1 : celui du fichier, sinon l'année d'avant)":" (CA N-1, démarque et note gardés)"):"")+(nA?"\n- "+nA+" avoir(s) (sauf ceux déjà présents)":"")+(j.fusion?"\n- avoirs rattachés : "+Object.entries(j.fusion).map(([a,b])=>a+" → "+b).join(", "):"")+"\n\nContinuer ?"))return;
+  if(!await askConfirm("Importer dans "+storeNom()+" :"+(ms?"\n- "+((j.mois||[]).length>3?(j.mois.length+" mois, de "+MOIS[+j.mois[0].cle.slice(5,7)-1].toLowerCase()+" "+j.mois[0].cle.slice(0,4)+" à "+MOIS[+j.mois[j.mois.length-1].cle.slice(5,7)-1].toLowerCase()+" "+j.mois[j.mois.length-1].cle.slice(0,4)):ms)+"\n  CA, achats et colonnes de chaque mois = ceux du fichier"+((j.mois||[]).some(m=>m.effacerN1)?" (CA N-1 : celui du fichier, sinon l'année d'avant)":" (CA N-1, démarque et note gardés)"):"")+(nA?"\n- "+nA+" avoir(s) (sauf ceux déjà présents)":"")+(j.fusion?"\n- avoirs rattachés : "+Object.entries(j.fusion).map(([a,b])=>a+" → "+b).join(", "):"")+"\n\nContinuer ?"))return;
   const FI={};S.fourn.filter(f=>!f.groupe||true).slice().sort((a,b)=>(b.colonne&&b.actif!==false)-(a.colonne&&a.actif!==false)).forEach(f=>{const k=ajNk(f.nom);if(!(k in FI))FI[k]=f.id});
   let crees=0;
   const fid=async(nom,col=true)=>{const k=ajNk(nom);if(FI[k])return FI[k];let id=k.toLowerCase().slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.toLowerCase().slice(0,26)+n}
@@ -1139,7 +1143,7 @@ async function applyAjout(j){
           same.forEach(x=>{if(x!==id)delete jj.achats[x]});jj.achats[id]=val;cases++}
         jours[d]=jj}
       const upd={jours};if(Array.isArray(mo.colonnes)){const ids=[];for(const nom of mo.colonnes){const id=await fid(nom,false);if(!ids.includes(id))ids.push(id)}upd.colonnes=ids} // v74 : colonnes du mois = celles de l'Excel
-      const ref=S.db.doc(P("mois/"+key));if(doc)await ref.update(upd);else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),...upd});if(upd.colonnes)dernier=upd.colonnes}
+      const ref=S.db.doc(P("mois/"+key));if(doc)await ref.set(Object.assign(JSON.parse(JSON.stringify(doc)),upd)); /* v76 : remplace vraiment les jours (update fusionnait et gardait les anciens montants) */ else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),...upd});if(upd.colonnes)dernier=upd.colonnes}
     // v75 : liste par défaut (nouveaux mois) = colonnes du dernier mois du fichier
     if(dernier)for(const f of S.fourn){const w=dernier.includes(f.id);if(!!f.colonne!==w){await S.db.doc(P("fournisseurs/"+f.id)).update({colonne:w});f.colonne=w}}
     // v75 : « fusion » : les avoirs d'un ancien fournisseur (ex. LAURANCE) passent au nouveau (ex. SAINT PRIM) ; idem pour les doublons de nom
