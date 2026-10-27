@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="77">
+<meta name="gm-version" content="78">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -365,7 +365,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=77;
+const APP_VERSION=78;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -625,7 +625,7 @@ function vSaisie(){
   const y=S.year,m=S.month,key=mkey(y,m);const doc=S.mois[key]||{jours:{}};const J=doc.jours||{};
   const nd=new Date(y,m+1,0).getDate();
   const used=new Set();Object.values(J).forEach(j=>Object.keys((j&&j.achats)||{}).forEach(k=>used.add(k)));
-  const mc=monthCols(key),cols=S.fourn.filter(f=>mc.includes(f.id)||used.has(f.id)); // v77 : un fournisseur qui a des montants ce mois reste affiché
+  const mc=monthCols(key),cols=S.fourn.filter(f=>(mc.includes(f.id)&&!f.supprime)||used.has(f.id)); // v77 : un fournisseur qui a des montants ce mois reste affiché
   used.forEach(k=>{if(!cols.find(f=>f.id===k)&&!S.fourn.find(f=>f.id===k))cols.push({id:k,nom:k})});
   // v74 : colonnes retirées = tous les fournisseurs utilisés dans l'année qui ne sont pas affichés ce mois-ci
   const uy=usedInYear(y),retirees=S.fourn.filter(f=>uy.has(f.id)&&!cols.some(c=>c.id===f.id)&&!S.fourn.some(x=>x.groupe===f.id)).sort((a,b)=>(a.ordre??99)-(b.ordre??99));
@@ -703,7 +703,7 @@ function vDemarque(y,m,doc,st){
 function avFourn(sel){const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),ord=(a,b)=>(a.ordre??99)-(b.ordre??99)||String(a.nom).localeCompare(String(b.nom));
   const kNow=todayISO().slice(0,7),mcN=monthCols(kNow),uy=usedInYear(kNow.slice(0,4)),inSaisie=f=>mcN.includes(f.id)||S.fourn.some(x=>x.groupe===f.id&&mcN.includes(x.id)); /* v74 : affichés dans la saisie du mois en cours */
   const L=S.fourn.filter(f=>!f.groupe),A=L.filter(inSaisie).sort(ord),an=new Set(A.map(f=>nk(f.nom)));
-  const B=L.filter(f=>!inSaisie(f)&&(f.actif!==false||f.id===sel)).sort(ord);return[A,B]}
+  const B=L.filter(f=>!inSaisie(f)&&(!f.supprime||f.id===sel)).sort(ord);return[A,B]}
 function avOptsMois(sel){return avOpts(sel)} /* v74 : même liste que les autres choix de fournisseur */
 function avOpts(sel){const[A,B]=avFourn(sel),o=f=>`<option value="${esc(f.id)}" ${sel===f.id?"selected":""}>${esc(f.nom)}</option>`;
   return (A.length?`<optgroup label="Dans la saisie">${A.map(o).join("")}</optgroup>`:"")+(B.length?`<optgroup label="Autres fournisseurs">${B.map(o).join("")}</optgroup>`:"")}
@@ -763,20 +763,19 @@ const isRayon=f=>!!f.groupe,isParent=f=>S.fourn.some(x=>x.groupe===f.id);
 function vFourn(){
   const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
   const tri=(a,b)=>(isParent(b)-isParent(a))||(isRayon(b)-isRayon(a))||((isRayon(a)&&isRayon(b))?(a.ordre??99)-(b.ordre??99):nk(a.nom).localeCompare(nk(b.nom)));
-  const act=S.fourn.filter(f=>f.actif!==false).sort(tri),ret=S.fourn.filter(f=>f.actif===false).sort(tri);
+  const act=S.fourn.filter(f=>!f.supprime).sort(tri); // v78 : une seule liste, plus de « retirés »
   const ligne=f=>{const u=fUsage(f.id),fixe=isRayon(f)||isParent(f);
-    return `<tr${f.actif===false?' class="muted"':""}><td class="l"><input id="fn-${esc(f.id)}" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" style="width:220px" aria-label="Nom du fournisseur"></td>
+    return `<tr><td class="l"><input id="fn-${esc(f.id)}" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" style="width:220px" aria-label="Nom du fournisseur"></td>
       <td class="l">${isRayon(f)?`Rayon ${esc(fName(f.groupe))}`:isParent(f)?"Regroupe ses rayons":""}</td>
       <td class="l">${u.ans.length?"Achats "+u.ans.join(", "):"Aucun achat"}${u.av?` · ${u.av} avoir${u.av>1?"s":""}`:""}</td>
-      <td style="text-align:right">${fixe?"":f.actif===false?`<button class="btn small" data-fback="${esc(f.id)}">Remettre</button>${!u.ans.length&&!u.av?`<button class="btn small" data-fout="${esc(f.id)}">Supprimer</button>`:""}`:`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</td></tr>`};
+      <td style="text-align:right">${fixe?"":`<button class="btn small" data-fout="${esc(f.id)}">Supprimer</button>`}</td></tr>`};
   return `
   <h2 style="margin-top:4px">Fournisseurs — ${esc(storeNom())}</h2>
   <form id="fAdd" class="row" style="margin-bottom:12px"><input id="fAddNom" placeholder="Nom du nouveau fournisseur" required style="flex:1;max-width:320px"><button class="btn primary" type="submit">Ajouter</button></form>
   <div class="panel flush"><div class="band">Fournisseurs (${act.length})</div><div class="scroll"><table>
     <thead><tr><th class="l">Nom</th><th class="l"></th><th class="l">Utilisation</th><th></th></tr></thead>
     <tbody>${act.map(ligne).join("")||`<tr><td colspan="4" class="l"><div class="empty-state">Aucun fournisseur.</div></td></tr>`}</tbody></table></div></div>
-  ${ret.length?`<div class="gap"></div><div class="panel flush"><div class="band">Fournisseurs retirés (${ret.length})</div><div class="scroll"><table>
-    <tbody>${ret.map(ligne).join("")}</tbody></table></div></div>`:""}`;
+`;
 }
 
 /* ---------- actions ---------- */
@@ -841,7 +840,7 @@ async function addInventaire(){
 }
 // v77 : « + Fournisseur » : on choisit un fournisseur de l'onglet Fournisseurs (on ne crée plus de fournisseur depuis la saisie)
 function addFournSaisie(){const key=mkey(S.year,S.month),mc=monthCols(key),nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
-  const L=S.fourn.filter(f=>f.actif!==false&&!isParent(f)&&!mc.includes(f.id)).sort((a,b)=>nk(a.nom).localeCompare(nk(b.nom)));
+  const L=S.fourn.filter(f=>!f.supprime&&!isParent(f)&&!mc.includes(f.id)).sort((a,b)=>nk(a.nom).localeCompare(nk(b.nom)));
   const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:grid;place-items:center;padding:16px";
   o.innerHTML=`<div style="background:var(--surface,#fff);color:var(--fg,#18231b);border-radius:12px;max-width:420px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
     <div style="font:800 15px var(--display);margin-bottom:10px">Ajouter un fournisseur à ${esc(MOIS[S.month])} ${S.year}</div>
@@ -883,9 +882,10 @@ document.addEventListener("click",async e=>{
     const f=S.fourn.find(x=>x.id===t.dataset.maskcol),ref=S.db.doc(P("mois/"+key));
     try{if(doc)await ref.update({masques:arr});else await ref.set({annee:S.year,mois:S.month+1,jours:{},masques:arr});toast((f?f.nom:"Fournisseur")+" supprimé de ce mois (↶ pour annuler)")}catch(e){fail(e)}return}
   if(t.dataset.fout){const id=t.dataset.fout,f=S.fourn.find(x=>x.id===id),u=fUsage(id);
+    // v78 : Supprimer directement. Jamais utilisé → effacé. Avec des achats ou des avoirs → il disparaît de partout, mais ses anciens chiffres restent comptés (fiche gardée en arrière-plan, « supprime »).
     if(!u.ans.length&&!u.av){S.db.doc(P("fournisseurs/"+id)).delete().then(()=>toast((f?f.nom:"Fournisseur")+" supprimé (↶ pour annuler)"),fail)}
-    else fUpdate(id,{actif:false}).then(()=>toast((f?f.nom:"Fournisseur")+" retiré : son historique est gardé"));return}
-  if(t.dataset.fback){fUpdate(t.dataset.fback,{actif:true});return}
+    else askConfirm((f?f.nom:"Ce fournisseur")+" a "+[u.ans.length?"des achats en "+u.ans.join(", "):"",u.av?u.av+" avoir"+(u.av>1?"s":""):""].filter(Boolean).join(" et ")+".\nIl disparaîtra de la liste, de la saisie et des avoirs. Ses anciens montants resteront comptés dans les totaux.\n\nSupprimer "+(f?f.nom:"ce fournisseur")+" ?")
+      .then(ok=>{if(ok)fUpdate(id,{supprime:true,actif:false,colonne:false}).then(()=>toast((f?f.nom:"Fournisseur")+" supprimé (↶ pour annuler)"))});return}
   if(t.dataset.showcol){const id=t.dataset.showcol,key=mkey(S.year,S.month),mc=monthCols(key);if(!mc.includes(id))mc.push(id);setMonthCols(key,mc);return}
   if(t.dataset.demask!=null){S.confirmDem=+t.dataset.demask;render();return}
   if(t.dataset.demdel!=null){delDemarque(+t.dataset.demdel);return}
@@ -950,7 +950,7 @@ document.addEventListener("submit",async e=>{e.preventDefault();
   if(e.target.id==="mgAdd")addStore();
   if(e.target.id==="demForm")addDemarque();
   if(e.target.id==="invForm")addInventaire();
-  if(e.target.id==="fAdd"){const nom=$("#fAddNom").value.trim();if(!nom)return;const nkx=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();const ex=S.fourn.find(f=>nkx(f.nom)===nkx(nom));if(ex){if(ex.actif===false){fUpdate(ex.id,{actif:true});toast(ex.nom+" remis dans la liste")}else toast(ex.nom+" existe déjà");return}let id=nom.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"");if(!id)id="f"+Date.now();if(S.fourn.find(f=>f.id===id))id+=Date.now()%1000;
+  if(e.target.id==="fAdd"){const nom=$("#fAddNom").value.trim();if(!nom)return;const nkx=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();const ex=S.fourn.find(f=>nkx(f.nom)===nkx(nom));if(ex){if(ex.supprime||ex.actif===false){fUpdate(ex.id,{supprime:false,actif:true});toast(ex.nom+" remis dans la liste")}else toast(ex.nom+" existe déjà");return}let id=nom.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"");if(!id)id="f"+Date.now();if(S.fourn.find(f=>f.id===id))id+=Date.now()%1000;
     try{await S.db.doc(P("fournisseurs/"+id)).set({nom:nom.toUpperCase(),ordre:S.fourn.length,actif:true,colonne:false,avoirs:true,contact:""});toast("Fournisseur ajouté : choisissez-le avec « + Fournisseur » dans la saisie");$("#fAddNom")&&($("#fAddNom").value="")}catch(err){fail(err)}}
 });
 
