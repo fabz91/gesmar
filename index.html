@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="69">
+<meta name="gm-version" content="70">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -357,8 +357,9 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=69;
+const APP_VERSION=70;
 const RELANCE_JOURS=7;
+const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
 
@@ -453,7 +454,7 @@ function monthStats(y,m){
     if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */ if(j.caN1)r.caN1+=j.caN1;
     for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
   /* v51 : plus de HT : le CA HT du mois et le HT par jour ne sont plus utilisés */
-  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m)))r.avoirs+=a.montant}
+  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m)))r.avoirs+=a.montant*TVA_AVOIRS} // v70 : avoirs saisis HT, passés en TTC (5,5 %) pour la marge TTC
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
   r.marge=r.ca-r.achats;r.taux=r.ca?r.marge/r.ca:null;r.tauxCorr=r.ca?(r.marge+r.avoirs)/r.ca:null;r.tauxHD=r.ca?(r.marge+r.demarque)/r.ca:null;return r}
 const dayISO=(y,m,d)=>y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
@@ -534,9 +535,9 @@ function vBord(){
     <div class="kpi"><span class="lbl">CA TTC cumulé</span><span class="v">${eur.format(T.caTTC)}</span><span class="d">${T.jours} jour${T.jours>1?"s":""} saisi${T.jours>1?"s":""}</span></div>
     <div class="kpi"><span class="lbl">Achats cumulés</span><span class="v">${eur.format(T.achats)}</span><span class="d">${parL.length} fournisseurs</span></div>
     <div class="kpi hl"><span class="lbl">Marge brute</span><span class="v">${eur.format(T.ca-T.achats)}</span><span class="d">Taux ${pct(taux)}${T.dem?` · démarque connue ${eur.format(T.dem)}`:""}</span></div>
-    <div class="kpi hl"><span class="lbl">Taux après avoirs</span><span class="v">${pct(tauxC)}</span><span class="d">+ ${eur.format(T.avoirs)} d'avoirs obtenus</span></div>
+    <div class="kpi hl"><span class="lbl">Taux après avoirs</span><span class="v">${pct(tauxC)}</span><span class="d">+ ${eur.format(T.avoirs)} TTC d'avoirs obtenus</span></div>
     <div class="kpi ${evo==null?"":evo>=0?"hl":"alert"}"><span class="lbl">CA vs ${y-1}</span><span class="v">${evo==null?"—":(evo>=0?"+":"")+pct(evo)}</span><span class="d">${comp.length?`${compLbl}, mois comparables · marge ${pct(tN)} contre ${pct(tP)} (${pts(tN,tP)})`:`Pas de mois complet en ${y-1} à comparer`}</span></div>
-    <div class="kpi ${late.length?"alert":""}"><span class="lbl">Avoirs en cours</span><span class="v">${eur.format(encM)}</span><span class="d">${enc.length} dossier${enc.length>1?"s":""}${late.length?` · <span class="late">${late.length} à relancer</span>`:""}</span></div>
+    <div class="kpi ${late.length?"alert":""}"><span class="lbl">Avoirs en cours HT</span><span class="v">${eur.format(encM)}</span><span class="d">${enc.length} dossier${enc.length>1?"s":""}${late.length?` · <span class="late">${late.length} à relancer</span>`:""}</span></div>
   </div>
   <div class="gap"></div>
   <div class="grid two">
@@ -655,7 +656,7 @@ function vSaisie(){
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">Achats N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
     <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">${st.ca?pct(st.demarque/st.ca)+" du CA · marge hors démarque "+pct(st.tauxHD):"&nbsp;"}</span></div>
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.taux)}</span><span class="d">Marge ${eur.format(st.marge)}</span></div>
-    <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} obtenus ce mois</span></div>
+    <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} TTC obtenus ce mois</span></div>
   </div>
   <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Nom</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
