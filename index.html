@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="71">
+<meta name="gm-version" content="72">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -313,6 +313,10 @@ nav.tabs button{line-height:1.4}
 
 /* v71 : liseré rouge fin sous chaque dimanche (saisie) */
 .sheet tr.dim td{border-bottom:2px solid #d0021b}
+
+/* v72 : avoir sans activité depuis 7 jours = ligne rouge ; triangle clignotant sur l'onglet tant qu'il en reste */
+tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transparent)}tr.lrow td b{color:var(--bad)}
+#avLate.blink svg{animation:updBlink 1s ease-in-out infinite}
 </style>
 </head>
 <body>
@@ -360,7 +364,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=71;
+const APP_VERSION=72;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -475,8 +479,9 @@ function periodStats(d1,d2){
       for(const x of(doc.demarque||[]))if(x.date>d1&&x.date<=d2)r.demarque+=+x.montant||0}
     m++;if(m>11){m=0;y++}}
   return r}
-function lastAction(a){const rel=(a.relances||[]).slice().sort();return rel.length?rel[rel.length-1]:(a.dateReclamation||a.date)}
-function isLate(a){return (a.statut==="declare"||a.statut==="relance")&&daysSince(lastAction(a))>=RELANCE_JOURS}
+// v72 : dernière activité = dernière relance, déclaration ou changement de statut (Accepté) ; un avoir déclaré, relancé ou accepté sans activité depuis 7 jours passe en rouge
+function lastAction(a){const l=[...(a.relances||[]),a.dateReclamation||a.date,a.dateStatut||(a.statut==="accepte"?a.majLe:null)].filter(Boolean).sort();return l.length?l[l.length-1]:null}
+function isLate(a){return EN_COURS.includes(a.statut)&&daysSince(lastAction(a))>=RELANCE_JOURS}
 
 /* ---------- rendu ---------- */
 function render(){
@@ -485,7 +490,7 @@ function render(){
   renderModal();updHist();
   avNorm();const pend=S.avoirs.filter(a=>EN_COURS.includes(a.statut)).length;const c=$("#avCnt");c.hidden=!pend;c.textContent=pend;
   /* v45 : triangle ⚠ quand un avoir réclamé ou relancé est sans nouvelle depuis RELANCE_JOURS jours */
-  {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=true;c.classList.remove("blink");c.title=nl?nl+" avoir"+(nl>1?"s":"")+" sans nouvelle depuis "+RELANCE_JOURS+" jours ou plus":""} /* v67 : le chiffre reste fixe, il ne clignote plus */
+  {const nl=S.avoirs.filter(isLate).length,w=$("#avLate");w.hidden=!nl;w.classList.toggle("blink",!!nl);w.title=c.title=nl?nl+" avoir"+(nl>1?"s":"")+" en rouge à traiter":"";c.classList.remove("blink");} /* v67 : le chiffre reste fixe, il ne clignote plus */
   const app=$("#app");
   if(!S.db){app.innerHTML=`<div class="empty-state">${S.noDb?"Les données ne sont pas disponibles dans cette vue. Ouvrez la page depuis Claude en étant connecté pour voir et saisir les chiffres.":"Chargement des données…<br><small>Les mois, les avoirs et les fournisseurs s'afficheront ici dès que la base répond.</small>"}</div>`;return}
   if(!S.magasins.length){app.innerHTML=S.magLoaded?`<div class="empty-state">Aucun magasin pour l'instant. Ouvrez les Réglages ⚙ pour créer le premier.</div>`:`<div class="empty-state">Chargement des magasins…</div>`;return}
@@ -715,11 +720,12 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
   <div class="row" style="margin-bottom:10px"><select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${avOptsMois(S.fFourn)}</select></div>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
+  <p class="sub" style="margin:2px 0 10px">Un avoir déclaré, relancé ou accepté sans activité pendant ${RELANCE_JOURS} jours passe en rouge.</p>
   ${S.edit?vForm():""}
   <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Nouveau</button></div><div class="scroll"><table>
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant HT</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
     <tbody>${list.length?list.map(a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a);
-      return `<tr><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
+      return `<tr${late?' class="lrow"':""}><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
       <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}</td>
       <td class="l">${esc(a.quantite)}</td><td class="l">${esc(a.motif)}</td>
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
@@ -798,7 +804,7 @@ async function avCopier(id){const a=S.avoirs.find(x=>x.id===id);if(!a)return;con
   try{await navigator.clipboard.writeText(t)}catch(e){const x=document.createElement("textarea");x.value=t;document.body.appendChild(x);x.select();try{document.execCommand("copy")}catch(_){}x.remove()}
   toast("Avoir copié : collez-le dans votre e-mail (Ctrl+V)")}
 async function setStatut(id,st){const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=todayISO();
-  try{await S.db.doc(P("avoirs/"+id)).update({statut:st,majLe:t});toast(st==="accepte"?"Avoir accepté":st==="deduit"?"Avoir déduit":"Avoir refusé")}catch(e){fail(e)}}
+  try{await S.db.doc(P("avoirs/"+id)).update({statut:st,dateStatut:t,majLe:t});toast(st==="accepte"?"Avoir accepté":st==="deduit"?"Avoir déduit":"Avoir refusé")}catch(e){fail(e)}}
 async function relancer(id){
   const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=todayISO();
   const patch={statut:a.statut==="accepte"?"accepte":"relance",relances:[...(a.relances||[]),t],majLe:t}; // v52 : Relancer garde Accepté, sinon passe en Relancé
