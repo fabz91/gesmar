@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="82">
+<meta name="gm-version" content="83">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -365,7 +365,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=82;
+const APP_VERSION=83;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -770,17 +770,17 @@ function vFourn(){
   const act=S.fourn.filter(f=>!isInactif(f)).sort(tri),ina=S.fourn.filter(isInactif).sort(tri); // v79 : actifs + tableau « Fournisseurs inactifs »
   const ligne=f=>{const u=fUsage(f.id),fixe=isRayon(f)||isParent(f);
     return `<tr><td class="l"><input id="fn-${esc(f.id)}" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" style="width:220px" aria-label="Nom du fournisseur"></td>
-      <td class="l">${isRayon(f)?`Rayon ${esc(fName(f.groupe))}`:isParent(f)?"Regroupe ses rayons":""}</td>
-      <td class="l">${mt(f)?`<b>${eur.format(mt(f))}</b> en ${an} · `:""}${isParent(f)?"Total de ses rayons":u.ans.length?"Achats "+u.ans.join(", "):"Aucun achat"}${u.av?` · ${u.av} avoir${u.av>1?"s":""}`:""}</td>
+      <td class="l"><input id="fc-${esc(f.id)}" data-fcontact="${esc(f.id)}" value="${esc(f.contact||"")}" placeholder="Téléphone" inputmode="tel" style="width:180px" aria-label="Téléphone de ${esc(f.nom)}"></td>
+      <td class="l">${[mt(f)?`<b>${eur.format(mt(f))}</b> en ${an}`:"",isParent(f)?"":u.ans.length?"Achats "+u.ans.join(", "):"Aucun achat",u.av?`${u.av} avoir${u.av>1?"s":""}`:""].filter(Boolean).join(" · ")}</td>
       <td style="text-align:right">${fixe?"":isInactif(f)?`<button class="btn small" data-fback="${esc(f.id)}">Remettre</button>`:`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</td></tr>`};
   return `
   <h2 style="margin-top:4px">Fournisseurs — ${esc(storeNom())}</h2>
   <form id="fAdd" class="row" style="margin-bottom:12px"><input id="fAddNom" placeholder="Nom du nouveau fournisseur" required style="flex:1;max-width:320px"><button class="btn primary" type="submit">Ajouter</button></form>
   <div class="panel flush"><div class="band">Fournisseurs (${act.length})</div><div class="scroll"><table>
-    <thead><tr><th class="l">Nom</th><th class="l"></th><th class="l">Utilisation</th><th></th></tr></thead>
+    <thead><tr><th class="l">Nom</th><th class="l">Téléphone</th><th class="l">Utilisation</th><th></th></tr></thead>
     <tbody>${act.map(ligne).join("")||`<tr><td colspan="4" class="l"><div class="empty-state">Aucun fournisseur.</div></td></tr>`}</tbody></table></div></div>
   ${ina.length?`<div class="gap"></div><div class="panel flush"><div class="band">Fournisseurs inactifs (${ina.length})</div><div class="scroll"><table>
-    <thead><tr><th class="l">Nom</th><th class="l"></th><th class="l">Utilisation</th><th></th></tr></thead>
+    <thead><tr><th class="l">Nom</th><th class="l">Téléphone</th><th class="l">Utilisation</th><th></th></tr></thead>
     <tbody>${ina.map(ligne).join("")}</tbody></table></div></div>`:""}`;
 }
 
