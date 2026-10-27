@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="81">
+<meta name="gm-version" content="82">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -365,7 +365,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=81;
+const APP_VERSION=82;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -851,10 +851,10 @@ function addFournSaisie(){const key=mkey(S.year,S.month),mc=monthCols(key),nk=t=
   o.innerHTML=`<div style="background:var(--surface,#fff);color:var(--fg,#18231b);border-radius:12px;max-width:420px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
     <div style="font:800 15px var(--display);margin-bottom:10px">Ajouter un fournisseur à ${esc(MOIS[S.month])} ${S.year}</div>
     ${L.length?`<div style="display:grid;gap:6px;max-height:55vh;overflow:auto">${L.map(f=>`<button class="btn" style="justify-content:flex-start" data-pick="${esc(f.id)}">${esc(f.nom)}</button>`).join("")}</div>`:`<p class="sub">Tous les fournisseurs sont déjà dans ce mois. Pour en créer un, allez dans l'onglet Fournisseurs.</p>`}
-    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px"><button class="btn" data-goto="1">Onglet Fournisseurs</button><button class="btn" data-x="1">Fermer</button></div></div>`;
-  o.addEventListener("click",e=>{const b=e.target.closest("[data-pick],[data-x],[data-goto]");if(!b&&e.target!==o)return;o.remove();
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px"><button class="btn" data-gofourn="1">Onglet Fournisseurs</button><button class="btn" data-x="1">Fermer</button></div></div>`;
+  o.addEventListener("click",e=>{const b=e.target.closest("[data-pick],[data-x],[data-gofourn]");if(!b&&e.target!==o)return;e.stopPropagation();o.remove(); /* v82 : data-goto servait déjà (mois du tableau de bord) et renvoyait vers la saisie */
     if(b&&b.dataset.pick){const m2=monthCols(key);m2.push(b.dataset.pick);setMonthCols(key,m2).then(()=>toast(fName(b.dataset.pick)+" ajouté à "+MOIS[S.month]))}
-    if(b&&b.dataset.goto){S.tab="fourn";try{localStorage.setItem("gesmar.tab",S.tab)}catch(_){}render()}});
+    if(b&&b.dataset.gofourn){S.tab="fourn";try{localStorage.setItem("gesmar.tab",S.tab)}catch(_){}render()}});
   document.body.appendChild(o)}
 async function fUpdate(id,patch){try{await S.db.doc(P("fournisseurs/"+id)).update(patch)}catch(e){fail(e)}}
 async function fMove(id,dir){
@@ -888,9 +888,8 @@ document.addEventListener("click",async e=>{
     const f=S.fourn.find(x=>x.id===t.dataset.maskcol),ref=S.db.doc(P("mois/"+key));
     try{if(doc)await ref.update({masques:arr});else await ref.set({annee:S.year,mois:S.month+1,jours:{},masques:arr});toast((f?f.nom:"Fournisseur")+" supprimé de ce mois (↶ pour annuler)")}catch(e){fail(e)}return}
   if(t.dataset.fout){const id=t.dataset.fout,f=S.fourn.find(x=>x.id===id),u=fUsage(id);
-    // v79 : Retirer. Jamais utilisé (ni achat ni avoir) → effacé. Avec historique → passe dans « Fournisseurs inactifs » (ne peut pas être supprimé).
-    if(!u.ans.length&&!u.av){S.db.doc(P("fournisseurs/"+id)).delete().then(()=>toast((f?f.nom:"Fournisseur")+" supprimé (↶ pour annuler)"),fail)}
-    else fUpdate(id,{actif:false,colonne:false}).then(()=>toast((f?f.nom:"Fournisseur")+" passé en inactif : son historique est gardé"));return}
+    // v82 : Retirer = toujours passer en inactif (même un fournisseur tout neuf) ; un inactif ne se supprime pas
+    fUpdate(id,{actif:false,colonne:false}).then(()=>toast((f?f.nom:"Fournisseur")+" passé en inactif"));return}
   if(t.dataset.fback){fUpdate(t.dataset.fback,{actif:true,supprime:false});return}
   if(t.dataset.showcol){const id=t.dataset.showcol,key=mkey(S.year,S.month),mc=monthCols(key);if(!mc.includes(id))mc.push(id);setMonthCols(key,mc);return}
   if(t.dataset.demask!=null){S.confirmDem=+t.dataset.demask;render();return}
