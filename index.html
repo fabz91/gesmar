@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="70">
+<meta name="gm-version" content="71">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -310,6 +310,9 @@ nav.tabs button{line-height:1.4}
 .sheet input.fname{padding:2px 3px;font-size:9.5px;border-radius:4px}
 .wrap{padding-block:10px 48px}.periode{margin-bottom:8px!important}.kpis-s{margin-bottom:8px!important}
 .band-s{padding-top:5px!important;padding-bottom:5px!important}
+
+/* v71 : liseré rouge fin sous chaque dimanche (saisie) */
+.sheet tr.dim td{border-bottom:2px solid #d0021b}
 </style>
 </head>
 <body>
@@ -357,7 +360,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=70;
+const APP_VERSION=71;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -636,7 +639,7 @@ function vSaisie(){
   let rows="";
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
     const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
-    rows+=`<tr><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td>${hasN1?`<td>${cell(dd,"caN1",n1Day(dd,j))}</td>`:""}
+    rows+=`<tr${wd===0?' class="dim"':""}><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td>${hasN1?`<td>${cell(dd,"caN1",n1Day(dd,j))}</td>`:""}
       ${runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
   const tf=f=>st.par[f.id]?n2.format(st.par[f.id]):"";
   const rs="";
@@ -920,9 +923,8 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("input",e=>{if(e.target.id==="fText"){S.fText=e.target.value;clearTimeout(S.ti);S.ti=setTimeout(()=>{render()},250)}});
 document.addEventListener("keydown",e=>{const t=e.target;if(t.dataset&&t.dataset.rn){if(e.key==="Enter"){e.preventDefault();t.blur()}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();const f=S.fourn.find(x=>x.id===t.dataset.rn);if(f)t.value=f.nom;t.blur()}return}
-  if(t.dataset&&t.dataset.f&&(e.key==="Enter")){e.preventDefault();const d=String(+t.dataset.d+1).padStart(2,"0"),id=`c-${d}-${t.dataset.f}`;const n=document.getElementById(id);t.blur();if(n){n.focus();n.select&&n.select()}
-    // v59 : l'enregistrement redessine le tableau et faisait perdre la case : on la reprend pendant 2 s si plus rien n'est sélectionné
-    const t0=Date.now(),again=()=>{const a=document.activeElement;if(!a||a===document.body){const x=document.getElementById(id);if(x){x.focus();x.select&&x.select()}}if(Date.now()-t0<2000)setTimeout(again,60)};setTimeout(again,60)}});
+  // v71 : Entrée enregistre le montant et désélectionne la case (on ne passe plus à la suivante)
+  if(t.dataset&&t.dataset.f&&(e.key==="Enter")){e.preventDefault();t.blur()}});
 document.addEventListener("submit",async e=>{e.preventDefault();
   if(e.target.id==="avForm")saveAvoir(e.target);
   if(e.target.id==="mgAdd")addStore();
