@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="80">
+<meta name="gm-version" content="81">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -365,7 +365,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=80;
+const APP_VERSION=81;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -763,12 +763,15 @@ const isRayon=f=>!!f.groupe,isParent=f=>S.fourn.some(x=>x.groupe===f.id);
 const isInactif=f=>f.actif===false||!!f.supprime; // v79 : fournisseur inactif (retiré, avec historique)
 function vFourn(){
   const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
-  const tri=(a,b)=>(isParent(b)-isParent(a))||(isRayon(b)-isRayon(a))||((isRayon(a)&&isRayon(b))?(a.ordre??99)-(b.ordre??99):nk(a.nom).localeCompare(nk(b.nom)));
+  // v81 : classés par montant d'achats de l'année en cours (DIAPAR = total de ses rayons, ses rayons juste en dessous)
+  const an=todayISO().slice(0,4),tot={};Object.entries(S.mois).forEach(([k,d])=>{if(k.startsWith(an+"-")&&d&&d.jours)Object.values(d.jours).forEach(j=>Object.entries((j&&j.achats)||{}).forEach(([id,v])=>{tot[id]=(tot[id]||0)+(v||0)}))});
+  const mt=f=>isParent(f)?S.fourn.filter(x=>x.groupe===f.id).reduce((s,x)=>s+(tot[x.id]||0),0):(tot[f.id]||0),tete=f=>isRayon(f)?S.fourn.find(x=>x.id===f.groupe)||f:f;
+  const tri=(a,b)=>{const A=tete(a),B=tete(b);if(A!==B)return mt(B)-mt(A)||nk(A.nom).localeCompare(nk(B.nom));if(isParent(a)!==isParent(b))return isParent(b)-isParent(a);return mt(b)-mt(a)||nk(a.nom).localeCompare(nk(b.nom))};
   const act=S.fourn.filter(f=>!isInactif(f)).sort(tri),ina=S.fourn.filter(isInactif).sort(tri); // v79 : actifs + tableau « Fournisseurs inactifs »
   const ligne=f=>{const u=fUsage(f.id),fixe=isRayon(f)||isParent(f);
     return `<tr><td class="l"><input id="fn-${esc(f.id)}" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" style="width:220px" aria-label="Nom du fournisseur"></td>
       <td class="l">${isRayon(f)?`Rayon ${esc(fName(f.groupe))}`:isParent(f)?"Regroupe ses rayons":""}</td>
-      <td class="l">${u.ans.length?"Achats "+u.ans.join(", "):"Aucun achat"}${u.av?` · ${u.av} avoir${u.av>1?"s":""}`:""}</td>
+      <td class="l">${mt(f)?`<b>${eur.format(mt(f))}</b> en ${an} · `:""}${isParent(f)?"Total de ses rayons":u.ans.length?"Achats "+u.ans.join(", "):"Aucun achat"}${u.av?` · ${u.av} avoir${u.av>1?"s":""}`:""}</td>
       <td style="text-align:right">${fixe?"":isInactif(f)?`<button class="btn small" data-fback="${esc(f.id)}">Remettre</button>`:`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</td></tr>`};
   return `
   <h2 style="margin-top:4px">Fournisseurs — ${esc(storeNom())}</h2>
