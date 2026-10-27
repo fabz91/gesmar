@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="79">
+<meta name="gm-version" content="80">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -365,7 +365,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=79;
+const APP_VERSION=80;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -534,13 +534,13 @@ function vBord(){
   // achats par fournisseur
   const par={};act.forEach(s=>{for(const[k,v]of Object.entries(s.par))par[k]=(par[k]||0)+v});
   // v73 : plus aucun regroupement par nom (SAINT PRIM, ISLA, MARIANO, MONTPERAL : chaque fournisseur sur sa ligne) ;
-  // DIAPAR en premier (avec ses rayons), puis l'ordre de la saisie ; seuls les fournisseurs avec des achats dans l'année sont affichés
+  // v80 : classés du plus gros au plus petit montant d'achats (rayons de DIAPAR aussi) ; seuls les fournisseurs avec des achats dans l'année sont affichés
   const nkD=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();
   const ordOne=k=>{const o=S.fourn.filter(f=>f.id===k||f.groupe===k).map(f=>f.ordre).filter(x=>x!=null);return o.length?Math.min(...o):999};
   const ordOf=k=>nkD(fName(k))==="DIAPAR"?-1:ordOne(k);
   const G={};for(const[k,v]of Object.entries(par)){const g=grp(k)||k;G[g]=G[g]||{tot:0,sub:{}};G[g].tot+=v;if(grp(k))G[g].sub[k]=(G[g].sub[k]||0)+v}
   Object.values(G).forEach(g=>g.sub=Object.entries(g.sub).filter(x=>Math.abs(x[1])>=0.005));
-  const parL=Object.entries(G).filter(x=>Math.abs(x[1].tot)>=0.005).sort((a,b)=>ordOf(a[0])-ordOf(b[0])||b[1].tot-a[1].tot);const maxP=parL.length?Math.max(...parL.map(x=>x[1].tot)):1;
+  const parL=Object.entries(G).filter(x=>Math.abs(x[1].tot)>=0.005).sort((a,b)=>b[1].tot-a[1].tot);const maxP=parL.length?Math.max(...parL.map(x=>x[1].tot)):1;
   const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
   return `
   ${periode("annee")}
@@ -558,7 +558,7 @@ function vBord(){
     <div class="panel"><div class="band">Taux de marge par mois</div>${chart(ms,pv,y)}
       ${best?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(best)]} (${pct(best.taux)}). Plus faible : ${MOIS[ms.indexOf(worst)]} (${pct(worst.taux)}).</p>`:""}</div>
     <div class="panel"><div class="band">Achats ${y} par fournisseur</div>
-      ${parL.length?`<div class="hb">${parL.map(([k,g])=>hbRow(k,g.tot,false)+g.sub.sort((a,b)=>ordOf(a[0])-ordOf(b[0])).map(([s,v])=>hbRow(s,v,true)).join("")).join("")}</div>`:`<p class="sub">Aucun achat saisi.</p>`}
+      ${parL.length?`<div class="hb">${parL.map(([k,g])=>hbRow(k,g.tot,false)+g.sub.sort((a,b)=>b[1]-a[1]).map(([s,v])=>hbRow(s,v,true)).join("")).join("")}</div>`:`<p class="sub">Aucun achat saisi.</p>`}
     </div>
   </div>
   <div class="gap"></div>
