@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="68">
+<meta name="gm-version" content="69">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -357,7 +357,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=68;
+const APP_VERSION=69;
 const RELANCE_JOURS=7;
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
@@ -713,7 +713,7 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   ${S.edit?vForm():""}
   <div class="panel flush"><div class="band">Avoirs<button class="pillbtn" data-act="new">+ Nouveau</button></div><div class="scroll"><table>
-    <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant TTC</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
+    <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant HT</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
     <tbody>${list.length?list.map(a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a);
       return `<tr><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
       <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}</td>
@@ -737,7 +737,7 @@ function vForm(){
     <label>N° de facture / BL<input id="av-facture" value="${esc(a.facture)}"></label>
     <label>Quantité<input id="av-quantite" value="${esc(a.quantite)}" placeholder="Ex. 2 colis"></label>
     <label>Motif<select id="av-motif">${MOTIFS.map(m=>`<option ${a.motif===m?"selected":""}>${m}</option>`).join("")}</select></label>
-    <label>Montant TTC (€)<input id="av-montant" inputmode="decimal" value="${a.montant!=null?n2.format(a.montant):""}" placeholder="Laisser vide si inconnu"></label>
+    <label>Montant HT (€)<input id="av-montant" inputmode="decimal" value="${a.montant!=null?n2.format(a.montant):""}" placeholder="Laisser vide si inconnu"></label>
     <label>Statut<select id="av-statut">${STATUTS.map(([k,l])=>`<option value="${k}" ${a.statut===k?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="wide">Infos<textarea id="av-infos" rows="2">${esc(a.infos)}</textarea></label>
     ${(a.relances||[]).length?`<div class="wide hist">Relances : ${a.relances.map(frDate).join(", ")}</div>`:""}
@@ -789,7 +789,7 @@ async function saveAvoir(form){
 function avTexte(a){const d=x=>x?frDate(x):"";const rel=(a.relances||[]).slice().sort();
   // v55 : produit, date de facture, n° de facture, quantité, motif, montant, puis chaque relance (seulement ce qui est rempli)
   return [`Produit : ${a.produit||""}`,a.date?`Date de facture : ${d(a.date)}`:"",a.facture?`N° de facture : ${a.facture}`:"",a.quantite?`Quantité : ${a.quantite}`:"",
-    a.motif?`Motif : ${a.motif}`:"",a.montant?`Montant : ${eur2.format(a.montant)} TTC`:"",...rel.map((r,k)=>`Relance ${k+1} : ${d(r)}`)].filter(Boolean).join("\n")}
+    a.motif?`Motif : ${a.motif}`:"",a.montant?`Montant : ${eur2.format(a.montant)} HT`:"",...rel.map((r,k)=>`Relance ${k+1} : ${d(r)}`)].filter(Boolean).join("\n")}
 async function avCopier(id){const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=avTexte(a);
   try{await navigator.clipboard.writeText(t)}catch(e){const x=document.createElement("textarea");x.value=t;document.body.appendChild(x);x.select();try{document.execCommand("copy")}catch(_){}x.remove()}
   toast("Avoir copié : collez-le dans votre e-mail (Ctrl+V)")}
