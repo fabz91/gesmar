@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="90">
+<meta name="gm-version" content="91">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -330,6 +330,9 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .avsf.prop{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.avsf.prop:hover{background:var(--warn);color:#fff}
 .cmpgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.cmpgrid{grid-template-columns:1fr}}
 .cmpl{display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--line);font-size:13px}.cmpl>span{color:var(--muted);min-width:110px}
+.facbtn{margin-left:auto;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 14px;font:800 13px var(--display);letter-spacing:.03em;cursor:pointer;display:flex;align-items:center;gap:6px}
+.facbtn.on{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.facbtn .cnt{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--red-2);color:var(--on-red);font-size:11px;text-align:center}
+.facreg{display:grid;gap:10px;font-size:13px}.facreg .row{gap:8px;flex-wrap:wrap;align-items:center}
 .facmode{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .facprop{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .avvues{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
@@ -386,7 +389,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=90;
+const APP_VERSION=91;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -534,8 +537,8 @@ function render(){
   facBadge();if(S.fac&&S.fac.ouvert)facRender();
 }
 
-function periode(mode){
-  return `<div class="periode"><button class="nav" data-per="-1" aria-label="Précédent">‹</button>${mode==="mois"?`<select id="perMois" aria-label="Mois">${MOIS.map((n,i)=>`<option value="${i}" ${i===S.month?"selected":""}>${n}</option>`).join("")}</select>`:""}<input id="perAn" type="number" inputmode="numeric" min="2000" max="2100" value="${S.year}" aria-label="Année"><button class="nav" data-per="1" aria-label="Suivant">›</button></div>`}
+function periode(mode,extra){
+  return `<div class="periode"><button class="nav" data-per="-1" aria-label="Précédent">‹</button>${mode==="mois"?`<select id="perMois" aria-label="Mois">${MOIS.map((n,i)=>`<option value="${i}" ${i===S.month?"selected":""}>${n}</option>`).join("")}</select>`:""}<input id="perAn" type="number" inputmode="numeric" min="2000" max="2100" value="${S.year}" aria-label="Année"><button class="nav" data-per="1" aria-label="Suivant">›</button>${extra||""}</div>`}
 
 function vBord(){
   const y=S.year;const ms=MOIS.map((_,m)=>monthStats(y,m));const act=ms.filter(s=>s.ca>0);
@@ -682,7 +685,7 @@ function vSaisie(){
   const hidAmt=retirees.map(f=>[f,st.par[f.id]||0]);
   const totCells=runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${tf(f)}</td>`).join("")).join("");
   return `
-  ${periode("mois")}
+  ${periode("mois",`<button class="facbtn" data-act="factures" title="Factures que GESMAR n'a pas pu lire seul">🧾 Factures à traiter<span class="cnt" id="facCnt" hidden></span></button>`)}
   <div class="grid kpis kpis-s" style="margin-bottom:10px">
     <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">CA N-1 : ${n1ca?eur.format(n1ca):"—"}</span></div>
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">Achats N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
@@ -690,7 +693,7 @@ function vSaisie(){
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.taux)}</span><span class="d">Marge ${eur.format(st.marge)}</span></div>
     <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} TTC obtenus ce mois</span></div>
   </div>
-  <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Fournisseur</button><button class="pillbtn" data-act="factures" title="Lire les factures du dossier OneDrive">📄 Factures<span class="cnt" id="facCnt" hidden></span></button></div><div class="scroll sheet-scroll"><table class="sheet">
+  <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Fournisseur</button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td>${hasN1?`<td>${caN1Tot?n2.format(caN1Tot):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${false?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour afficher dans ce mois) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Afficher ${esc(f.nom)} dans ce mois">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button></span>`).join("")}</div>`:""}</div>
@@ -1205,7 +1208,8 @@ async function facScan(silent){
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
 }
 const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
-function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facAImporter().length;b.hidden=!n;b.textContent=n}
+const facATraiter=()=>facAImporter().filter(r=>!facAutoOn()||!facPret(r)); // v91 : celles que GESMAR n'a pas pu écrire seul
+function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facATraiter().length;b.hidden=!n;b.textContent=n;const k=b.closest(".facbtn");if(k)k.classList.toggle("on",!!n)}
 async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
 async function facSetDepart(v){if(!v){toast("Choisissez une date");return}
   try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});await facScan()}catch(e){fail(e)}}
@@ -1225,10 +1229,11 @@ async function facEcrire(lignes){const parMois={};for(const l of lignes){if(!l.d
 async function facCreerFourn(nom){const nm=String(nom).trim().toUpperCase()||"NOUVEAU";const k=FAC.nk(nm).toLowerCase();let id=k.slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.slice(0,26)+n}
   const ordre=S.fourn.reduce((m,f)=>Math.max(m,f.ordre??0),0)+1;
   await S.db.doc(P("fournisseurs/"+id)).set({nom:nm,ordre,actif:true,colonne:false,avoirs:true,contact:"",mail:""});S.fourn.push({id,nom:nm,ordre,actif:true,colonne:false});return id}
-async function facImporter(auto){
+async function facImporter(auto,only){
   if(S.fac.imp)return;
   let L;
-  if(auto){ // v87 : sans validation. On relit d'abord la base pour ne pas importer deux fois une facture déjà prise par un autre poste.
+  if(only)L=only;
+  else if(auto){ // v87 : sans validation. On relit d'abord la base pour ne pas importer deux fois une facture déjà prise par un autre poste.
     try{if(typeof SYNC!=="undefined"&&SYNC.poll)await SYNC.poll()}catch(_){}
     const reg=S.facImp||{},deja=new Set(Object.values(reg).filter(x=>x&&x.s==="i"&&x.id).map(x=>x.id));
     S.fac.liste=S.fac.liste.filter(r=>!reg[r.key]&&!(r.total!=null&&deja.has(r.ident)));
@@ -1236,7 +1241,7 @@ async function facImporter(auto){
   else{L=facAImporter().filter(r=>r.ok);if(!L.length){toast("Cochez au moins une facture");return}
   const sans=L.filter(r=>r.lignes&&!r.lignes.length&&r.saisi==null);if(sans.length){toast("Montant ou date manquant pour "+sans.length+" facture(s) : complétez ou décochez");return}}
   const nf=[...new Set(L.filter(r=>r.choix==="__new__").map(r=>r.dossier))];
-  if(!auto&&!await askConfirm("Importer "+L.length+" facture(s) dans "+storeNom()+" ?"+(nf.length?"\n\nNouveau(x) fournisseur(s) créé(s) : "+nf.join(", "):"")+"\n\nLes montants s'ajoutent aux cases de la saisie (jour de la facture, ou jour de livraison pour les factures regroupées)."))return;
+  if(!auto&&!only&&!await askConfirm("Importer "+L.length+" facture(s) dans "+storeNom()+" ?"+(nf.length?"\n\nNouveau(x) fournisseur(s) créé(s) : "+nf.join(", "):"")+"\n\nLes montants s'ajoutent aux cases de la saisie (jour de la facture, ou jour de livraison pour les factures regroupées)."))return;
   HIST.lastT=Date.now();let nOk=0,nAv=0;const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{}),crees={};S.fac.imp=true;
   try{
     for(const r of L){let fid=r.choix;
@@ -1244,7 +1249,7 @@ async function facImporter(auto){
       if(FAC.nk(r.dossier)!=="DIAPAR")liens[FAC.nk(r.dossier)]=fid;
       const f=S.fourn.find(x=>x.id===fid);if(f&&isInactif(f))await fUpdate(fid,{actif:true,supprime:false});
       let lignes=(r.lignes||[]).map(l=>({date:l.date,col:l.col||fid,montant:l.montant}));
-      if(r.saisi!=null&&r.date)lignes=[{date:r.date,col:(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col||fid,montant:r.type==="avoir"?-Math.abs(r.saisi):r.saisi}];
+      if(r.saisi!=null&&r.date)lignes=[{date:r.date,col:r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col||fid,montant:r.type==="avoir"?-Math.abs(r.saisi):r.saisi}];
       await facEcrire(lignes);
       const total=lignes.reduce((s,l)=>s+l.montant,0);
       await S.db.doc(P("factures/"+r.key)).set({s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,le:todayISO()});
@@ -1265,6 +1270,15 @@ async function facImporter(auto){
   finally{S.fac.imp=false}}
 async function facSetAuto(on){try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({auto:on});else await ref.set({depart:todayISO(),liens:{},auto:on});
   S.facReg=Object.assign({},S.facReg||{},{auto:on});S.fac.force=true;facRender();toast(on?"Import automatique activé":"Import manuel : les factures attendent votre validation");if(on)facScan()}catch(e){fail(e)}}
+// v91 : classer à la main une facture que GESMAR n'a pas pu lire (fournisseur, date et montant choisis dans la fenêtre)
+async function facClasser(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
+  const row=document.querySelector(`#facRoot [data-facmt="${CSS.escape(rel)}"]`),dt=document.querySelector(`#facRoot [data-facdate="${CSS.escape(rel)}"]`);
+  const v=parseNum(row?row.value:"");const d=(dt&&dt.value)||r.dateSaisie||r.date;
+  if(v==null||Number.isNaN(v)||!v){toast("Indiquez le montant TTC (avec − pour un avoir)");row&&row.focus();return}
+  if(!d){toast("Indiquez la date de la facture");dt&&dt.focus();return}
+  if(r.choix==="__new__"&&!r.dossier){toast("Choisissez le fournisseur");return}
+  const c=Object.assign(r,{date:d,saisi:v,avant:false,type:v<0?"avoir":r.type==="avoir"?"facture":r.type});
+  await facImporter(false,[c]);S.fac.force=true;facRender()}
 async function facIgnorer(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
   try{await S.db.doc(P("factures/"+r.key)).set({s:"x",n:r.nom,le:todayISO()});S.fac.liste=S.fac.liste.filter(x=>x!==r);toast("Document ignoré : il ne sera plus proposé");facRender();facBadge()}catch(e){fail(e)}}
 
@@ -1320,52 +1334,54 @@ function facFermer(){S.fac.ouvert=false;const o=document.getElementById("facRoot
 function facOpts(r){const L=S.fourn.filter(f=>!f.groupe&&!isParent(f)).sort((a,b)=>String(a.nom).localeCompare(String(b.nom)));
   return `${r.fid?"":`<option value="__new__" ${r.choix==="__new__"?"selected":""}>Créer « ${esc(String(r.dossier).toUpperCase())} »</option>`}`+L.map(f=>`<option value="${esc(f.id)}" ${r.choix===f.id?"selected":""}>${esc(f.nom)}${isInactif(f)?" (inactif)":""}</option>`).join("")}
 const FAC_COL={epicerie:"Épicerie",aa:"A/A",frais:"Frais"};
-function facRender(){if(!S.fac.ouvert)return;let o=document.getElementById("facRoot");
+function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==="function")renderModal();
+  if(!S.fac.ouvert)return;let o=document.getElementById("facRoot");
   if(!o){o=document.createElement("div");o.id="facRoot";o.className="facov";document.body.appendChild(o)}
   const a=document.activeElement;if(a&&o.contains(a)&&/INPUT|SELECT/.test(a.tagName)&&!S.fac.force)return;S.fac.force=false;
-  const F=S.fac,dep=facDepart();let body="";
-  if(!FAC_API())body=`<p>La lecture des factures marche dans le <b>programme GESMAR du PC</b>, installé avec le <b>nouveau kit</b> (version 86 ou plus).</p><p class="sub">Réinstallez GESMAR une fois avec le nouveau kit : vos données sont gardées. Ensuite, cette fenêtre trouve toute seule les nouvelles factures.</p>`;
-  else if(F.etat==="nodir")body=`<p>Choisissez le dossier <b>Documents</b> du OneDrive de la comptable : celui qui contient <b>2026</b> (et plus tard 2027).</p><button class="btn primary" data-facdir="1">Choisir le dossier</button>`;
-  else if(F.etat==="absent")body=`<p>Le dossier <b>${esc(F.root||"")}</b> est introuvable. OneDrive est-il bien ouvert sur ce PC ?</p><button class="btn primary" data-facdir="1">Choisir un autre dossier</button> <button class="btn" data-facscan="1">Réessayer</button>`;
-  else if(F.etat==="nodepart")body=`<p>À partir de quelle date GESMAR doit-il importer les factures ?</p><p class="sub">Les factures d'avant ont déjà été tapées à la main : elles ne seront pas lues.</p>
-    <div class="row"><input type="date" id="facDep" value="${todayISO()}"><button class="btn primary" data-facdep="1">Valider</button></div>`;
-  else if(F.etat==="erreur")body=`<p>⚠️ Lecture impossible : ${esc(F.err||"")}</p><button class="btn" data-facscan="1">Réessayer</button>`;
-  else if(F.etat==="lecture"&&!F.liste.length)body=`<p>${esc(F.prog||"Lecture…")}</p>`;
-  else{const L=facAImporter(),autres=F.liste.filter(r=>r.mag!==S.store),nOk=L.filter(r=>r.ok).length;
-    const etat=r=>r.type==="avoir"?`<span class="pill s-relance">Avoir</span>`:r.verif&&r.verif.length||r.avant||r.nouveau||(r.deja&&r.deja.length)?`<span class="pill s-declare">À vérifier</span>`:`<span class="pill s-deduit">OK</span>`;
-    const det=r=>{const x=[];if(r.numero)x.push("N° "+esc(r.numero));if(r.lignes&&r.lignes[0]&&FAC_COL[r.lignes[0].col])x.push(FAC_COL[r.lignes[0].col]);
-      if(r.decoupe)x.push(`<span title="${esc(r.lignes.map(l=>frDate(l.date)+" : "+n2.format(l.montant)+" €").join("\n"))}">réparti sur ${r.lignes.length} jours de livraison ⓘ</span>`);
-      if(r.avoirs&&r.avoirs.length&&r.type!=="avoir")x.push(r.avoirs.length+" ligne(s) d'avoir déjà déduite(s)");
-      const v=(r.verif||[]).slice();if(r.deja&&r.deja.length)v.push("Case déjà remplie ("+r.deja.join(", ")+") : le montant s'y ajoutera");if(r.avant)v.push("Datée d'avant le "+frDate(dep)+" : déjà saisie ?");if(r.nouveau)v.push("Nouveau fournisseur");
-      return x.join(" · ")+(v.length?`<div class="facwarn">${v.map(esc).join("<br>")}</div>`:"")};
-    const mt=r=>r.decoupe?`<b>${n2.format(r.total)}</b>`:`<input class="facmt" data-facmt="${esc(r.rel)}" inputmode="decimal" value="${r.saisi!=null?n2.format(r.saisi):r.total!=null?n2.format(r.total):""}" placeholder="à remplir" aria-label="Montant TTC">`;
-    const row=r=>`<tr><td><input type="checkbox" data-facok="${esc(r.rel)}" ${r.ok?"checked":""} aria-label="Importer"></td><td class="l">${r.date?frDate(r.date):'<span class="facwarn">?</span>'}</td>
-      <td class="l">${FAC.nk(r.dossier)==="DIAPAR"?"<b>DIAPAR</b>":`<select data-facf="${esc(r.rel)}" aria-label="Fournisseur">${facOpts(r)}</select>`}<div class="hist">${esc(r.dossier)}</div></td>
-      <td class="l" style="white-space:normal;min-width:220px"><div class="hist" style="margin:0 0 2px">${esc(r.nom)}</div>${det(r)}</td>
-      <td>${mt(r)}</td><td class="l">${etat(r)}</td>
-      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end"><button class="btn small" data-facpdf="${esc(r.rel)}" title="Ouvrir le PDF">PDF</button><button class="btn small" data-facign="${esc(r.rel)}" title="Ne plus proposer ce document">Ignorer</button></div></td></tr>`;
-    body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b> dès que la comptable les a créés.</div>`:""}
+  const F=S.fac;let body="";
+  const regl=`<button class="btn primary" data-act="facReglages">Ouvrir Réglages → Dossier des factures</button>`;
+  if(!FAC_API())body=`<p>La lecture des factures marche dans le <b>programme GESMAR du PC</b>, installé avec le <b>nouveau kit</b> (version 86 ou plus).</p><p class="sub">Réinstallez GESMAR une fois avec le nouveau kit : vos données sont gardées.</p>`;
+  else if(["nodir","absent","nodepart","erreur"].includes(F.etat))body=`<p>${F.etat==="erreur"?"⚠️ Lecture impossible : "+esc(F.err||""):F.etat==="absent"?"Le dossier des factures est introuvable sur ce PC.":"Le dossier des factures n'est pas encore réglé."}</p><p class="sub">Tout se règle dans Réglages ⚙ → Dossier des factures.</p>${regl}`;
+  else if(F.etat==="lecture"&&!F.liste.length)body=`<p>${esc(F.prog||"Lecture des factures…")}</p>`;
+  else{const L=facATraiter();
+    const pb=r=>{const v=(r.verif||[]).slice();if(r.total==null&&!v.some(x=>/montant/i.test(x)))v.unshift("Montant introuvable");if(!r.date&&!v.some(x=>/date/i.test(x)))v.unshift("Date introuvable");if(r.avant)v.push("Datée d'avant le "+frDate(facDepart())+" (départ) : déjà saisie à la main ?");if(r.deja&&r.deja.length)v.push("Case déjà remplie ("+r.deja.join(", ")+") : le montant s'y ajoutera");return [...new Set(v)]};
+    const four=r=>FAC.nk(r.dossier)==="DIAPAR"?`<b>DIAPAR</b><select data-faccol="${esc(r.rel)}" aria-label="Rayon" style="margin-top:4px;display:block">${["epicerie","aa","frais"].map(c=>`<option value="${c}" ${(r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col)===c?"selected":""}>${FAC_COL[c]}</option>`).join("")}</select>`
+      :`<select data-facf="${esc(r.rel)}" aria-label="Fournisseur">${facOpts(r)}</select>`;
+    const mt=r=>r.saisi!=null?r.saisi:r.total;
+    const row=r=>`<tr><td><button class="btn small primary" data-facpdf="${esc(r.rel)}" title="Ouvrir le PDF">📄 PDF</button></td>
+      <td class="l" style="white-space:normal;min-width:240px"><b>${esc(r.nom)}</b><div class="hist">Dossier ${esc(r.dossier)}${r.type==="avoir"?" · avoir":""}${r.decoupe?" · réparti sur "+r.lignes.length+" jours":""}</div><div class="facwarn">${pb(r).map(esc).join("<br>")}</div></td>
+      <td class="l">${four(r)}</td>
+      <td><input type="date" data-facdate="${esc(r.rel)}" value="${esc(r.dateSaisie||r.date||"")}" aria-label="Date de la facture"></td>
+      <td><input class="facmt" data-facmt="${esc(r.rel)}" inputmode="decimal" value="${mt(r)!=null?n2.format(mt(r)):""}" placeholder="à remplir" aria-label="Montant TTC"><div class="hist">avoir : montant en moins (−)</div></td>
+      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end"><button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button><button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button></div></td></tr>`;
+    body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b>.</div>`:""}
       ${F.prog?`<p class="sub">${esc(F.prog)}</p>`:""}
-      ${L.length?`<div class="scroll" style="max-height:58vh"><table class="factab"><thead><tr><th></th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Détail</th><th>Montant TTC</th><th class="l">État</th><th></th></tr></thead><tbody>${L.map(row).join("")}</tbody></table></div>`
-        :`<div class="empty-state">${facAutoOn()?"Aucune facture en attente : tout est importé.":"Aucune nouvelle facture"+(dep?" depuis le "+frDate(dep):"")+"."}</div>`}
-      ${autres.length?`<p class="sub" style="margin-top:8px">${autres.length} facture(s) d'un autre magasin (${[...new Set(autres.map(r=>(S.magasins.find(m=>m.id===r.mag)||{}).nom||r.mag))].join(", ")}) : changez de magasin (maison) pour les importer.</p>`:""}
-      ${F.ecartes.length?`<details style="margin-top:8px"><summary class="sub" style="cursor:pointer">${F.ecartes.length} document(s) écarté(s) (bons de livraison, relevés, copies, déjà importés…)</summary><div class="hist" style="max-height:24vh;overflow:auto;margin-top:6px">${F.ecartes.map(x=>esc(x.rel)+" — "+esc(x.raison)).join("<br>")}</div></details>`:""}
-      <div class="row" style="justify-content:space-between;margin-top:12px"><div class="row"><button class="btn" data-facscan="1" ${F.busy?"disabled":""}>Relire le dossier</button><button class="btn" data-facdir="1">Changer de dossier</button></div>
-        <button class="btn primary" data-facimp="1" ${!nOk||F.busy?"disabled":""}>Importer ${nOk} facture${nOk>1?"s":""}</button></div>`}
-  o.innerHTML=`<div class="facbox"><div class="band">Factures — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">
-    ${FAC_API()&&F.root?`<div class="hist" style="margin-bottom:8px">Dossier : ${esc(F.root)}${dep?" · factures à partir du "+frDate(dep):""}</div>`:""}
-    ${FAC_API()&&F.etat==="ok"?`<div class="facmode"><span>${facAutoOn()?"<b>Import automatique</b> : toutes les 15 minutes, les nouvelles factures et avoirs sont lus et écrits dans la saisie. Restent ici seulement ceux à compléter.":"<b>Import manuel</b> : les factures attendent votre validation."}</span><button class="btn small" data-facauto="${facAutoOn()?"0":"1"}">${facAutoOn()?"Passer en manuel":"Passer en automatique"}</button></div>`:""}
-    ${F.dernierImport?`<div class="hist" style="margin-bottom:8px">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
-    ${body}${FAC_API()&&F.etat==="ok"?facRecentes():""}</div></div>`}
+      ${L.length?`<p class="sub" style="margin:0 0 10px">GESMAR n'a pas pu lire seul ${L.length>1?"ces factures":"cette facture"}. Ouvrez le PDF, choisissez le fournisseur, vérifiez la date et le montant TTC, puis cliquez sur <b>Classer</b> : le montant va dans la saisie.</p>
+        <div class="scroll" style="max-height:62vh"><table class="factab"><thead><tr><th></th><th class="l">Facture</th><th class="l">Fournisseur</th><th>Date</th><th>Montant TTC</th><th></th></tr></thead><tbody>${L.map(row).join("")}</tbody></table></div>`
+        :`<div class="empty-state">✓ Aucune facture à traiter : toutes les factures ont été lues et classées.</div>`}`}
+  o.innerHTML=`<div class="facbox"><div class="band">Factures à traiter — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`}
+// v91 : réglages du dossier des factures (Réglages ⚙ → Dossier des factures)
+function facReglagesHtml(){const F=S.fac,dep=facDepart();
+  if(!FAC_API())return `La lecture des factures marche dans le programme GESMAR du PC installé avec le <b>nouveau kit</b> (version 86 ou plus). Réinstallez GESMAR une fois : vos données sont gardées.`;
+  const etat=F.busy?esc(F.prog||"Lecture…"):F.etat==="absent"?"⚠️ Dossier introuvable sur ce PC (OneDrive ouvert ?)":F.etat==="erreur"?"⚠️ "+esc(F.err||"Lecture impossible"):F.dernier?"Dernière lecture : "+new Date(F.dernier).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
+  return `<div class="facreg">
+    <div><b>Dossier</b> : ${F.root?esc(F.root):"aucun"}<div class="hist">Le dossier « Documents » du OneDrive de la comptable (celui qui contient 2026, 2027…).</div></div>
+    <div class="row"><button class="btn small" data-facdir="1">${F.root?"Changer de dossier":"Choisir le dossier"}</button><button class="btn small" data-facscan="1" ${F.busy||!F.root?"disabled":""}>Relire maintenant</button></div>
+    <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"><button class="btn small" data-facdep="1">Enregistrer</button></div>
+    <div class="row" style="justify-content:space-between"><span><b>Import ${facAutoOn()?"automatique":"manuel"}</b>${facAutoOn()?" : toutes les 15 minutes":" : à valider dans Factures à traiter"}</span><button class="btn small" data-facauto="${facAutoOn()?"0":"1"}">${facAutoOn()?"Passer en manuel":"Passer en automatique"}</button></div>
+    ${etat?`<div class="hist">${etat}</div>`:""}${F.dernierImport?`<div class="hist">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
+    ${facRecentes()}</div>`}
 // v87 : les dernières factures importées (registre synchronisé)
 function facRecentes(){const L=Object.values(S.facImp||{}).filter(x=>x&&x.s==="i").sort((a,b)=>String(b.le).localeCompare(String(a.le))||String(b.d).localeCompare(String(a.d))).slice(0,40);
   if(!L.length)return"";
   return `<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Dernières factures importées (${L.length})</summary><div class="scroll" style="max-height:30vh;margin-top:6px"><table><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th></tr></thead><tbody>
     ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}</td></tr>`).join("")}</tbody></table></div></details>`}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-act='factures']");
+document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-act='factures'],[data-act='facReglages']");
   if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
   if(b.dataset.act==="factures"){facOuvrir();return}
   if(b.dataset.facauto){facSetAuto(b.dataset.facauto==="1");return}
+  if(b.dataset.faccl){facClasser(b.dataset.faccl);return}
+  if(b.dataset.act==="facReglages"){facFermer();S.modal=true;S.modalPanel="factures";render();return}
   if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){S.fac.liste=[];facScan()}
   else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter(false);
   else if(b.dataset.facpdf)window.api.facOuvrir(b.dataset.facpdf).catch(()=>toast("Ouverture du PDF impossible"));else if(b.dataset.facign)facIgnorer(b.dataset.facign)});
@@ -1373,7 +1389,9 @@ document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closes
   const R=rel=>S.fac.liste.find(x=>x.rel===rel);
   if(t.dataset.facok){const r=R(t.dataset.facok);if(r)r.ok=t.checked;S.fac.force=true;facRender()}
   if(t.dataset.facf){const r=R(t.dataset.facf);if(r)r.choix=t.value}
-  if(t.dataset.facmt){const r=R(t.dataset.facmt),v=parseNum(t.value);if(!r)return;if(Number.isNaN(v)){toast("Montant illisible : par ex. 845,07");return}r.saisi=v;if(v!=null&&r.date)r.ok=true;S.fac.force=true;facRender()}});
+  if(t.dataset.faccol){const r=R(t.dataset.faccol);if(r)r.colChoix=t.value}
+  if(t.dataset.facdate){const r=R(t.dataset.facdate);if(r)r.dateSaisie=t.value}
+  if(t.dataset.facmt){const r=R(t.dataset.facmt),v=parseNum(t.value);if(!r)return;if(Number.isNaN(v)){toast("Montant illisible : par ex. 845,07");return}r.saisi=v;if(v!=null&&r.date)r.ok=true}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.fac.ouvert&&!document.querySelector(".facov#facProp")){facFermer()}});
 // Recherche automatique : au démarrage, puis toutes les 15 minutes et au retour sur la fenêtre (au plus toutes les 5 minutes)
 function facAuto(){if(!FAC_API())return;const go=()=>{if(S.fac.busy||Date.now()-(S.fac.dernier||0)<300000)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;facScan(true)};
@@ -1745,6 +1763,8 @@ function renderModal(){
     ${P1==="import"&&S.importPending?`<div class="rinfo">Importer <b>${S.importPending.length} éléments</b> ? Les données portant le même nom seront remplacées.<div class="row" style="margin-top:8px"><button class="btn red small" data-act="importOk">Importer</button><button class="btn small" data-act="importNo">Annuler</button></div></div>`:""}
     <button class="rbtn" ${S.pc?'data-act="openFolder"':'data-panel="dossier"'}><span class="ic">📁</span>Dossier des données</button>
     ${P1==="dossier"?`<div class="rinfo">${infoDonnees()}</div>`:""}
+    <button class="rbtn" data-panel="factures"><span class="ic">🧾</span>Dossier des factures</button>
+    ${P1==="factures"?`<div class="rinfo">${facReglagesHtml()}</div>`:""}
     <h4>Logiciel</h4>
     <button class="rbtn" ${S.pc&&window.api.updateCheck?'data-act="majPc"':'data-panel="maj"'} ${S.majBusy?"disabled":""}><span class="ic">🔄</span>Mettre à jour le logiciel${majBadge()?'<span class="pas" aria-label="1 nouvelle version">1</span>':""}</button>
     ${S.pc?`<div class="rmaj">${esc(S.majMsg||("Version installée : "+APP_VERSION))}</div>`:""}
