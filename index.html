@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="94">
+<meta name="gm-version" content="95">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -389,7 +389,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=94;
+const APP_VERSION=95;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1206,6 +1206,8 @@ async function facScan(silent){
       // v92 : état des cases de la saisie : vides, déjà égales au montant (déjà tapée à la main), ou remplies avec autre chose
       {const cs=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],j=doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)];return {cur:(col&&j&&j.achats&&j.achats[col])||0,m:l.montant}});
         r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(c=>Math.abs(c.cur-c.m)<=0.05||(r.decoupe&&Math.abs(c.cur-c.m)<=Math.max(1,Math.abs(c.m)*0.01)))?"egal":"diff"}
+      // v95 : facture regroupée (Saint Prim, CDPO…) : découpée jour par jour, elle remplace ce qui a été tapé à la main, sans question
+      if(r.decoupe&&r.etatSaisie==="diff"){r.etatSaisie="remp";r.remplacer=true}
       if(!old&&r.etatSaisie==="diff")r.ok=false;
       r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" € déjà saisis":null}).filter(Boolean);
       liste.push(r)}
