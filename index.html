@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="101">
+<meta name="gm-version" content="102">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -323,6 +323,12 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 #avLate.blink svg{animation:updBlink 1s ease-in-out infinite}
 
 /* v86 : factures et avoirs automatiques */
+.facpops{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.facpopbtn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:1px solid var(--line,#ddd);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit;cursor:pointer;text-align:left}
+.facpopbtn:hover:not(:disabled){border-color:var(--green)}.facpopbtn:disabled{opacity:.5;cursor:default}
+.facpopbtn .t{flex:1;font-weight:600}.facpopbtn .n{min-width:26px;padding:1px 8px;border-radius:999px;background:var(--sunk);font-size:12px;text-align:center}.facpopbtn .chev{font-size:18px;opacity:.6}
+.poptab{width:100%;border-collapse:collapse;font-size:14px}.poptab th{font-size:12px;text-transform:uppercase;opacity:.7;padding:6px 8px;border-bottom:1px solid var(--line,#ddd)}
+.poptab td{padding:8px;border-bottom:1px solid var(--line,#eee);vertical-align:middle}.poptab td.fic{white-space:normal;word-break:break-word}.poptab tr:hover td{background:rgba(127,127,127,.06)}
 .facov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:grid;place-items:center;padding:16px}
 .facbox{background:var(--surface);color:var(--fg);border-radius:12px;max-width:1180px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .facbox>.band{border-radius:12px 12px 0 0;position:sticky;top:0;z-index:2}
@@ -393,7 +399,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=101;
+const APP_VERSION=102;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1402,11 +1408,31 @@ function facReglagesFac(){const F=S.fac,dep=facDepart();
   const etat=F.busy?esc(F.prog||"Lecture…"):F.etat==="absent"?"⚠️ Dossier introuvable sur ce PC (OneDrive ouvert ?)":F.etat==="erreur"?"⚠️ "+esc(F.err||"Lecture impossible"):"";
   return `<div class="facreg">
     <div><b>Dossier</b> : ${F.root?esc(F.root):"aucun"}${F.root&&/[\\/]20\d\d[\\/]?$/.test(F.root)?`<div class="facwarn">Choisissez plutôt le dossier <b>Documents</b> (celui au-dessus de ${esc(F.root.match(/(20\d\d)[\\/]?$/)[1])}) : sinon le dossier de l'année prochaine ne sera pas lu.</div>`:""}</div>
-    <div class="row"><button class="btn small" data-facdir="1">${F.root?"Changer de dossier":"Choisir le dossier"}</button><button class="btn small" data-facscan="1" ${F.busy||!F.root?"disabled":""}>Relire maintenant</button></div>
-    <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"></div><div class="hist" style="margin-top:-6px">La date est enregistrée dès qu'elle est changée, puis le dossier est relu.</div>
+    <div class="row"><button class="btn small" data-facdir="1">${F.root?"Changer de dossier":"Choisir le dossier"}</button></div>
+    <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"></div>
+    <div class="row"><button class="btn small primary" data-facscan="1" ${F.busy||!F.root?"disabled":""}>Enregistrer</button></div>
     <div class="row" style="justify-content:space-between"><span><b>Import ${facAutoOn()?"automatique":"manuel"}</b>${facAutoOn()?" : toutes les 15 minutes":" : à valider dans Factures à traiter"}</span><button class="btn small" data-facauto="${facAutoOn()?"0":"1"}">${facAutoOn()?"Passer en manuel":"Passer en automatique"}</button></div>
     ${etat?`<div class="hist">${etat}</div>`:""}${F.dernierImport?`<div class="hist">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
-    ${facRecentes()}${facIgnorees()}</div>`}
+    ${facPopBtns()}</div>`}
+// v102 : « Dernières factures importées » et « Factures ignorées » : boutons qui ouvrent une fenêtre
+function facPopBtns(){const R=Object.values(S.facImp||{}),ni=R.filter(x=>x&&x.s==="i").length,nx=R.filter(x=>x&&x.s==="x").length;
+  const b=(k,ic,t,n)=>`<button class="facpopbtn" data-facpop="${k}"${n?"":" disabled"}><span class="ic">${ic}</span><span class="t">${t}</span><span class="n">${n}</span><span class="chev">›</span></button>`;
+  return `<div class="facpops">${b("imp","📥","Dernières factures importées",ni)}${b("ign","🚫","Factures ignorées",nx)}</div>`}
+function facRelDe(k,x){return (x&&x.r)||(S.fac&&S.fac.rels&&S.fac.rels[k])||Object.keys(facCache()).find(rel=>facKey(rel)===k)||""}
+function facPopHtml(kind){const R=Object.entries(S.facImp||{}),pdf=(k,x)=>{const rel=FAC_API()?facRelDe(k,x):"";return rel?`<button class="btn small" data-poppdf="${esc(rel)}">PDF</button>`:""};
+  if(kind==="imp"){const L=R.filter(([k,x])=>x&&x.s==="i").sort((a,b)=>String(b[1].le).localeCompare(String(a[1].le))||String(b[1].d).localeCompare(String(a[1].d))).slice(0,300);
+    return {titre:"Dernières factures importées ("+L.length+")",corps:L.length?`<table class="poptab"><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th><th></th></tr></thead><tbody>
+      ${L.map(([k,x])=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l fic">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m)+" €":""}${x.dj?`<div class="hist">déjà saisie</div>`:""}</td><td>${pdf(k,x)}</td></tr>`).join("")}</tbody></table>`:`<p class="sub">Aucune facture importée.</p>`}}
+  const L=R.filter(([k,x])=>x&&x.s==="x").sort((a,b)=>String(b[1].le).localeCompare(String(a[1].le)));
+  return {titre:"Factures ignorées ("+L.length+")",corps:L.length?`<p class="sub" style="margin:0 0 10px">Elles ne vont pas dans la saisie. « Reprendre » les relit et les écrit.</p><table class="poptab"><thead><tr><th class="l">Ignorée le</th><th class="l">Fichier</th><th></th></tr></thead><tbody>
+    ${L.map(([k,x])=>`<tr><td class="l">${frDate(x.le)}</td><td class="l fic">${esc(x.n||"")}</td><td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${pdf(k,x)}<button class="btn small primary" data-popund="${esc(k)}">Reprendre</button></div></td></tr>`).join("")}</tbody></table>`:`<p class="sub">Aucune facture ignorée.</p>`}}
+function facPop(kind){const o=document.createElement("div");o.className="facov";o.id="facPop";
+  const fill=()=>{const h=facPopHtml(kind);o.innerHTML=`<div class="facbox" style="max-width:980px"><div class="band" style="display:flex;justify-content:space-between;align-items:center">${esc(h.titre)}<button class="btn small" data-popx="1">Fermer</button></div><div style="padding:14px 16px">${h.corps}</div></div>`};
+  fill();o.addEventListener("click",async e=>{e.stopPropagation();const t=e.target.closest("button");if(!t){if(e.target===o)o.remove();return}
+    if(t.dataset.popx){o.remove();return}
+    if(t.dataset.poppdf){window.api.facOuvrir(t.dataset.poppdf).catch(()=>toast("Ouverture du PDF impossible"));return}
+    if(t.dataset.popund){t.disabled=true;await facReprendre(t.dataset.popund);fill();if(S.modal&&typeof renderModal==="function")renderModal()}});
+  document.getElementById("facPop")&&document.getElementById("facPop").remove();document.body.appendChild(o)}
 // v98 : factures mises de côté avec « Ignorer » : on peut les reprendre (elles sont relues et écrites dans la saisie)
 function facIgnorees(){const L=Object.entries(S.facImp||{}).filter(([k,x])=>x&&x.s==="x").sort((a,b)=>String(b[1].le).localeCompare(String(a[1].le))).slice(0,60);
   if(!L.length)return"";
@@ -1418,6 +1444,7 @@ function facRecentes(){const L=Object.values(S.facImp||{}).filter(x=>x&&x.s==="i
   if(!L.length)return"";
   return `<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Dernières factures importées (${L.length})</summary><div class="scroll" style="max-height:30vh;margin-top:6px"><table><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th></tr></thead><tbody>
     ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}${x.dj?`<div class="hist">déjà saisie</div>`:""}</td></tr>`).join("")}</tbody></table></div></details>`}
+document.addEventListener("click",e=>{const p=e.target.closest("[data-facpop]");if(p){facPop(p.dataset.facpop);return}});
 document.addEventListener("click",e=>{const c=e.target.closest("[data-cascan],[data-cadir]");if(c){if(c.dataset.cadir)caChoisir();else caScan(false,true);return}});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-facund],[data-facdoc],[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-facrep],[data-act='factures'],[data-act='facReglages']");
   if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
@@ -1431,7 +1458,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-facund],[d
   if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){const v=($("#facDep")||{}).value;if(v&&v!==facDepart()){facSetDepart(v);return}S.fac.liste=[];facScan()}
   else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter(false);
   else if(b.dataset.facpdf)window.api.facOuvrir(b.dataset.facpdf).catch(()=>toast("Ouverture du PDF impossible"));else if(b.dataset.facign)facIgnorer(b.dataset.facign)});
-document.addEventListener("change",e=>{if(e.target&&e.target.id==="caDep"){caSetDepuis(e.target.value);return}if(e.target&&e.target.id==="caMag"){caSetMag(e.target.value);return}if(e.target&&e.target.id==="facDep"){const v=e.target.value;if(v&&v!==facDepart())facSetDepart(v);return}}); // v93 : date enregistrée tout de suite
+document.addEventListener("change",e=>{if(e.target&&e.target.id==="caDep"){caSetDepuis(e.target.value);return}if(e.target&&e.target.id==="caMag"){caSetMag(e.target.value);return}}); // v93 : date enregistrée tout de suite
 document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#facRoot"))return;
   const R=rel=>S.fac.liste.find(x=>x.rel===rel);
   if(t.dataset.facok){const r=R(t.dataset.facok);if(r)r.ok=t.checked;S.fac.force=true;facRender()}
