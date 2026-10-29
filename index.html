@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="99">
+<meta name="gm-version" content="100">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -393,7 +393,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=99;
+const APP_VERSION=100;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1396,7 +1396,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
         :`<div class="empty-state">✓ Aucune facture à traiter : toutes les factures ont été lues et classées.</div>`}`}
   o.innerHTML=`<div class="facbox"><div class="band">Factures à traiter — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`}
 // v91 : réglages du dossier des factures (Réglages ⚙ → Dossier des factures)
-function facReglagesHtml(){return facReglagesFac()+caReglagesHtml()}
+function facReglagesHtml(){return facReglagesFac()}
 function facReglagesFac(){const F=S.fac,dep=facDepart();
   if(!FAC_API())return `La lecture des factures marche dans le programme GESMAR du PC installé avec le <b>nouveau kit</b> (version 86 ou plus). Réinstallez GESMAR une fois : vos données sont gardées.`;
   const etat=F.busy?esc(F.prog||"Lecture…"):F.etat==="absent"?"⚠️ Dossier introuvable sur ce PC (OneDrive ouvert ?)":F.etat==="erreur"?"⚠️ "+esc(F.err||"Lecture impossible"):"";
@@ -1481,10 +1481,10 @@ function caAuto(){if(!CA_API())return;let n=0;const t=setInterval(()=>{if(S.ca.e
 async function caChoisir(){try{const d=await window.api.caChoisir();if(d){CA_CACHE={};caScan(false,true)}}catch(e){toast("Choix du dossier impossible")}}
 function caSetDepuis(v){if(!v)return;caCfg().depuis=v;caCfgSave();toast("CA de la caisse à partir du "+frDate(v));caScan(false,true)}
 function caSetMag(v){caCfg().mag=v;caCfgSave();caScan(false,true);if(S.modal)renderModal()}
-function caReglagesHtml(){if(!CA_API())return PC?`<div class="facreg" style="margin-top:14px"><b>CA de la caisse (Videor)</b><div class="hist">Pour remplir tout seul le CA TTC chaque jour, réinstallez GESMAR sur le PC de Videor avec le nouveau kit (vos données sont gardées).</div></div>`:"";
+function caReglagesHtml(){if(!CA_API())return PC?`<div class="facreg"><div class="hist">Pour remplir tout seul le CA TTC chaque jour, réinstallez GESMAR sur le PC de Videor avec le nouveau kit (vos données sont gardées).</div></div>`:"";
   const C=caCfg(),E=S.ca;const etat=E.busy?"Lecture…":E.etat==="absent"?"⚠️ Dossier introuvable sur ce PC":E.etat==="erreur"?"⚠️ "+esc(E.err||"Lecture impossible"):E.etat==="autre"?"Ce PC remplit le CA d'un autre magasin.":E.etat==="ok"?(E.nb||0)+" journées de caisse trouvées":"";
-  return `<div class="facreg" style="margin-top:14px"><div><b>CA de la caisse (Videor)</b></div>
-    <div class="hist" style="margin-top:-4px">Chaque nuit, Videor enregistre la journée de la caisse. GESMAR met ce CA TTC dans la saisie (il remplace ce qui est tapé). Lu au démarrage puis toutes les 15 minutes.</div>
+  return `<div class="facreg">
+    <div class="hist">Chaque nuit, Videor enregistre la journée de la caisse. GESMAR met ce CA TTC dans la saisie (il remplace ce qui est tapé). Lu au démarrage puis toutes les 15 minutes.</div>
     <div><b>Dossier</b> : ${esc(E.dir||"C:\\transfert\\reception\\001")}</div>
     <div class="row"><label for="caMag"><b>Magasin</b></label><select id="caMag">${S.magasins.map(m=>`<option value="${esc(m.id)}"${m.id===C.mag?" selected":""}>${esc(m.nom||m.id)}</option>`).join("")}</select></div>
     <div class="row"><label for="caDep"><b>CA à partir du</b></label><input type="date" id="caDep" value="${esc(C.depuis||"")}"></div>
@@ -1863,6 +1863,8 @@ function renderModal(){
     ${P1==="dossier"?`<div class="rinfo">${infoDonnees()}</div>`:""}
     <button class="rbtn" data-panel="factures"><span class="ic">🧾</span>Dossier des factures</button>
     ${P1==="factures"?`<div class="rinfo">${facReglagesHtml()}</div>`:""}
+    <button class="rbtn" data-panel="ca"><span class="ic">💶</span>Dossier du chiffre d'affaires</button>
+    ${P1==="ca"?`<div class="rinfo">${caReglagesHtml()||"Le chiffre d'affaires se lit dans le programme GESMAR du PC (celui où est installé Videor)."}</div>`:""}
     <h4>Logiciel</h4>
     <button class="rbtn" ${S.pc&&window.api.updateCheck?'data-act="majPc"':'data-panel="maj"'} ${S.majBusy?"disabled":""}><span class="ic">🔄</span>Mettre à jour le logiciel${majBadge()?'<span class="pas" aria-label="1 nouvelle version">1</span>':""}</button>
     ${S.pc?`<div class="rmaj">${esc(S.majMsg||("Version installée : "+APP_VERSION))}</div>`:""}
