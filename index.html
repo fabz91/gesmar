@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="86">
+<meta name="gm-version" content="87">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -325,6 +325,7 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .factab td{vertical-align:top}.factab select{max-width:200px}
 .facmt{width:110px;text-align:right}
 .facwarn{color:var(--warn);font-size:12px;margin-top:3px}
+.facmode{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .facprop{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .avvues{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
 .avvues button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 16px;font:800 13px var(--display);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:flex;gap:8px;align-items:baseline}
@@ -380,7 +381,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=86;
+const APP_VERSION=87;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1125,6 +1126,10 @@ const FAC_ALIAS={VANDERMOORTELE:"CROUSTICO",VANDEMOORTELE:"CROUSTICO",ISLAMONDIA
 const facKey=s=>{let h=5381,h2=52711;s=String(s);for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h=(h*33)^c;h2=(h2*31)^c}return"f"+(h>>>0).toString(36)+(h2>>>0).toString(36)};
 const facNomDate=nom=>{const m=String(nom).match(/FACT-(?:EPIC|FRAIS)-(\d\d)(\d\d)(\d\d)-/i);if(m)return"20"+m[1]+"-"+m[2]+"-"+m[3];return FAC.nomInfo(nom).date||null};
 const facDepart=()=>(S.facReg&&S.facReg.depart)||null;
+// v87 : import automatique (par défaut) : chaque lecture écrit tout de suite les nouvelles factures et avoirs lisibles.
+// Mode manuel de la v86 (liste à valider) : réglage reglages/factures.auto = false (bouton dans la fenêtre Factures).
+const facAutoOn=()=>!(S.facReg&&S.facReg.auto===false);
+const facPret=r=>r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant&&r.lignes&&r.lignes.length>0;
 let FAC_CACHE=null;
 function facCache(){if(!FAC_CACHE){try{FAC_CACHE=JSON.parse(rawLoad("gesmar-factures-cache")||"{}")||{}}catch(e){FAC_CACHE={}}}return FAC_CACHE}
 function facCacheSave(){try{rawSave("gesmar-factures-cache",JSON.stringify(FAC_CACHE||{}))}catch(e){}}
@@ -1190,7 +1195,8 @@ async function facScan(silent){
     liste.sort((a,b)=>String(a.date||"9").localeCompare(String(b.date||"9"))||String(a.dossier).localeCompare(String(b.dossier)));
     S.fac.liste=liste;S.fac.ecartes=ecartes;S.fac.etat="ok";S.fac.dernier=Date.now()}
   catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
-  finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}}
+  finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
+  if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true)}
 const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
 function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facAImporter().length;b.hidden=!n;b.textContent=n}
 async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
@@ -1212,12 +1218,19 @@ async function facEcrire(lignes){const parMois={};for(const l of lignes){if(!l.d
 async function facCreerFourn(nom){const nm=String(nom).trim().toUpperCase()||"NOUVEAU";const k=FAC.nk(nm).toLowerCase();let id=k.slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.slice(0,26)+n}
   const ordre=S.fourn.reduce((m,f)=>Math.max(m,f.ordre??0),0)+1;
   await S.db.doc(P("fournisseurs/"+id)).set({nom:nm,ordre,actif:true,colonne:false,avoirs:true,contact:"",mail:""});S.fourn.push({id,nom:nm,ordre,actif:true,colonne:false});return id}
-async function facImporter(){
-  const L=facAImporter().filter(r=>r.ok);if(!L.length){toast("Cochez au moins une facture");return}
-  const sans=L.filter(r=>r.lignes&&!r.lignes.length&&r.saisi==null);if(sans.length){toast("Montant ou date manquant pour "+sans.length+" facture(s) : complétez ou décochez");return}
+async function facImporter(auto){
+  if(S.fac.imp)return;
+  let L;
+  if(auto){ // v87 : sans validation. On relit d'abord la base pour ne pas importer deux fois une facture déjà prise par un autre poste.
+    try{if(typeof SYNC!=="undefined"&&SYNC.poll)await SYNC.poll()}catch(_){}
+    const reg=S.facImp||{},deja=new Set(Object.values(reg).filter(x=>x&&x.s==="i"&&x.id).map(x=>x.id));
+    S.fac.liste=S.fac.liste.filter(r=>!reg[r.key]&&!(r.total!=null&&deja.has(r.ident)));
+    L=S.fac.liste.filter(facPret);if(!L.length){facRender();facBadge();return}}
+  else{L=facAImporter().filter(r=>r.ok);if(!L.length){toast("Cochez au moins une facture");return}
+  const sans=L.filter(r=>r.lignes&&!r.lignes.length&&r.saisi==null);if(sans.length){toast("Montant ou date manquant pour "+sans.length+" facture(s) : complétez ou décochez");return}}
   const nf=[...new Set(L.filter(r=>r.choix==="__new__").map(r=>r.dossier))];
-  if(!await askConfirm("Importer "+L.length+" facture(s) dans "+storeNom()+" ?"+(nf.length?"\n\nNouveau(x) fournisseur(s) créé(s) : "+nf.join(", "):"")+"\n\nLes montants s'ajoutent aux cases de la saisie (jour de la facture, ou jour de livraison pour les factures regroupées)."))return;
-  HIST.lastT=Date.now();let nOk=0,nAv=0;const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{}),crees={};
+  if(!auto&&!await askConfirm("Importer "+L.length+" facture(s) dans "+storeNom()+" ?"+(nf.length?"\n\nNouveau(x) fournisseur(s) créé(s) : "+nf.join(", "):"")+"\n\nLes montants s'ajoutent aux cases de la saisie (jour de la facture, ou jour de livraison pour les factures regroupées)."))return;
+  HIST.lastT=Date.now();let nOk=0,nAv=0;const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{}),crees={};S.fac.imp=true;
   try{
     for(const r of L){let fid=r.choix;
       if(fid==="__new__"){const k=FAC.nk(r.dossier);fid=crees[k]||(crees[k]=await facCreerFourn(r.dossier))}
@@ -1238,9 +1251,13 @@ async function facImporter(){
       nOk++}
     const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({liens});else await ref.set({depart:facDepart()||todayISO(),liens});
     const done=new Set(L.map(r=>r.rel));S.fac.liste=S.fac.liste.filter(r=>!done.has(r.rel));
-    toast(nOk+" facture(s) importée(s)"+(nAv?", "+nAv+" avoir(s) lu(s)":"")+(Object.keys(crees).length?", "+Object.keys(crees).length+" fournisseur(s) créé(s)":""));
-    facRender();facBadge();render();setTimeout(()=>facProposer(true),400)}
-  catch(e){fail(e)}}
+    const msg=nOk+" facture(s) importée(s)"+(auto?" automatiquement":"")+(nAv?", "+nAv+" avoir(s) lu(s)":"")+(Object.keys(crees).length?", "+Object.keys(crees).length+" fournisseur(s) créé(s)":"");
+    S.fac.dernierImport={le:new Date().toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}),msg};
+    toast(msg);facRender();facBadge();render();if(!auto||nAv)setTimeout(()=>facProposer(true),400)}
+  catch(e){fail(e)}
+  finally{S.fac.imp=false}}
+async function facSetAuto(on){try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({auto:on});else await ref.set({depart:todayISO(),liens:{},auto:on});
+  S.facReg=Object.assign({},S.facReg||{},{auto:on});S.fac.force=true;facRender();toast(on?"Import automatique activé":"Import manuel : les factures attendent votre validation");if(on)facScan()}catch(e){fail(e)}}
 async function facIgnorer(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
   try{await S.db.doc(P("factures/"+r.key)).set({s:"x",n:r.nom,le:todayISO()});S.fac.liste=S.fac.liste.filter(x=>x!==r);toast("Document ignoré : il ne sera plus proposé");facRender();facBadge()}catch(e){fail(e)}}
 
@@ -1312,18 +1329,27 @@ function facRender(){if(!S.fac.ouvert)return;let o=document.getElementById("facR
     body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b> dès que la comptable les a créés.</div>`:""}
       ${F.prog?`<p class="sub">${esc(F.prog)}</p>`:""}
       ${L.length?`<div class="scroll" style="max-height:58vh"><table class="factab"><thead><tr><th></th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Détail</th><th>Montant TTC</th><th class="l">État</th><th></th></tr></thead><tbody>${L.map(row).join("")}</tbody></table></div>`
-        :`<div class="empty-state">Aucune nouvelle facture${dep?" depuis le "+frDate(dep):""}.</div>`}
+        :`<div class="empty-state">${facAutoOn()?"Aucune facture en attente : tout est importé.":"Aucune nouvelle facture"+(dep?" depuis le "+frDate(dep):"")+"."}</div>`}
       ${autres.length?`<p class="sub" style="margin-top:8px">${autres.length} facture(s) d'un autre magasin (${[...new Set(autres.map(r=>(S.magasins.find(m=>m.id===r.mag)||{}).nom||r.mag))].join(", ")}) : changez de magasin (maison) pour les importer.</p>`:""}
       ${F.ecartes.length?`<details style="margin-top:8px"><summary class="sub" style="cursor:pointer">${F.ecartes.length} document(s) écarté(s) (bons de livraison, relevés, copies, déjà importés…)</summary><div class="hist" style="max-height:24vh;overflow:auto;margin-top:6px">${F.ecartes.map(x=>esc(x.rel)+" — "+esc(x.raison)).join("<br>")}</div></details>`:""}
       <div class="row" style="justify-content:space-between;margin-top:12px"><div class="row"><button class="btn" data-facscan="1" ${F.busy?"disabled":""}>Relire le dossier</button><button class="btn" data-facdir="1">Changer de dossier</button></div>
         <button class="btn primary" data-facimp="1" ${!nOk||F.busy?"disabled":""}>Importer ${nOk} facture${nOk>1?"s":""}</button></div>`}
   o.innerHTML=`<div class="facbox"><div class="band">Factures — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">
-    ${FAC_API()&&F.root?`<div class="hist" style="margin-bottom:8px">Dossier : ${esc(F.root)}${dep?" · factures à partir du "+frDate(dep):""}</div>`:""}${body}</div></div>`}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-act='factures']");
+    ${FAC_API()&&F.root?`<div class="hist" style="margin-bottom:8px">Dossier : ${esc(F.root)}${dep?" · factures à partir du "+frDate(dep):""}</div>`:""}
+    ${FAC_API()&&F.etat==="ok"?`<div class="facmode"><span>${facAutoOn()?"<b>Import automatique</b> : toutes les 15 minutes, les nouvelles factures et avoirs sont lus et écrits dans la saisie. Restent ici seulement ceux à compléter.":"<b>Import manuel</b> : les factures attendent votre validation."}</span><button class="btn small" data-facauto="${facAutoOn()?"0":"1"}">${facAutoOn()?"Passer en manuel":"Passer en automatique"}</button></div>`:""}
+    ${F.dernierImport?`<div class="hist" style="margin-bottom:8px">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
+    ${body}${FAC_API()&&F.etat==="ok"?facRecentes():""}</div></div>`}
+// v87 : les dernières factures importées (registre synchronisé)
+function facRecentes(){const L=Object.values(S.facImp||{}).filter(x=>x&&x.s==="i").sort((a,b)=>String(b.le).localeCompare(String(a.le))||String(b.d).localeCompare(String(a.d))).slice(0,40);
+  if(!L.length)return"";
+  return `<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Dernières factures importées (${L.length})</summary><div class="scroll" style="max-height:30vh;margin-top:6px"><table><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th></tr></thead><tbody>
+    ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}</td></tr>`).join("")}</tbody></table></div></details>`}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-act='factures']");
   if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
   if(b.dataset.act==="factures"){facOuvrir();return}
+  if(b.dataset.facauto){facSetAuto(b.dataset.facauto==="1");return}
   if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){S.fac.liste=[];facScan()}
-  else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter();
+  else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter(false);
   else if(b.dataset.facpdf)window.api.facOuvrir(b.dataset.facpdf).catch(()=>toast("Ouverture du PDF impossible"));else if(b.dataset.facign)facIgnorer(b.dataset.facign)});
 document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#facRoot"))return;
   const R=rel=>S.fac.liste.find(x=>x.rel===rel);
