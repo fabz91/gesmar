@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="91">
+<meta name="gm-version" content="92">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -389,7 +389,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=91;
+const APP_VERSION=92;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1138,7 +1138,9 @@ const facDepart=()=>(S.facReg&&S.facReg.depart)||null;
 // v87 : import automatique (par défaut) : chaque lecture écrit tout de suite les nouvelles factures et avoirs lisibles.
 // Mode manuel de la v86 (liste à valider) : réglage reglages/factures.auto = false (bouton dans la fenêtre Factures).
 const facAutoOn=()=>!(S.facReg&&S.facReg.auto===false);
-const facPret=r=>r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant&&r.lignes&&r.lignes.length>0;
+// v92 : une facture prête = bon magasin, date et montant lus, pas datée d'avant le départ, et cases de la saisie vides
+// (ou déjà remplies avec exactement ce montant : facture déjà tapée à la main, on ne la rajoute pas)
+const facPret=r=>r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant&&r.lignes&&r.lignes.length>0&&r.etatSaisie!=="diff";
 let FAC_CACHE=null;
 function facCache(){if(!FAC_CACHE){try{FAC_CACHE=JSON.parse(rawLoad("gesmar-factures-cache")||"{}")||{}}catch(e){FAC_CACHE={}}}return FAC_CACHE}
 function facCacheSave(){try{rawSave("gesmar-factures-cache",JSON.stringify(FAC_CACHE||{}))}catch(e){}}
@@ -1199,6 +1201,10 @@ async function facScan(silent){
       r.ok=old?old.ok:(r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant);
       r.saisi=old&&old.saisi!=null?old.saisi:null;
       // case déjà remplie dans la saisie : le montant s'ajoutera (ex. facture déjà tapée à la main)
+      // v92 : état des cases de la saisie : vides, déjà égales au montant (déjà tapée à la main), ou remplies avec autre chose
+      {const cs=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],j=doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)];return {cur:(col&&j&&j.achats&&j.achats[col])||0,m:l.montant}});
+        r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(c=>Math.abs(c.cur-c.m)<=0.05||(r.decoupe&&Math.abs(c.cur-c.m)<=Math.max(1,Math.abs(c.m)*0.01)))?"egal":"diff"}
+      if(!old&&r.etatSaisie==="diff")r.ok=false;
       r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" € déjà saisis":null}).filter(Boolean);
       liste.push(r)}
     liste.sort((a,b)=>String(a.date||"9").localeCompare(String(b.date||"9"))||String(a.dossier).localeCompare(String(b.dossier)));
@@ -1214,10 +1220,10 @@ async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(
 async function facSetDepart(v){if(!v){toast("Choisissez une date");return}
   try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});await facScan()}catch(e){fail(e)}}
 // Ajoute des montants dans la saisie (en plus de ce qui y est déjà) et affiche la colonne dans le mois
-async function facEcrire(lignes){const parMois={};for(const l of lignes){if(!l.date||!l.col||l.montant==null)continue;(parMois[l.date.slice(0,7)]=parMois[l.date.slice(0,7)]||[]).push(l)}
+async function facEcrire(lignes,remplacer){const parMois={};for(const l of lignes){if(!l.date||!l.col||l.montant==null)continue;(parMois[l.date.slice(0,7)]=parMois[l.date.slice(0,7)]||[]).push(l)}
   for(const[key,L]of Object.entries(parMois)){const doc=S.mois[key],J=(doc&&doc.jours)||{},patch={};
     for(const l of L){const d=l.date.slice(8,10),cur=(patch[d]&&patch[d].achats&&patch[d].achats[l.col]!=null)?patch[d].achats[l.col]:((J[d]&&J[d].achats&&J[d].achats[l.col])||0);
-      patch[d]=patch[d]||{achats:{}};patch[d].achats[l.col]=Math.round((cur+l.montant)*100)/100}
+      patch[d]=patch[d]||{achats:{}};patch[d].achats[l.col]=Math.round(((remplacer&&!(patch[d].achats[l.col]!=null)?0:cur)+l.montant)*100)/100}
     const ref=S.db.doc(P("mois/"+key));
     if(doc)await ref.update({jours:patch});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch});
     if(!S.mois[key])S.mois[key]={annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch};
@@ -1242,7 +1248,7 @@ async function facImporter(auto,only){
   const sans=L.filter(r=>r.lignes&&!r.lignes.length&&r.saisi==null);if(sans.length){toast("Montant ou date manquant pour "+sans.length+" facture(s) : complétez ou décochez");return}}
   const nf=[...new Set(L.filter(r=>r.choix==="__new__").map(r=>r.dossier))];
   if(!auto&&!only&&!await askConfirm("Importer "+L.length+" facture(s) dans "+storeNom()+" ?"+(nf.length?"\n\nNouveau(x) fournisseur(s) créé(s) : "+nf.join(", "):"")+"\n\nLes montants s'ajoutent aux cases de la saisie (jour de la facture, ou jour de livraison pour les factures regroupées)."))return;
-  HIST.lastT=Date.now();let nOk=0,nAv=0;const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{}),crees={};S.fac.imp=true;
+  HIST.lastT=Date.now();let nOk=0,nAv=0,nDeja=0;const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{}),crees={};S.fac.imp=true;
   try{
     for(const r of L){let fid=r.choix;
       if(fid==="__new__"){const k=FAC.nk(r.dossier);fid=crees[k]||(crees[k]=await facCreerFourn(r.dossier))}
@@ -1250,9 +1256,10 @@ async function facImporter(auto,only){
       const f=S.fourn.find(x=>x.id===fid);if(f&&isInactif(f))await fUpdate(fid,{actif:true,supprime:false});
       let lignes=(r.lignes||[]).map(l=>({date:l.date,col:l.col||fid,montant:l.montant}));
       if(r.saisi!=null&&r.date)lignes=[{date:r.date,col:r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col||fid,montant:r.type==="avoir"?-Math.abs(r.saisi):r.saisi}];
-      await facEcrire(lignes);
+      const dejaSaisie=r.etatSaisie==="egal"&&r.saisi==null&&!only; // v92 : déjà dans la saisie : rien à écrire
+      if(dejaSaisie)nDeja++;else await facEcrire(lignes,!!r.remplacer);
       const total=lignes.reduce((s,l)=>s+l.montant,0);
-      await S.db.doc(P("factures/"+r.key)).set({s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,le:todayISO()});
+      await S.db.doc(P("factures/"+r.key)).set({dj:dejaSaisie?1:0,s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,le:todayISO()});
       // avoirs lus : document d'avoir, ou partie « avoirs » d'une facture DIAPAR (déjà déduite du total)
       const avf=fid==="epicerie"||fid==="aa"||fid==="frais"?"diapar":fid;
       if(r.type==="avoir"||(r.avoirs&&r.avoirs.length)){
@@ -1263,7 +1270,7 @@ async function facImporter(auto,only){
       nOk++}
     const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({liens});else await ref.set({depart:facDepart()||todayISO(),liens});
     const done=new Set(L.map(r=>r.rel));S.fac.liste=S.fac.liste.filter(r=>!done.has(r.rel));
-    const msg=nOk+" facture(s) importée(s)"+(auto?" automatiquement":"")+(nAv?", "+nAv+" avoir(s) lu(s)":"")+(Object.keys(crees).length?", "+Object.keys(crees).length+" fournisseur(s) créé(s)":"");
+    const msg=(nOk-nDeja)+" facture(s) importée(s)"+(auto?" automatiquement":"")+(nDeja?", "+nDeja+" déjà dans la saisie":"")+(nAv?", "+nAv+" avoir(s) lu(s)":"")+(Object.keys(crees).length?", "+Object.keys(crees).length+" fournisseur(s) créé(s)":"");
     S.fac.dernierImport={le:new Date().toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}),msg};
     toast(msg);facRender();facBadge();render()}
   catch(e){fail(e)}
@@ -1271,13 +1278,13 @@ async function facImporter(auto,only){
 async function facSetAuto(on){try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({auto:on});else await ref.set({depart:todayISO(),liens:{},auto:on});
   S.facReg=Object.assign({},S.facReg||{},{auto:on});S.fac.force=true;facRender();toast(on?"Import automatique activé":"Import manuel : les factures attendent votre validation");if(on)facScan()}catch(e){fail(e)}}
 // v91 : classer à la main une facture que GESMAR n'a pas pu lire (fournisseur, date et montant choisis dans la fenêtre)
-async function facClasser(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
+async function facClasser(rel,remplacer){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
   const row=document.querySelector(`#facRoot [data-facmt="${CSS.escape(rel)}"]`),dt=document.querySelector(`#facRoot [data-facdate="${CSS.escape(rel)}"]`);
   const v=parseNum(row?row.value:"");const d=(dt&&dt.value)||r.dateSaisie||r.date;
   if(v==null||Number.isNaN(v)||!v){toast("Indiquez le montant TTC (avec − pour un avoir)");row&&row.focus();return}
   if(!d){toast("Indiquez la date de la facture");dt&&dt.focus();return}
   if(r.choix==="__new__"&&!r.dossier){toast("Choisissez le fournisseur");return}
-  const c=Object.assign(r,{date:d,saisi:v,avant:false,type:v<0?"avoir":r.type==="avoir"?"facture":r.type});
+  const c=Object.assign(r,{remplacer:!!remplacer,date:d,saisi:v,avant:false,type:v<0?"avoir":r.type==="avoir"?"facture":r.type});
   await facImporter(false,[c]);S.fac.force=true;facRender()}
 async function facIgnorer(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
   try{await S.db.doc(P("factures/"+r.key)).set({s:"x",n:r.nom,le:todayISO()});S.fac.liste=S.fac.liste.filter(x=>x!==r);toast("Document ignoré : il ne sera plus proposé");facRender();facBadge()}catch(e){fail(e)}}
@@ -1344,7 +1351,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
   else if(["nodir","absent","nodepart","erreur"].includes(F.etat))body=`<p>${F.etat==="erreur"?"⚠️ Lecture impossible : "+esc(F.err||""):F.etat==="absent"?"Le dossier des factures est introuvable sur ce PC.":"Le dossier des factures n'est pas encore réglé."}</p><p class="sub">Tout se règle dans Réglages ⚙ → Dossier des factures.</p>${regl}`;
   else if(F.etat==="lecture"&&!F.liste.length)body=`<p>${esc(F.prog||"Lecture des factures…")}</p>`;
   else{const L=facATraiter();
-    const pb=r=>{const v=(r.verif||[]).slice();if(r.total==null&&!v.some(x=>/montant/i.test(x)))v.unshift("Montant introuvable");if(!r.date&&!v.some(x=>/date/i.test(x)))v.unshift("Date introuvable");if(r.avant)v.push("Datée d'avant le "+frDate(facDepart())+" (départ) : déjà saisie à la main ?");if(r.deja&&r.deja.length)v.push("Case déjà remplie ("+r.deja.join(", ")+") : le montant s'y ajoutera");return [...new Set(v)]};
+    const pb=r=>{const v=(r.verif||[]).slice();if(r.total==null&&!v.some(x=>/montant/i.test(x)))v.unshift("Montant introuvable");if(!r.date&&!v.some(x=>/date/i.test(x)))v.unshift("Date introuvable");if(r.avant)v.push("Datée d'avant le "+frDate(facDepart())+" (départ) : déjà saisie à la main ?");if(r.etatSaisie==="diff"&&r.deja&&r.deja.length)v.push("Déjà quelque chose dans la saisie ("+r.deja.join(", ")+") : facture déjà tapée à la main ? Ajouter = en plus ; Remplacer = corriger la case ; Ignorer = ne rien changer");else if(r.etatSaisie==="egal")v.push("Déjà dans la saisie avec ce montant");return [...new Set(v)]};
     const four=r=>FAC.nk(r.dossier)==="DIAPAR"?`<b>DIAPAR</b><select data-faccol="${esc(r.rel)}" aria-label="Rayon" style="margin-top:4px;display:block">${["epicerie","aa","frais"].map(c=>`<option value="${c}" ${(r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col)===c?"selected":""}>${FAC_COL[c]}</option>`).join("")}</select>`
       :`<select data-facf="${esc(r.rel)}" aria-label="Fournisseur">${facOpts(r)}</select>`;
     const mt=r=>r.saisi!=null?r.saisi:r.total;
@@ -1353,7 +1360,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
       <td class="l">${four(r)}</td>
       <td><input type="date" data-facdate="${esc(r.rel)}" value="${esc(r.dateSaisie||r.date||"")}" aria-label="Date de la facture"></td>
       <td><input class="facmt" data-facmt="${esc(r.rel)}" inputmode="decimal" value="${mt(r)!=null?n2.format(mt(r)):""}" placeholder="à remplir" aria-label="Montant TTC"><div class="hist">avoir : montant en moins (−)</div></td>
-      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end"><button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button><button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button></div></td></tr>`;
+      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${r.etatSaisie==="diff"?`<button class="btn small primary" data-faccl="${esc(r.rel)}" title="Ajouter ce montant à ce qui est déjà saisi">Ajouter</button><button class="btn small primary" data-facrep="${esc(r.rel)}" title="Mettre ce montant à la place de ce qui est saisi (correction)">Remplacer</button>`:`<button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button>`}<button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button></div></td></tr>`;
     body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b>.</div>`:""}
       ${F.prog?`<p class="sub">${esc(F.prog)}</p>`:""}
       ${L.length?`<p class="sub" style="margin:0 0 10px">GESMAR n'a pas pu lire seul ${L.length>1?"ces factures":"cette facture"}. Ouvrez le PDF, choisissez le fournisseur, vérifiez la date et le montant TTC, puis cliquez sur <b>Classer</b> : le montant va dans la saisie.</p>
@@ -1363,9 +1370,9 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
 // v91 : réglages du dossier des factures (Réglages ⚙ → Dossier des factures)
 function facReglagesHtml(){const F=S.fac,dep=facDepart();
   if(!FAC_API())return `La lecture des factures marche dans le programme GESMAR du PC installé avec le <b>nouveau kit</b> (version 86 ou plus). Réinstallez GESMAR une fois : vos données sont gardées.`;
-  const etat=F.busy?esc(F.prog||"Lecture…"):F.etat==="absent"?"⚠️ Dossier introuvable sur ce PC (OneDrive ouvert ?)":F.etat==="erreur"?"⚠️ "+esc(F.err||"Lecture impossible"):F.dernier?"Dernière lecture : "+new Date(F.dernier).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
+  const etat=F.busy?esc(F.prog||"Lecture…"):F.etat==="absent"?"⚠️ Dossier introuvable sur ce PC (OneDrive ouvert ?)":F.etat==="erreur"?"⚠️ "+esc(F.err||"Lecture impossible"):"";
   return `<div class="facreg">
-    <div><b>Dossier</b> : ${F.root?esc(F.root):"aucun"}<div class="hist">Le dossier « Documents » du OneDrive de la comptable (celui qui contient 2026, 2027…).</div></div>
+    <div><b>Dossier</b> : ${F.root?esc(F.root):"aucun"}${F.root&&/[\\/]20\d\d[\\/]?$/.test(F.root)?`<div class="facwarn">Choisissez plutôt le dossier <b>Documents</b> (celui au-dessus de ${esc(F.root.match(/(20\d\d)[\\/]?$/)[1])}) : sinon le dossier de l'année prochaine ne sera pas lu.</div>`:""}</div>
     <div class="row"><button class="btn small" data-facdir="1">${F.root?"Changer de dossier":"Choisir le dossier"}</button><button class="btn small" data-facscan="1" ${F.busy||!F.root?"disabled":""}>Relire maintenant</button></div>
     <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"><button class="btn small" data-facdep="1">Enregistrer</button></div>
     <div class="row" style="justify-content:space-between"><span><b>Import ${facAutoOn()?"automatique":"manuel"}</b>${facAutoOn()?" : toutes les 15 minutes":" : à valider dans Factures à traiter"}</span><button class="btn small" data-facauto="${facAutoOn()?"0":"1"}">${facAutoOn()?"Passer en manuel":"Passer en automatique"}</button></div>
@@ -1375,12 +1382,13 @@ function facReglagesHtml(){const F=S.fac,dep=facDepart();
 function facRecentes(){const L=Object.values(S.facImp||{}).filter(x=>x&&x.s==="i").sort((a,b)=>String(b.le).localeCompare(String(a.le))||String(b.d).localeCompare(String(a.d))).slice(0,40);
   if(!L.length)return"";
   return `<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Dernières factures importées (${L.length})</summary><div class="scroll" style="max-height:30vh;margin-top:6px"><table><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th></tr></thead><tbody>
-    ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}</td></tr>`).join("")}</tbody></table></div></details>`}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-act='factures'],[data-act='facReglages']");
+    ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}${x.dj?`<div class="hist">déjà saisie</div>`:""}</td></tr>`).join("")}</tbody></table></div></details>`}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-facrep],[data-act='factures'],[data-act='facReglages']");
   if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
   if(b.dataset.act==="factures"){facOuvrir();return}
   if(b.dataset.facauto){facSetAuto(b.dataset.facauto==="1");return}
   if(b.dataset.faccl){facClasser(b.dataset.faccl);return}
+  if(b.dataset.facrep){facClasser(b.dataset.facrep,true);return}
   if(b.dataset.act==="facReglages"){facFermer();S.modal=true;S.modalPanel="factures";render();return}
   if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){S.fac.liste=[];facScan()}
   else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter(false);
