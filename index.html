@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="97">
+<meta name="gm-version" content="98">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -393,7 +393,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=97;
+const APP_VERSION=98;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1211,7 +1211,7 @@ async function facScan(silent){
       {const cs=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],j=doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)];return {cur:(col&&j&&j.achats&&j.achats[col])||0,m:l.montant}});
         r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(c=>Math.abs(c.cur-c.m)<=0.05||(r.decoupe&&Math.abs(c.cur-c.m)<=Math.max(1,Math.abs(c.m)*0.01)))?"egal":"diff"}
       // v95 : facture regroupée (Saint Prim, CDPO…) : découpée jour par jour, elle remplace ce qui a été tapé à la main, sans question
-      if(r.decoupe&&r.etatSaisie==="diff"){r.etatSaisie="remp";r.remplacer=true}
+      if(r.decoupe&&r.etatSaisie==="diff")r.etatSaisie="remp";if(r.decoupe)r.remplacer=true;
       if(!old&&r.etatSaisie==="diff")r.ok=false;
       r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" €":null}).filter(Boolean);
       liste.push(r)}
@@ -1237,11 +1237,19 @@ function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const
 async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
 async function facSetDepart(v){if(!v){toast("Choisissez une date");return}
   try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});toast("Factures à partir du "+frDate(v)+" : lecture du dossier…");S.fac.liste=[];await facScan()}catch(e){fail(e)}}
+// v98 : cases déjà remplies pour ce fournisseur entre le début de la période (1er, 11 ou 21 du mois) et la date de la facture, hors jours de la facture
+function facPeriodeTapee(r,lignes){const ds=lignes.map(l=>l.date).filter(Boolean).sort();if(!ds.length)return[];
+  const fin=[ds[ds.length-1],r.date||""].sort()[1],dd=+String(r.date||fin).slice(8,10),deb0=String(r.date||fin).slice(0,8)+(dd<=10?"01":dd<=20?"11":"21"),deb=[ds[0],deb0].sort()[0];
+  const cols=[...new Set(lignes.map(l=>l.col))],pris=new Set(lignes.map(l=>l.date+"|"+l.col)),out=[];
+  for(let t=new Date(deb+"T12:00:00");;t.setDate(t.getDate()+1)){const iso=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");if(iso>fin)break;
+    const doc=S.mois[iso.slice(0,7)],j=doc&&doc.jours&&doc.jours[iso.slice(8,10)];
+    for(const c of cols)if(j&&j.achats&&j.achats[c]&&!pris.has(iso+"|"+c))out.push({date:iso,col:c,montant:0,efface:true})}
+  return out}
 // Ajoute des montants dans la saisie (en plus de ce qui y est déjà) et affiche la colonne dans le mois
 async function facEcrire(lignes,remplacer){const parMois={};for(const l of lignes){if(!l.date||!l.col||l.montant==null)continue;(parMois[l.date.slice(0,7)]=parMois[l.date.slice(0,7)]||[]).push(l)}
   for(const[key,L]of Object.entries(parMois)){const doc=S.mois[key],J=(doc&&doc.jours)||{},patch={};
     for(const l of L){const d=l.date.slice(8,10),cur=(patch[d]&&patch[d].achats&&patch[d].achats[l.col]!=null)?patch[d].achats[l.col]:((J[d]&&J[d].achats&&J[d].achats[l.col])||0);
-      patch[d]=patch[d]||{achats:{}};patch[d].achats[l.col]=Math.round(((remplacer&&!(patch[d].achats[l.col]!=null)?0:cur)+l.montant)*100)/100}
+      patch[d]=patch[d]||{achats:{}};if(l.efface){patch[d].achats[l.col]=null;continue}patch[d].achats[l.col]=Math.round(((remplacer&&!(patch[d].achats[l.col]!=null)?0:cur)+l.montant)*100)/100}
     const ref=S.db.doc(P("mois/"+key));
     if(doc)await ref.update({jours:patch});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch});
     if(!S.mois[key])S.mois[key]={annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch};
@@ -1275,7 +1283,9 @@ async function facImporter(auto,only){
       let lignes=(r.lignes||[]).map(l=>({date:l.date,col:l.col||fid,montant:l.montant}));
       if(r.saisi!=null&&r.date)lignes=[{date:r.date,col:r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col||fid,montant:r.type==="avoir"?-Math.abs(r.saisi):r.saisi}];
       const dejaSaisie=r.etatSaisie==="egal"&&r.saisi==null&&!only; // v92 : déjà dans la saisie : rien à écrire
-      if(dejaSaisie)nDeja++;else await facEcrire(lignes,!!r.remplacer);
+      // v98 : facture regroupée : on efface d'abord ce qui a été tapé à la main pour ce fournisseur sur toute la période (le jour tapé n'est pas toujours celui du bon de livraison)
+      const efface=r.decoupe&&r.saisi==null?facPeriodeTapee(r,lignes):[];
+      if(dejaSaisie){nDeja++;if(efface.length)await facEcrire(efface,true)}else await facEcrire(lignes.concat(efface),!!r.remplacer||efface.length>0);
       const total=lignes.reduce((s,l)=>s+l.montant,0);
       await S.db.doc(P("factures/"+r.key)).set({dj:dejaSaisie?1:0,s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,r:r.rel,j:[...new Set(lignes.map(l=>l.date+"|"+l.col))],le:todayISO()});
       // avoirs lus : document d'avoir, ou partie « avoirs » d'une facture DIAPAR (déjà déduite du total)
@@ -1395,15 +1405,22 @@ function facReglagesHtml(){const F=S.fac,dep=facDepart();
     <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"></div><div class="hist" style="margin-top:-6px">La date est enregistrée dès qu'elle est changée, puis le dossier est relu.</div>
     <div class="row" style="justify-content:space-between"><span><b>Import ${facAutoOn()?"automatique":"manuel"}</b>${facAutoOn()?" : toutes les 15 minutes":" : à valider dans Factures à traiter"}</span><button class="btn small" data-facauto="${facAutoOn()?"0":"1"}">${facAutoOn()?"Passer en manuel":"Passer en automatique"}</button></div>
     ${etat?`<div class="hist">${etat}</div>`:""}${F.dernierImport?`<div class="hist">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
-    ${facRecentes()}</div>`}
+    ${facRecentes()}${facIgnorees()}</div>`}
+// v98 : factures mises de côté avec « Ignorer » : on peut les reprendre (elles sont relues et écrites dans la saisie)
+function facIgnorees(){const L=Object.entries(S.facImp||{}).filter(([k,x])=>x&&x.s==="x").sort((a,b)=>String(b[1].le).localeCompare(String(a[1].le))).slice(0,60);
+  if(!L.length)return"";
+  return `<details style="margin-top:10px"${S.fac.ignOuvert?" open":""} data-facignd><summary class="sub" style="cursor:pointer">Factures ignorées (${L.length})</summary><div class="hist" style="margin:6px 0">Ignorées à la main : elles ne vont pas dans la saisie. « Reprendre » les relit et les écrit (Saint Prim, CDPO : jour par jour, à la place de ce qui est tapé).</div><div class="scroll" style="max-height:30vh"><table><thead><tr><th class="l">Ignorée le</th><th class="l">Fichier</th><th></th></tr></thead><tbody>
+    ${L.map(([k,x])=>`<tr><td class="l">${frDate(x.le)}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td><button class="btn small" data-facund="${esc(k)}">Reprendre</button></td></tr>`).join("")}</tbody></table></div></details>`}
+async function facReprendre(k){try{S.fac.ignOuvert=true;await S.db.doc(P("factures/"+k)).delete();if(S.facImp)delete S.facImp[k];toast("Facture reprise : lecture du dossier…");S.fac.liste=[];await facScan()}catch(e){fail(e)}}
 // v87 : les dernières factures importées (registre synchronisé)
 function facRecentes(){const L=Object.values(S.facImp||{}).filter(x=>x&&x.s==="i").sort((a,b)=>String(b.le).localeCompare(String(a.le))||String(b.d).localeCompare(String(a.d))).slice(0,40);
   if(!L.length)return"";
   return `<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Dernières factures importées (${L.length})</summary><div class="scroll" style="max-height:30vh;margin-top:6px"><table><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th></tr></thead><tbody>
     ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}${x.dj?`<div class="hist">déjà saisie</div>`:""}</td></tr>`).join("")}</tbody></table></div></details>`}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-facdoc],[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-facrep],[data-act='factures'],[data-act='facReglages']");
+document.addEventListener("click",e=>{const b=e.target.closest("[data-facund],[data-facdoc],[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-facrep],[data-act='factures'],[data-act='facReglages']");
   if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
   if(b.dataset.act==="factures"){facOuvrir();return}
+  if(b.dataset.facund){facReprendre(b.dataset.facund);return}
   if(b.dataset.facdoc){b.dataset.facdoc.split("\n").forEach(rel=>window.api.facOuvrir(rel).catch(()=>toast("Ouverture du PDF impossible")));return}
   if(b.dataset.facauto){facSetAuto(b.dataset.facauto==="1");return}
   if(b.dataset.faccl){facClasser(b.dataset.faccl);return}
