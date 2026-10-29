@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="98">
+<meta name="gm-version" content="99">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -393,7 +393,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=98;
+const APP_VERSION=99;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1396,7 +1396,8 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
         :`<div class="empty-state">✓ Aucune facture à traiter : toutes les factures ont été lues et classées.</div>`}`}
   o.innerHTML=`<div class="facbox"><div class="band">Factures à traiter — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`}
 // v91 : réglages du dossier des factures (Réglages ⚙ → Dossier des factures)
-function facReglagesHtml(){const F=S.fac,dep=facDepart();
+function facReglagesHtml(){return facReglagesFac()+caReglagesHtml()}
+function facReglagesFac(){const F=S.fac,dep=facDepart();
   if(!FAC_API())return `La lecture des factures marche dans le programme GESMAR du PC installé avec le <b>nouveau kit</b> (version 86 ou plus). Réinstallez GESMAR une fois : vos données sont gardées.`;
   const etat=F.busy?esc(F.prog||"Lecture…"):F.etat==="absent"?"⚠️ Dossier introuvable sur ce PC (OneDrive ouvert ?)":F.etat==="erreur"?"⚠️ "+esc(F.err||"Lecture impossible"):"";
   return `<div class="facreg">
@@ -1417,6 +1418,7 @@ function facRecentes(){const L=Object.values(S.facImp||{}).filter(x=>x&&x.s==="i
   if(!L.length)return"";
   return `<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Dernières factures importées (${L.length})</summary><div class="scroll" style="max-height:30vh;margin-top:6px"><table><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th></tr></thead><tbody>
     ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}${x.dj?`<div class="hist">déjà saisie</div>`:""}</td></tr>`).join("")}</tbody></table></div></details>`}
+document.addEventListener("click",e=>{const c=e.target.closest("[data-cascan],[data-cadir]");if(c){if(c.dataset.cadir)caChoisir();else caScan(false,true);return}});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-facund],[data-facdoc],[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-facrep],[data-act='factures'],[data-act='facReglages']");
   if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
   if(b.dataset.act==="factures"){facOuvrir();return}
@@ -1429,7 +1431,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-facund],[d
   if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){const v=($("#facDep")||{}).value;if(v&&v!==facDepart()){facSetDepart(v);return}S.fac.liste=[];facScan()}
   else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter(false);
   else if(b.dataset.facpdf)window.api.facOuvrir(b.dataset.facpdf).catch(()=>toast("Ouverture du PDF impossible"));else if(b.dataset.facign)facIgnorer(b.dataset.facign)});
-document.addEventListener("change",e=>{if(e.target&&e.target.id==="facDep"){const v=e.target.value;if(v&&v!==facDepart())facSetDepart(v);return}}); // v93 : date enregistrée tout de suite
+document.addEventListener("change",e=>{if(e.target&&e.target.id==="caDep"){caSetDepuis(e.target.value);return}if(e.target&&e.target.id==="caMag"){caSetMag(e.target.value);return}if(e.target&&e.target.id==="facDep"){const v=e.target.value;if(v&&v!==facDepart())facSetDepart(v);return}}); // v93 : date enregistrée tout de suite
 document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#facRoot"))return;
   const R=rel=>S.fac.liste.find(x=>x.rel===rel);
   if(t.dataset.facok){const r=R(t.dataset.facok);if(r)r.ok=t.checked;S.fac.force=true;facRender()}
@@ -1439,6 +1441,55 @@ document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closes
   if(t.dataset.facmt){const r=R(t.dataset.facmt),v=parseNum(t.value);if(!r)return;if(Number.isNaN(v)){toast("Montant illisible : par ex. 845,07");return}r.saisi=v;if(v!=null&&r.date)r.ok=true}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.fac.ouvert&&!document.querySelector(".facov#facProp")){facFermer()}});
 // Recherche automatique : au démarrage, puis toutes les 15 minutes et au retour sur la fenêtre (au plus toutes les 5 minutes)
+/* ================= v99 : CA TTC du jour lu dans les fichiers de la caisse (Videor) =================
+   Chaque nuit, Videor dépose la journée de la caisse Casio dans C:\transfert\reception\001\VENT.TOT.AAAAMMJJ.
+   Ligne « 050|0001|0001|C.A BRUT |…|<centimes> » = CA TTC du jour (sinon : somme des lignes 056 = rayons).
+   Le CA lu remplace celui de la saisie (case vide ou pas). Réglages gardés sur ce PC (gesmar-ca) : magasin et date de départ. */
+const CA_API=()=>!!(window.api&&typeof window.api.caLister==="function");
+let CA_CFG=null;
+function caCfg(){if(!CA_CFG){try{CA_CFG=JSON.parse(rawLoad("gesmar-ca")||"null")}catch(e){CA_CFG=null}CA_CFG=CA_CFG||{};}
+  if(!CA_CFG.mag&&S.magasins&&S.magasins.length){const b=S.magasins.find(m=>/BREDIS/i.test(m.nom||""))||S.magasins.find(m=>m.id===S.store);if(b){CA_CFG.mag=b.id;caCfgSave()}}
+  if(!CA_CFG.depuis){CA_CFG.depuis=new Date().getFullYear()+"-01-01";caCfgSave()}return CA_CFG}
+function caCfgSave(){try{rawSave("gesmar-ca",JSON.stringify(CA_CFG||{}))}catch(e){}}
+let CA_CACHE=null;
+function caCache(){if(!CA_CACHE){try{CA_CACHE=JSON.parse(rawLoad("gesmar-ca-cache")||"{}")||{}}catch(e){CA_CACHE={}}}return CA_CACHE}
+function caLireTexte(t){let brut=null,ray=0,nr=0;for(const l of String(t).split(/\r?\n/)){const p=l.split("|");
+    if(p[0]==="050"&&/^C\.?A\.? ?BRUT/i.test((p[3]||"").trim())&&/^\d+$/.test((p[5]||"").trim()))brut=+p[5]/100;
+    else if(p[0]==="056"&&/^-?\d+$/.test((p[4]||"").trim())){ray+=+p[4];nr++}}
+  return brut!=null?Math.round(brut*100)/100:nr?Math.round(ray)/100:null}
+S.ca={etat:"",busy:false,msg:"",dernier:0};
+async function caScan(silent,force){if(!CA_API()||S.ca.busy||!S.db||!S.store||!S.magasins.length)return;const C=caCfg();
+  if(S.store!==C.mag){S.ca.etat="autre";return}
+  S.ca.busy=true;let maj=0,lus=0;
+  try{const L=await window.api.caLister();S.ca.dir=L.dir;if(L.err){S.ca.etat="absent";return}
+    const K=caCache(),parMois={};
+    for(const f of L.files){const m=f.nom.match(/(\d{4})(\d\d)(\d\d)$/);if(!m)continue;const iso=m[1]+"-"+m[2]+"-"+m[3];if(iso<C.depuis||iso>todayISO())continue;
+      let c=K[f.nom];if(!c||c.size!==f.size||c.mtime!==f.mtime){try{c={size:f.size,mtime:f.mtime,ca:caLireTexte(await window.api.caLire(f.nom))};K[f.nom]=c;lus++}catch(e){console.error(e);continue}}
+      if(c.ca==null)continue;const key=iso.slice(0,7),dd=iso.slice(8,10),doc=S.mois[key],cur=doc&&doc.jours&&doc.jours[dd]&&doc.jours[dd].ca;
+      if(cur==null||Math.abs(cur-c.ca)>0.004)(parMois[key]=parMois[key]||{})[dd]={ca:c.ca}}
+    if(lus)try{rawSave("gesmar-ca-cache",JSON.stringify(K))}catch(e){}
+    HIST.lastT=Date.now();
+    for(const[key,patch]of Object.entries(parMois)){const ref=S.db.doc(P("mois/"+key));
+      if(S.mois[key])await ref.update({jours:patch});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch});maj+=Object.keys(patch).length}
+    S.ca.etat="ok";S.ca.dernier=Date.now();S.ca.nb=L.files.length;
+    if(maj){S.ca.msg=maj+" jour(s) mis à jour le "+new Date().toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});toast("CA de la caisse : "+maj+" jour(s) mis à jour");render()}
+    else if(force)toast("CA de la caisse : déjà à jour")}
+  catch(e){console.error(e);S.ca.etat="erreur";S.ca.err=e&&e.message||String(e)}
+  finally{S.ca.busy=false;if(S.modal&&typeof renderModal==="function")renderModal()}}
+function caAuto(){if(!CA_API())return;let n=0;const t=setInterval(()=>{if(S.ca.etat==="ok"||++n>40){clearInterval(t);return}if(S.store&&S.magasins.length&&Object.keys(S.mois).length)caScan(true)},3000);
+  setInterval(()=>caScan(true),900000)}
+async function caChoisir(){try{const d=await window.api.caChoisir();if(d){CA_CACHE={};caScan(false,true)}}catch(e){toast("Choix du dossier impossible")}}
+function caSetDepuis(v){if(!v)return;caCfg().depuis=v;caCfgSave();toast("CA de la caisse à partir du "+frDate(v));caScan(false,true)}
+function caSetMag(v){caCfg().mag=v;caCfgSave();caScan(false,true);if(S.modal)renderModal()}
+function caReglagesHtml(){if(!CA_API())return PC?`<div class="facreg" style="margin-top:14px"><b>CA de la caisse (Videor)</b><div class="hist">Pour remplir tout seul le CA TTC chaque jour, réinstallez GESMAR sur le PC de Videor avec le nouveau kit (vos données sont gardées).</div></div>`:"";
+  const C=caCfg(),E=S.ca;const etat=E.busy?"Lecture…":E.etat==="absent"?"⚠️ Dossier introuvable sur ce PC":E.etat==="erreur"?"⚠️ "+esc(E.err||"Lecture impossible"):E.etat==="autre"?"Ce PC remplit le CA d'un autre magasin.":E.etat==="ok"?(E.nb||0)+" journées de caisse trouvées":"";
+  return `<div class="facreg" style="margin-top:14px"><div><b>CA de la caisse (Videor)</b></div>
+    <div class="hist" style="margin-top:-4px">Chaque nuit, Videor enregistre la journée de la caisse. GESMAR met ce CA TTC dans la saisie (il remplace ce qui est tapé). Lu au démarrage puis toutes les 15 minutes.</div>
+    <div><b>Dossier</b> : ${esc(E.dir||"C:\\transfert\\reception\\001")}</div>
+    <div class="row"><label for="caMag"><b>Magasin</b></label><select id="caMag">${S.magasins.map(m=>`<option value="${esc(m.id)}"${m.id===C.mag?" selected":""}>${esc(m.nom||m.id)}</option>`).join("")}</select></div>
+    <div class="row"><label for="caDep"><b>CA à partir du</b></label><input type="date" id="caDep" value="${esc(C.depuis||"")}"></div>
+    <div class="row"><button class="btn small" data-cascan="1" ${E.busy?"disabled":""}>Relire maintenant</button><button class="btn small" data-cadir="1">Changer de dossier</button></div>
+    ${etat?`<div class="hist">${etat}</div>`:""}${E.msg?`<div class="hist">Dernière mise à jour : ${esc(E.msg)}</div>`:""}</div>`}
 function facAuto(){if(!FAC_API())return;const go=()=>{if(S.fac.busy||Date.now()-(S.fac.dernier||0)<300000)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;facScan(true)};
   setTimeout(go,8000);setInterval(go,900000);window.addEventListener("focus",go);
   // v97 : au démarrage, la base (fournisseurs, réglages) peut arriver après 8 s : on réessaie jusqu'à une lecture réussie, pour que le compteur « Factures à traiter » revienne tout seul
@@ -1841,7 +1892,7 @@ document.addEventListener("click",e=>{if(e.target.dataset&&e.target.dataset.act=
         if(r.status==="new"){await new Promise(f=>setTimeout(f,2000));const x=await window.api.updateApply(majUrl());if(x.status==="done")return;soir=true}}catch(e){soir=true}
       S.majBusy=false};
     setInterval(()=>{const n=new Date(),d=n.toDateString();if(n.getHours()>=H&&fait!==d){fait=d;soir=true}if(soir)soirGo()},60000)}
-  S.db=wrapDb(db);render();facAuto(); // v86 : recherche automatique des nouvelles factures
+  S.db=wrapDb(db);render();facAuto();caAuto(); // v86 : recherche automatique des nouvelles factures
   setTimeout(()=>SYNC.start().catch(()=>{}),300);
   db.doc("config/app").onSnapshot(d=>{S.config=d.exists?d.data():{};schedule()},e=>console.error(e));
   db.collection("magasins").onSnapshot(s=>{

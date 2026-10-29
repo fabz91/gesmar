@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld('api', {
   facLister: () => ipcRenderer.invoke('gm:facLister'),
   facLire: (rel) => ipcRenderer.invoke('gm:facLire', rel),
   facOuvrir: (rel) => ipcRenderer.invoke('gm:facOuvrir', rel),
-  pdfjs: () => ipcRenderer.invoke('gm:pdfjs')
+  pdfjs: () => ipcRenderer.invoke('gm:pdfjs'),
+  // v99 : CA de la caisse (fichiers Videor)
+  caLister: () => ipcRenderer.invoke('gm:caLister'),
+  caLire: (nom) => ipcRenderer.invoke('gm:caLire', nom),
+  caChoisir: () => ipcRenderer.invoke('gm:caChoisir')
 });
 contextBridge.exposeInMainWorld('SYNC', { updateUrl: cfg.updateUrl || '', url: cfg.supabaseUrl || '', key: cfg.supabaseKey || '' });

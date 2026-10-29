@@ -103,6 +103,28 @@ ipcMain.handle('gm:facLister', async () => {
 });
 ipcMain.handle('gm:facLire', async (e, rel) => { const b = await fs.promises.readFile(facSafe(rel)); return new Uint8Array(b.buffer, b.byteOffset, b.length); });
 ipcMain.handle('gm:facOuvrir', async (e, rel) => shell.openPath(facSafe(rel)));
+// v99 : CA de la caisse. Videor dépose chaque nuit la journée de la caisse dans C:\transfert\reception\001\VENT.TOT.AAAAMMJJ.
+// Lecture seule. On ne renvoie que les lignes de totaux (pas le détail des articles) ; le calcul se fait dans la page.
+function caDir() { return facCfg().caisse || 'C:\\transfert\\reception\\001'; }
+const CA_NOM = /^VENT\.TOT\.\d{8}$/i;
+ipcMain.handle('gm:caLister', async () => {
+  const d = caDir(); let n = [];
+  try { n = await fs.promises.readdir(d); } catch (e) { return { dir: d, err: 'absent' }; }
+  const files = [];
+  for (const f of n) { if (!CA_NOM.test(f)) continue; try { const st = await fs.promises.stat(path.join(d, f)); if (st.isFile()) files.push({ nom: f, size: st.size, mtime: Math.round(st.mtimeMs) }); } catch (_) {} }
+  return { dir: d, files };
+});
+ipcMain.handle('gm:caLire', async (e, nom) => {
+  if (!CA_NOM.test(String(nom))) throw new Error('Nom refusé');
+  const t = await fs.promises.readFile(path.join(caDir(), String(nom)), 'latin1');
+  return t.split(/\r?\n/).filter(l => !/^(001|054|055)\|/.test(l)).join('\n');
+});
+ipcMain.handle('gm:caChoisir', async () => {
+  const c = facCfg();
+  const r = await dialog.showOpenDialog(win, { title: 'Dossier des journées de caisse (fichiers VENT.TOT)', defaultPath: caDir(), properties: ['openDirectory'] });
+  if (r.canceled || !r.filePaths[0]) return '';
+  c.caisse = r.filePaths[0]; fs.writeFileSync(facCfgPath, JSON.stringify(c, null, 1), 'utf8'); return c.caisse;
+});
 // pdf.js (lecture des PDF), fourni avec le programme dans le dossier pdfjs
 ipcMain.handle('gm:pdfjs', async () => ({
   lib: fs.readFileSync(path.join(appDir, 'pdfjs', 'pdf.min.mjs'), 'utf8'),
