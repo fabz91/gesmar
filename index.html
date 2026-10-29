@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="92">
+<meta name="gm-version" content="93">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -389,7 +389,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=92;
+const APP_VERSION=93;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1162,7 +1162,7 @@ function facFid(dossier){const k=FAC.nk(dossier),liens=(S.facReg&&S.facReg.liens
 const facIdent=r=>FAC.nk(r.dossier)+"|"+(r.date||"")+"|"+(r.total==null?"":r.total.toFixed(2));
 S.fac={etat:"",liste:[],ecartes:[],prog:"",ouvert:false,vus:0,dernier:0};
 async function facScan(silent){
-  if(S.fac.busy)return;if(!FAC_API()){S.fac.etat="noapi";return}
+  if(S.fac.busy||S.fac.imp){S.fac.relire=true;return} // v93 : une lecture est déjà en cours : on relira juste aprèsif(!FAC_API()){S.fac.etat="noapi";return}
   if(!S.store||!S.fourn.length)return;
   S.fac.busy=true;S.fac.etat="lecture";S.fac.prog="Recherche des factures…";facRender();
   try{const L=await window.api.facLister();
@@ -1177,7 +1177,8 @@ async function facScan(silent){
       const segs=f.rel.split("/"),nom=segs[segs.length-1],cp=FAC.copieDe(nom);
       // factures d'avant la mise en service : déjà saisies à la main, on ne les lit pas
       const dn=facNomDate(nom),mt=new Date(f.mtime),miso=mt.getFullYear()+"-"+String(mt.getMonth()+1).padStart(2,"0")+"-"+String(mt.getDate()).padStart(2,"0");
-      if(miso<dep&&(!dn||dn<dep))continue;
+      // v93 : « Factures à partir du » = date de la facture (date du nom de fichier) ; sans date dans le nom : date de modification du fichier
+      if(dn?dn<dep:miso<dep)continue;
       const ig=FAC.ignorer(f.rel);if(ig){if(/\.pdf$/i.test(f.rel))ecartes.push({rel:f.rel,raison:ig});continue}
       if(cp&&noms.has(segs.slice(0,-1).concat(cp).join("/").toLowerCase())){ecartes.push({rel:f.rel,raison:"Copie d'un fichier déjà présent"});continue}
       aLire.push(f)}
@@ -1192,6 +1193,7 @@ async function facScan(silent){
     // doublons : même fournisseur, même date, même montant qu'une facture déjà importée ou déjà dans la liste
     const deja=new Set(Object.values(reg).filter(x=>x&&x.s==="i"&&x.id).map(x=>x.id)),vus=new Set(),liste=[];
     for(const r of res){const id=facIdent(r);
+      if(r.date&&r.date<dep)continue; // v93 : facture datée d'avant « Factures à partir du » : ignorée (déjà saisie à la main)
       if(r.total!=null&&(deja.has(id)||vus.has(id))){ecartes.push({rel:r.rel,raison:"Déjà importée (même fournisseur, date et montant)"});continue}vus.add(id);
       const old=S.fac.liste.find(x=>x.rel===r.rel);
       r.key=facKey(r.rel);r.ident=id;r.mag=r.magasin||S.store;
@@ -1212,13 +1214,13 @@ async function facScan(silent){
   catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
   finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
-}
+  if(S.fac.relire){S.fac.relire=false;setTimeout(()=>facScan(),200)}}
 const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
 const facATraiter=()=>facAImporter().filter(r=>!facAutoOn()||!facPret(r)); // v91 : celles que GESMAR n'a pas pu écrire seul
 function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facATraiter().length;b.hidden=!n;b.textContent=n;const k=b.closest(".facbtn");if(k)k.classList.toggle("on",!!n)}
 async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
 async function facSetDepart(v){if(!v){toast("Choisissez une date");return}
-  try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});await facScan()}catch(e){fail(e)}}
+  try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});toast("Factures à partir du "+frDate(v)+" : lecture du dossier…");S.fac.liste=[];await facScan()}catch(e){fail(e)}}
 // Ajoute des montants dans la saisie (en plus de ce qui y est déjà) et affiche la colonne dans le mois
 async function facEcrire(lignes,remplacer){const parMois={};for(const l of lignes){if(!l.date||!l.col||l.montant==null)continue;(parMois[l.date.slice(0,7)]=parMois[l.date.slice(0,7)]||[]).push(l)}
   for(const[key,L]of Object.entries(parMois)){const doc=S.mois[key],J=(doc&&doc.jours)||{},patch={};
@@ -1374,7 +1376,7 @@ function facReglagesHtml(){const F=S.fac,dep=facDepart();
   return `<div class="facreg">
     <div><b>Dossier</b> : ${F.root?esc(F.root):"aucun"}${F.root&&/[\\/]20\d\d[\\/]?$/.test(F.root)?`<div class="facwarn">Choisissez plutôt le dossier <b>Documents</b> (celui au-dessus de ${esc(F.root.match(/(20\d\d)[\\/]?$/)[1])}) : sinon le dossier de l'année prochaine ne sera pas lu.</div>`:""}</div>
     <div class="row"><button class="btn small" data-facdir="1">${F.root?"Changer de dossier":"Choisir le dossier"}</button><button class="btn small" data-facscan="1" ${F.busy||!F.root?"disabled":""}>Relire maintenant</button></div>
-    <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"><button class="btn small" data-facdep="1">Enregistrer</button></div>
+    <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"></div><div class="hist" style="margin-top:-6px">La date est enregistrée dès qu'elle est changée, puis le dossier est relu.</div>
     <div class="row" style="justify-content:space-between"><span><b>Import ${facAutoOn()?"automatique":"manuel"}</b>${facAutoOn()?" : toutes les 15 minutes":" : à valider dans Factures à traiter"}</span><button class="btn small" data-facauto="${facAutoOn()?"0":"1"}">${facAutoOn()?"Passer en manuel":"Passer en automatique"}</button></div>
     ${etat?`<div class="hist">${etat}</div>`:""}${F.dernierImport?`<div class="hist">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
     ${facRecentes()}</div>`}
@@ -1390,9 +1392,10 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[dat
   if(b.dataset.faccl){facClasser(b.dataset.faccl);return}
   if(b.dataset.facrep){facClasser(b.dataset.facrep,true);return}
   if(b.dataset.act==="facReglages"){facFermer();S.modal=true;S.modalPanel="factures";render();return}
-  if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){S.fac.liste=[];facScan()}
+  if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){const v=($("#facDep")||{}).value;if(v&&v!==facDepart()){facSetDepart(v);return}S.fac.liste=[];facScan()}
   else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter(false);
   else if(b.dataset.facpdf)window.api.facOuvrir(b.dataset.facpdf).catch(()=>toast("Ouverture du PDF impossible"));else if(b.dataset.facign)facIgnorer(b.dataset.facign)});
+document.addEventListener("change",e=>{if(e.target&&e.target.id==="facDep"){const v=e.target.value;if(v&&v!==facDepart())facSetDepart(v);return}}); // v93 : date enregistrée tout de suite
 document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#facRoot"))return;
   const R=rel=>S.fac.liste.find(x=>x.rel===rel);
   if(t.dataset.facok){const r=R(t.dataset.facok);if(r)r.ok=t.checked;S.fac.force=true;facRender()}
