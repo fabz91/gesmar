@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="95">
+<meta name="gm-version" content="96">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -389,7 +389,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=95;
+const APP_VERSION=96;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1209,7 +1209,7 @@ async function facScan(silent){
       // v95 : facture regroupée (Saint Prim, CDPO…) : découpée jour par jour, elle remplace ce qui a été tapé à la main, sans question
       if(r.decoupe&&r.etatSaisie==="diff"){r.etatSaisie="remp";r.remplacer=true}
       if(!old&&r.etatSaisie==="diff")r.ok=false;
-      r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" € déjà saisis":null}).filter(Boolean);
+      r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" €":null}).filter(Boolean);
       liste.push(r)}
     liste.sort((a,b)=>String(a.date||"9").localeCompare(String(b.date||"9"))||String(a.dossier).localeCompare(String(b.dossier)));
     S.fac.liste=liste;S.fac.ecartes=ecartes;S.fac.etat="ok";S.fac.dernier=Date.now()}
@@ -1355,7 +1355,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
   else if(["nodir","absent","nodepart","erreur"].includes(F.etat))body=`<p>${F.etat==="erreur"?"⚠️ Lecture impossible : "+esc(F.err||""):F.etat==="absent"?"Le dossier des factures est introuvable sur ce PC.":"Le dossier des factures n'est pas encore réglé."}</p><p class="sub">Tout se règle dans Réglages ⚙ → Dossier des factures.</p>${regl}`;
   else if(F.etat==="lecture"&&!F.liste.length)body=`<p>${esc(F.prog||"Lecture des factures…")}</p>`;
   else{const L=facATraiter();
-    const pb=r=>{const v=(r.verif||[]).slice();if(r.total==null&&!v.some(x=>/montant/i.test(x)))v.unshift("Montant introuvable");if(!r.date&&!v.some(x=>/date/i.test(x)))v.unshift("Date introuvable");if(r.avant)v.push("Datée d'avant le "+frDate(facDepart())+" (départ) : déjà saisie à la main ?");if(r.etatSaisie==="diff"&&r.deja&&r.deja.length)v.push("Déjà quelque chose dans la saisie ("+r.deja.join(", ")+") : facture déjà tapée à la main ? Ajouter = en plus ; Remplacer = corriger la case ; Ignorer = ne rien changer");else if(r.etatSaisie==="egal")v.push("Déjà dans la saisie avec ce montant");return [...new Set(v)]};
+    const pb=r=>{const v=(r.verif||[]).slice();if(r.total==null&&!v.some(x=>/montant/i.test(x)))v.unshift("Montant introuvable");if(!r.date&&!v.some(x=>/date/i.test(x)))v.unshift("Date introuvable");if(r.avant)v.push("Datée d'avant le "+frDate(facDepart())+" (départ) : déjà saisie à la main ?");if(r.etatSaisie==="diff"&&r.deja&&r.deja.length)v.push("Déjà dans la saisie : "+r.deja.join(", "));else if(r.etatSaisie==="egal")v.push("Déjà dans la saisie avec ce montant");return [...new Set(v)]};
     const four=r=>FAC.nk(r.dossier)==="DIAPAR"?`<b>DIAPAR</b><select data-faccol="${esc(r.rel)}" aria-label="Rayon" style="margin-top:4px;display:block">${["epicerie","aa","frais"].map(c=>`<option value="${c}" ${(r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col)===c?"selected":""}>${FAC_COL[c]}</option>`).join("")}</select>`
       :`<select data-facf="${esc(r.rel)}" aria-label="Fournisseur">${facOpts(r)}</select>`;
     const mt=r=>r.saisi!=null?r.saisi:r.total;
