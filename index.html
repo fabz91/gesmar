@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="93">
+<meta name="gm-version" content="94">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -389,7 +389,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=93;
+const APP_VERSION=94;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1418,7 +1418,7 @@ function facComparer(manId,autoId){const PROP=facPourDecl();
   const L=(k,v)=>v?`<div class="cmpl"><span>${k}</span><b>${v}</b></div>`:"";
   const dec=`${L("Fournisseur",esc(fName(b.fournisseur)))}${L("Produit",esc(b.produit||""))}${L("Code article",esc(b.code||""))}${L("Date de facture",frDate(b.date))}${L("N° de facture",esc(b.facture||""))}${L("Quantité",esc(b.quantite||""))}${L("Motif",esc(b.motif||""))}${L("Montant",b.montant?eur2.format(b.montant)+" HT":"")}${L("Statut",`<span class="pill s-${b.statut}">${SLABEL[b.statut]||b.statut}</span>`)}`;
   const lig=(x.lignes||[]).map(l=>`<div>${l.code?esc(l.code)+" ":""}${esc(l.libelle||"")}${l.ht!=null?" · "+eur2.format(l.ht)+" HT":""}</div>`).join("");
-  const fac=`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Dans la facture":"Avoir")+(x.numero?" n° "+esc(x.numero):""))}${L("Date",frDate(x.date))}${L("Pour la facture",esc(x.factureOrigine||""))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`;
+  const fac=`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""))}${L("Date",frDate(x.date))}${L("Concerne la facture",esc(x.factureOrigine||""))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`;
   const o=document.createElement("div");o.className="facov";o.id="facCmp";
   o.innerHTML=`<div class="facbox" style="max-width:860px"><div class="band">Avoir sur facture</div><div style="padding:14px 16px">
     ${lie?`<p class="sub" style="margin:0 0 10px">✓ Cette déclaration a été validée : elle est en <b>Déduit</b>.</p>`:`<p class="sub" style="margin:0 0 10px">Cette déclaration semble avoir été accordée par le fournisseur${raison?" ("+esc(raison)+")":""}. Est-ce le même avoir ?</p>`}
@@ -1447,7 +1447,7 @@ function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fou
   <div class="panel flush"><div class="band">Avoir sur facture</div><div class="scroll"><table>
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Document</th><th class="l">Produits</th><th>Montant TTC</th><th class="l">Déclaration</th><th></th></tr></thead>
     <tbody>${L.length?L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(fn(x.fournisseur))}</td>
-      <td class="l" style="white-space:normal;min-width:150px">${x.dansFacture?`Dans la facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Déjà déduit du total de la facture</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté en moins dans la saisie</div>`}${x.factureOrigine?`<div class="hist">Pour la facture ${esc(x.factureOrigine)}</div>`:""}</td>
+      <td class="l" style="white-space:normal;min-width:150px">${x.dansFacture?`Facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Avoir déjà déduit</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté en moins dans la saisie</div>`}${x.factureOrigine?`<div class="hist">Concerne la facture ${esc(x.factureOrigine)}</div>`:""}</td>
       <td class="l" style="white-space:normal;min-width:200px">${prod(x)}</td><td>${eur2.format(x.total||0)}</td>
       <td class="l" style="white-space:normal;min-width:230px">${rap(x)}</td>
       <td>${FAC_API()&&x.fichier?`<button class="btn small" data-facpdf="${esc(x.fichier)}">PDF</button>`:""}</td></tr>`).join("")
