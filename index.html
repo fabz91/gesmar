@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="87">
+<meta name="gm-version" content="88">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -381,7 +381,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=87;
+const APP_VERSION=88;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -734,7 +734,7 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
   const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
   /* v86 : deux parties : avoirs manuels (déclarés par le magasin) et automatiques (lus sur les factures) */
   const nAuto=(S.avoirsAuto||[]).length,nProp=facPropositions().length;
-  const vues=`<div class="avvues" role="tablist"><button data-avvue="man" aria-pressed="${S.avVue!=="auto"}">Avoirs manuels<span class="c">${all.filter(a=>EN_COURS.includes(a.statut)).length} en cours</span></button><button data-avvue="auto" aria-pressed="${S.avVue==="auto"}">Avoirs automatiques<span class="c">${nAuto}</span>${nProp?`<span class="cnt">${nProp} à valider</span>`:""}</button></div>`;
+  const vues=`<div class="avvues" role="tablist"><button data-avvue="man" aria-pressed="${S.avVue!=="auto"}">Déclaration<span class="c">${all.filter(a=>EN_COURS.includes(a.statut)).length} en cours</span></button><button data-avvue="auto" aria-pressed="${S.avVue==="auto"}">Avoir sur facture<span class="c">${nAuto}</span>${nProp?`<span class="cnt">${nProp} à valider</span>`:""}</button></div>`;
   if(S.avVue==="auto")return `<h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>${vues}${vAvoirsAuto()}`;
   return `
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>${vues}
@@ -746,7 +746,7 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant HT</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
     <tbody>${list.length?list.map(a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a);
       return `<tr${late?' class="lrow"':""}><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
-      <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}${a.avoirAuto?`<div class="hist">✓ Retrouvé sur une facture (avoirs automatiques)</div>`:""}</td>
+      <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}${a.avoirAuto?`<div class="hist">✓ Retrouvé sur une facture (Avoir sur facture)</div>`:""}</td>
       <td class="l">${esc(a.quantite)}</td><td class="l">${esc(a.motif)}</td>
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
       <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
@@ -1369,7 +1369,7 @@ function vAvoirsAuto(){const L=(S.avoirsAuto||[]).slice().sort((a,b)=>String(b.d
     const c=facCandidats(x);if(!c.length)return `<span class="hist">Aucun avoir manuel correspondant</span>`;const p=c[0];
     return `<div class="facwarn" style="margin:0 0 4px">Correspond à l'avoir manuel <b>${esc(p.a.produit||"")}</b> du ${frDate(p.a.date)} (${esc(p.raison)})</div>
       <div class="row" style="flex-wrap:nowrap"><button class="btn small primary" data-avlier="${esc(x.id)}" data-man="${esc(p.a.id)}">Valider : Déduit</button><button class="btn small" data-avrefus="${esc(x.id)}" data-man="${esc(p.a.id)}">Non</button></div>`};
-  return `<div class="panel flush"><div class="band">Avoirs automatiques (lus sur les factures)</div><div class="scroll"><table>
+  return `<div class="panel flush"><div class="band">Avoir sur facture</div><div class="scroll"><table>
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Document</th><th class="l">Produits</th><th>Montant TTC</th><th class="l">Avoir manuel</th><th></th></tr></thead>
     <tbody>${L.length?L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(fn(x.fournisseur))}</td>
       <td class="l" style="white-space:normal;min-width:150px">${x.dansFacture?`Dans la facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Déjà déduit du total de la facture</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté en moins dans la saisie</div>`}${x.factureOrigine?`<div class="hist">Pour la facture ${esc(x.factureOrigine)}</div>`:""}</td>
