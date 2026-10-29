@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="88">
+<meta name="gm-version" content="89">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -325,6 +325,9 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .factab td{vertical-align:top}.factab select{max-width:200px}
 .facmt{width:110px;text-align:right}
 .facwarn{color:var(--warn);font-size:12px;margin-top:3px}
+.avsf{border:1px solid var(--green);background:var(--green-soft);color:var(--green-2);border-radius:12px;padding:2px 10px;font:700 12px var(--body);cursor:pointer;white-space:nowrap;margin-left:6px}.avsf:hover{background:var(--green);color:var(--on-green)}
+.cmpgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.cmpgrid{grid-template-columns:1fr}}
+.cmpl{display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--line);font-size:13px}.cmpl>span{color:var(--muted);min-width:110px}
 .facmode{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .facprop{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .avvues{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
@@ -381,7 +384,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=88;
+const APP_VERSION=89;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -734,7 +737,7 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
   const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
   /* v86 : deux parties : avoirs manuels (déclarés par le magasin) et automatiques (lus sur les factures) */
   const nAuto=(S.avoirsAuto||[]).length,nProp=facPropositions().length;
-  const vues=`<div class="avvues" role="tablist"><button data-avvue="man" aria-pressed="${S.avVue!=="auto"}">Déclaration<span class="c">${all.filter(a=>EN_COURS.includes(a.statut)).length} en cours</span></button><button data-avvue="auto" aria-pressed="${S.avVue==="auto"}">Avoir sur facture<span class="c">${nAuto}</span>${nProp?`<span class="cnt">${nProp} à valider</span>`:""}</button></div>`;
+  const vues=`<div class="avvues" role="tablist"><button data-avvue="man" aria-pressed="${S.avVue!=="auto"}">Déclaration<span class="c">${all.filter(a=>EN_COURS.includes(a.statut)).length} en cours</span></button><button data-avvue="auto" aria-pressed="${S.avVue==="auto"}">Avoir sur facture<span class="c">${nAuto}</span></button></div>`;
   if(S.avVue==="auto")return `<h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>${vues}${vAvoirsAuto()}`;
   return `
   <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>${vues}
@@ -746,12 +749,12 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant HT</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
     <tbody>${list.length?list.map(a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a);
       return `<tr${late?' class="lrow"':""}><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
-      <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}${a.avoirAuto?`<div class="hist">✓ Retrouvé sur une facture (Avoir sur facture)</div>`:""}</td>
+      <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}</td>
       <td class="l">${esc(a.quantite)}</td><td class="l">${esc(a.motif)}</td>
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
       <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
       <td class="l ${late?"late":""}">${late?`<span class="avlate" title="Sans nouvelle depuis ${ds} jours"><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span> `:""}${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
-      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["declare","relance","accepte"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${a.statut==="accepte"?`<button class="btn small" data-setst="deduit" data-id="${a.id}">Déduit</button>`:`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepté</button>`}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="btn small" data-mail="${a.id}" title="Envoyer cet avoir par mail (Outlook)" aria-label="Envoyer cet avoir par mail (Outlook)" style="padding:2px 7px">✉️</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div></td></tr>`}).join("")
+      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${["declare","relance","accepte"].includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${a.statut==="accepte"?`<button class="btn small" data-setst="deduit" data-id="${a.id}">Déduit</button>`:`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepté</button>`}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="btn small" data-mail="${a.id}" title="Envoyer cet avoir par mail (Outlook)" aria-label="Envoyer cet avoir par mail (Outlook)" style="padding:2px 7px">✉️</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button>${a.avoirAuto&&(S.avoirsAuto||[]).some(x=>x.id===a.avoirAuto)?`<button class="avsf" data-avsf="${a.id}" title="Voir l'avoir retrouvé sur la facture">Avoir sur facture</button>`:""}</div></td></tr>`}).join("")
       :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « Nouveau » pour en créer un.</div></td></tr>`}</tbody>
   </table></div></div>`;
 }
@@ -823,7 +826,7 @@ async function saveAvoir(form){
   const body={fournisseur:g("fournisseur"),date:g("date"),produit:g("produit"),code:g("code"),facture:g("facture"),quantite:g("quantite"),motif:g("motif"),montant:mt,statut,infos:g("infos"),
     relances:a.relances||[],dateReclamation:a.dateReclamation||todayISO(),creeLe:a.creeLe||todayISO(),majLe:todayISO()};
   try{ if(a.id) await S.db.doc(P("avoirs/"+a.id)).set(body); else await S.db.collection(P("avoirs")).add(body);
-    S.edit=null;S.confirmDel=null;toast(a.id?"Avoir enregistré":"Avoir créé");render() }catch(e){fail(e)}
+    S.edit=null;S.confirmDel=null;toast(a.id?"Avoir enregistré":"Avoir créé");render();setTimeout(()=>facAutoLier(),600) }catch(e){fail(e)}
 }
 // v54 : texte d'un avoir à coller dans un e-mail (avec le détail des relances)
 function avTexte(a){const d=x=>x?frDate(x):"";const rel=(a.relances||[]).slice().sort();
@@ -1196,7 +1199,8 @@ async function facScan(silent){
     S.fac.liste=liste;S.fac.ecartes=ecartes;S.fac.etat="ok";S.fac.dernier=Date.now()}
   catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
   finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
-  if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true)}
+  if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
+  if(S.avoirsAuto&&S.avoirsAuto.length)facAutoLier()}
 const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
 function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facAImporter().length;b.hidden=!n;b.textContent=n}
 async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
@@ -1253,7 +1257,7 @@ async function facImporter(auto){
     const done=new Set(L.map(r=>r.rel));S.fac.liste=S.fac.liste.filter(r=>!done.has(r.rel));
     const msg=nOk+" facture(s) importée(s)"+(auto?" automatiquement":"")+(nAv?", "+nAv+" avoir(s) lu(s)":"")+(Object.keys(crees).length?", "+Object.keys(crees).length+" fournisseur(s) créé(s)":"");
     S.fac.dernierImport={le:new Date().toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}),msg};
-    toast(msg);facRender();facBadge();render();if(!auto||nAv)setTimeout(()=>facProposer(true),400)}
+    toast(msg);facRender();facBadge();render();if(nAv)setTimeout(()=>facAutoLier(),400)}
   catch(e){fail(e)}
   finally{S.fac.imp=false}}
 async function facSetAuto(on){try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({auto:on});else await ref.set({depart:todayISO(),liens:{},auto:on});
@@ -1276,8 +1280,17 @@ function facCandidats(x){const codes=new Set([...(x.lignes||[]).map(a=>String(a.
     if(sc)out.push({a,sc,raison})}
   return out.sort((p,q)=>q.sc-p.sc)}
 function facPropositions(){const out=[];for(const x of (S.avoirsAuto||[])){if(x.manuel)continue;const c=facCandidats(x);if(c.length)out.push({x,c:c[0]})}return out}
-async function facLier(autoId,manId){const x=(S.avoirsAuto||[]).find(z=>z.id===autoId),a=S.avoirs.find(z=>z.id===manId);if(!x||!a)return;const t=todayISO();
-  try{await S.db.doc(P("avoirs/"+manId)).update({statut:"deduit",dateStatut:t,majLe:t,avoirAuto:autoId});await S.db.doc(P("avoirsAuto/"+autoId)).update({manuel:manId});toast("Avoir « "+(a.produit||"")+" » passé en Déduit")}catch(e){fail(e)}}
+async function facLier(autoId,manId,silent){const x=(S.avoirsAuto||[]).find(z=>z.id===autoId),a=S.avoirs.find(z=>z.id===manId);if(!x||!a)return;const t=todayISO();
+  try{await S.db.doc(P("avoirs/"+manId)).update({statut:"deduit",dateStatut:t,majLe:t,avoirAuto:autoId,statutAvant:a.statut});await S.db.doc(P("avoirsAuto/"+autoId)).update({manuel:manId});
+    a.statut="deduit";a.avoirAuto=autoId;x.manuel=manId;if(!silent)toast("Avoir « "+(a.produit||"")+" » passé en Déduit")}catch(e){fail(e)}}
+// v89 : toute correspondance passe directement en Déduit (sans validation) ; la bulle « Avoir sur facture » permet de vérifier et de défaire
+let FAC_LIENS=false;
+async function facAutoLier(){if(FAC_LIENS||!S.db||!S.store)return;FAC_LIENS=true;let n=0;
+  try{for(let k=0;k<50;k++){const p=facPropositions()[0];if(!p)break;await facLier(p.x.id,p.c.a.id,true);n++}}finally{FAC_LIENS=false}
+  if(n)toast(n+" déclaration(s) retrouvée(s) sur facture : passée(s) en Déduit");return n}
+async function facDelier(manId){const a=S.avoirs.find(z=>z.id===manId);if(!a||!a.avoirAuto)return;const x=(S.avoirsAuto||[]).find(z=>z.id===a.avoirAuto),t=todayISO();
+  try{await S.db.doc(P("avoirs/"+manId)).update({statut:a.statutAvant&&a.statutAvant!=="deduit"?a.statutAvant:"accepte",avoirAuto:null,dateStatut:t,majLe:t});
+    if(x)await S.db.doc(P("avoirsAuto/"+x.id)).update({manuel:null,refus:[...(x.refus||[]),manId]});toast("Lien retiré : la déclaration est de nouveau en cours")}catch(e){fail(e)}}
 async function facRefuser(autoId,manId){const x=(S.avoirsAuto||[]).find(z=>z.id===autoId);if(!x)return;
   try{await S.db.doc(P("avoirsAuto/"+autoId)).update({refus:[...(x.refus||[]),manId]})}catch(e){fail(e)}}
 // Après un import : fenêtre qui demande de valider chaque avoir manuel retrouvé sur les factures
@@ -1360,24 +1373,47 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.fac.ouvert&&!docu
 // Recherche automatique : au démarrage, puis toutes les 15 minutes et au retour sur la fenêtre (au plus toutes les 5 minutes)
 function facAuto(){if(!FAC_API())return;const go=()=>{if(S.fac.busy||Date.now()-(S.fac.dernier||0)<300000)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;facScan(true)};
   setTimeout(go,8000);setInterval(go,900000);window.addEventListener("focus",go)}
-/* ----- onglet Avoirs : partie « Avoirs automatiques » ----- */
-function vAvoirsAuto(){const L=(S.avoirsAuto||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.creeLe).localeCompare(String(a.creeLe)));
+/* v89 : fenêtre « Avoir sur facture » : la déclaration et l'avoir lu côte à côte */
+function facComparer(manId,autoId){const a=manId?S.avoirs.find(z=>z.id===manId):null,x=(S.avoirsAuto||[]).find(z=>z.id===(autoId||(a&&a.avoirAuto)));if(!x&&!a)return;
+  const b=a||S.avoirs.find(z=>z.id===x.manuel);const fn=id=>id==="diapar"?"DIAPAR":fName(id);
+  const L=(k,v)=>v?`<div class="cmpl"><span>${k}</span><b>${v}</b></div>`:"";
+  const dec=b?`${L("Fournisseur",esc(fName(b.fournisseur)))}${L("Produit",esc(b.produit||""))}${L("Code article",esc(b.code||""))}${L("Date de facture",frDate(b.date))}${L("N° de facture",esc(b.facture||""))}${L("Quantité",esc(b.quantite||""))}${L("Motif",esc(b.motif||""))}${L("Montant",b.montant?eur2.format(b.montant)+" HT":"")}${L("Statut",`<span class="pill s-${b.statut}">${SLABEL[b.statut]||b.statut}</span>`)}`:`<p class="sub">Aucune déclaration liée.</p>`;
+  const lig=x?(x.lignes||[]).map(l=>`<div>${l.code?esc(l.code)+" ":""}${esc(l.libelle||"")}${l.ht!=null?" · "+eur2.format(l.ht)+" HT":""}</div>`).join(""):"";
+  const fac=x?`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Dans la facture":"Avoir")+(x.numero?" n° "+esc(x.numero):""))}${L("Date",frDate(x.date))}${L("Pour la facture",esc(x.factureOrigine||""))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`:"";
+  const o=document.createElement("div");o.className="facov";o.id="facCmp";
+  o.innerHTML=`<div class="facbox" style="max-width:860px"><div class="band">Avoir sur facture</div><div style="padding:14px 16px">
+    <div class="cmpgrid"><div class="panel"><div class="lbl" style="margin-bottom:8px">Déclaration</div>${dec}</div><div class="panel"><div class="lbl" style="margin-bottom:8px">Avoir sur facture</div>${fac}</div></div>
+    <div class="row" style="justify-content:space-between;margin-top:14px"><div class="row">${b&&x&&b.avoirAuto===x.id?`<button class="btn" data-cmpdel="${esc(b.id)}">Ce n'est pas le même avoir</button>`:""}${FAC_API()&&x&&x.fichier?`<button class="btn" data-cmppdf="${esc(x.fichier)}">Ouvrir le PDF</button>`:""}</div>
+      <div class="row">${b&&x&&b.statut!=="deduit"?`<button class="btn primary" data-cmpok="${esc(b.id)}" data-auto="${esc(x.id)}">Passer en Déduit</button>`:b&&b.statut==="deduit"?`<span class="pill s-deduit">✓ Déduit</span>`:""}<button class="btn" data-cmpx="1">Fermer</button></div></div></div></div>`;
+  o.addEventListener("click",async e=>{const t=e.target.closest("button");if(!t){if(e.target===o)o.remove();return}
+    if(t.dataset.cmpx){o.remove();return}
+    if(t.dataset.cmppdf){window.api.facOuvrir(t.dataset.cmppdf).catch(()=>toast("Ouverture du PDF impossible"));return}
+    if(t.dataset.cmpok){await facLier(t.dataset.auto,t.dataset.cmpok);o.remove();return}
+    if(t.dataset.cmpdel){if(await askConfirm("Retirer le lien ? La déclaration repasse en cours (statut d'avant).")){await facDelier(t.dataset.cmpdel);o.remove()}}});
+  document.getElementById("facCmp")&&document.getElementById("facCmp").remove();document.body.appendChild(o)}
+/* ----- onglet Avoirs : partie « Avoir sur facture » ----- */
+function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fournisseur))].sort((a,b)=>String(a==="diapar"?"DIAPAR":fName(a)).localeCompare(String(b==="diapar"?"DIAPAR":fName(b))));
+  if(S.avfFourn&&!fns.includes(S.avfFourn))S.avfFourn="";
+  const L=T.filter(x=>!S.avfFourn||x.fournisseur===S.avfFourn).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.creeLe).localeCompare(String(a.creeLe)));
   const fn=id=>id==="diapar"?"DIAPAR":fName(id);
   const prod=x=>{const l=(x.lignes||[]);if(!l.length)return `<span class="hist">${x.dansFacture?"":"Détail dans le PDF"}</span>`;
     return l.slice(0,4).map(a=>`<div>${a.code?`<span class="hist" style="display:inline">${esc(a.code)}</span> `:""}${esc(a.libelle||"")}${a.ht!=null?` <span class="hist" style="display:inline">· ${eur2.format(a.ht)} HT</span>`:""}</div>`).join("")+(l.length>4?`<div class="hist">+ ${l.length-4} autre(s)</div>`:"")};
-  const rap=x=>{if(x.manuel){const a=S.avoirs.find(z=>z.id===x.manuel);return a?`<span class="pill s-deduit">✓ Lié</span> <b>${esc(a.produit||"")}</b><div class="hist">Avoir manuel du ${frDate(a.date)} passé en Déduit</div>`:`<span class="pill s-deduit">✓ Lié</span>`}
-    const c=facCandidats(x);if(!c.length)return `<span class="hist">Aucun avoir manuel correspondant</span>`;const p=c[0];
-    return `<div class="facwarn" style="margin:0 0 4px">Correspond à l'avoir manuel <b>${esc(p.a.produit||"")}</b> du ${frDate(p.a.date)} (${esc(p.raison)})</div>
-      <div class="row" style="flex-wrap:nowrap"><button class="btn small primary" data-avlier="${esc(x.id)}" data-man="${esc(p.a.id)}">Valider : Déduit</button><button class="btn small" data-avrefus="${esc(x.id)}" data-man="${esc(p.a.id)}">Non</button></div>`};
-  return `<div class="panel flush"><div class="band">Avoir sur facture</div><div class="scroll"><table>
-    <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Document</th><th class="l">Produits</th><th>Montant TTC</th><th class="l">Avoir manuel</th><th></th></tr></thead>
+  const rap=x=>{const a=x.manuel&&S.avoirs.find(z=>z.id===x.manuel);
+    if(a)return `<button class="avsf" data-avcmp="${esc(x.id)}" title="Voir la déclaration et l'avoir sur facture">Déclaration : ${esc(a.produit||"")}</button><div class="hist">Déclarée le ${frDate(a.date)} · ${SLABEL[a.statut]||a.statut}</div>`;
+    return `<span class="hist">Aucune déclaration correspondante</span>`};
+  return `<div class="row" style="margin-bottom:10px"><select id="avfFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${fns.map(f=>`<option value="${esc(f)}" ${S.avfFourn===f?"selected":""}>${esc(f==="diapar"?"DIAPAR":fName(f))}</option>`).join("")}</select></div>
+  <div class="panel flush"><div class="band">Avoir sur facture</div><div class="scroll"><table>
+    <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Document</th><th class="l">Produits</th><th>Montant TTC</th><th class="l">Déclaration</th><th></th></tr></thead>
     <tbody>${L.length?L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(fn(x.fournisseur))}</td>
       <td class="l" style="white-space:normal;min-width:150px">${x.dansFacture?`Dans la facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Déjà déduit du total de la facture</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté en moins dans la saisie</div>`}${x.factureOrigine?`<div class="hist">Pour la facture ${esc(x.factureOrigine)}</div>`:""}</td>
       <td class="l" style="white-space:normal;min-width:200px">${prod(x)}</td><td>${eur2.format(x.total||0)}</td>
       <td class="l" style="white-space:normal;min-width:230px">${rap(x)}</td>
       <td>${FAC_API()&&x.fichier?`<button class="btn small" data-facpdf="${esc(x.fichier)}">PDF</button>`:""}</td></tr>`).join("")
-      :`<tr><td colspan="7" class="l"><div class="empty-state">Aucun avoir lu pour l'instant. Ils arrivent avec le bouton « Factures » de la saisie.</div></td></tr>`}</tbody></table></div></div>`}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-avlier],[data-avrefus],[data-avvue]");if(!b||b.closest("#facProp"))return;
+      :`<tr><td colspan="7" class="l"><div class="empty-state">${S.avfFourn?"Aucun avoir sur facture pour ce fournisseur.":"Aucun avoir lu pour l'instant. Ils arrivent avec la lecture des factures."}</div></td></tr>`}</tbody></table></div></div>`}
+document.addEventListener("change",e=>{if(e.target.id==="avfFourn"){S.avfFourn=e.target.value;render()}});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-avlier],[data-avrefus],[data-avvue],[data-avsf],[data-avcmp]");if(!b||b.closest("#facProp"))return;
+  if(b.dataset.avsf){facComparer(b.dataset.avsf);return}
+  if(b.dataset.avcmp){facComparer(null,b.dataset.avcmp);return}
   if(b.dataset.avvue){S.avVue=b.dataset.avvue;S.edit=null;try{localStorage.setItem("gesmar.avvue",S.avVue)}catch(_){}render();return}
   if(b.dataset.avlier)facLier(b.dataset.avlier,b.dataset.man);else if(b.dataset.avrefus)facRefuser(b.dataset.avrefus,b.dataset.man)});
 
