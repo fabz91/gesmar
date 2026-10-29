@@ -1,6 +1,6 @@
 'use strict';
 // GESMAR - programme Windows : ouvre la fenêtre, lit/écrit les données sur le PC,
-// gère l'export, l'import, l'impression et la mise à jour depuis GitHub.
+// gère l'export, l'import, l'impression, la mise à jour depuis GitHub et (v86) la lecture du dossier des factures.
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu, net } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -68,6 +68,46 @@ ipcMain.handle('gm:updateReset', async () => {
   if (c.response !== 0) return false;
   core.updateReset(); app.relaunch(); app.exit(0); return true;
 });
+
+// v86 : factures. GESMAR lit le dossier OneDrive choisi (par ex. « OneDrive - BREDIS\Documents ») et ses PDF.
+// Le dossier choisi est retenu sur ce PC (factures.json, à côté des données). Lecture seule : rien n'est modifié ni déplacé.
+const facCfgPath = path.join(app.getPath('userData'), 'factures.json');
+function facCfg() { try { return JSON.parse(fs.readFileSync(facCfgPath, 'utf8')) || {}; } catch (e) { return {}; } }
+function facSafe(rel) {
+  const root = facCfg().dossier; if (!root) throw new Error('Dossier des factures non choisi');
+  const p = path.resolve(root, String(rel || '')); const r = path.resolve(root);
+  if (p !== r && !p.startsWith(r + path.sep)) throw new Error('Chemin refusé'); return p;
+}
+ipcMain.handle('gm:facDossier', async () => facCfg().dossier || '');
+ipcMain.handle('gm:facChoisir', async () => {
+  const c = facCfg();
+  const r = await dialog.showOpenDialog(win, { title: 'Choisir le dossier des factures (celui qui contient 2026)', defaultPath: c.dossier || app.getPath('home'), properties: ['openDirectory'] });
+  if (r.canceled || !r.filePaths[0]) return '';
+  c.dossier = r.filePaths[0]; fs.writeFileSync(facCfgPath, JSON.stringify(c, null, 1), 'utf8'); return c.dossier;
+});
+ipcMain.handle('gm:facLister', async () => {
+  const root = facCfg().dossier; if (!root) return { err: 'nodir' };
+  if (!fs.existsSync(root)) return { err: 'absent', root };
+  const files = [];
+  const walk = async (dir, rel, depth) => {
+    if (depth > 8 || files.length > 30000) return;
+    let ents = []; try { ents = await fs.promises.readdir(dir, { withFileTypes: true }); } catch (e) { return; }
+    for (const e of ents) {
+      const p = path.join(dir, e.name), r = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) await walk(p, r, depth + 1);
+      else if (e.isFile()) { try { const st = await fs.promises.stat(p); files.push({ rel: r, size: st.size, mtime: Math.round(st.mtimeMs) }); } catch (_) {} }
+    }
+  };
+  await walk(root, '', 0);
+  return { root, files };
+});
+ipcMain.handle('gm:facLire', async (e, rel) => { const b = await fs.promises.readFile(facSafe(rel)); return new Uint8Array(b.buffer, b.byteOffset, b.length); });
+ipcMain.handle('gm:facOuvrir', async (e, rel) => shell.openPath(facSafe(rel)));
+// pdf.js (lecture des PDF), fourni avec le programme dans le dossier pdfjs
+ipcMain.handle('gm:pdfjs', async () => ({
+  lib: fs.readFileSync(path.join(appDir, 'pdfjs', 'pdf.min.mjs'), 'utf8'),
+  worker: fs.readFileSync(path.join(appDir, 'pdfjs', 'pdf.worker.min.mjs'), 'utf8')
+}));
 
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 app.whenReady().then(() => {

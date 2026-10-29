@@ -42,7 +42,8 @@ function createCore({ bundledDir, userDir, dataDir, fetchFn }) {
 
   function save(name, text) {
     writeAtomic(dataFile(name), text);
-    // Une copie de sécurité par jour, on garde les 30 dernières.
+    // Une copie de sécurité par jour, on garde les 30 dernières (pas pour le cache des factures, v86).
+    if (/-cache$/.test(String(name))) return true;
     try {
       const day = new Date().toISOString().slice(0, 10);
       const b = path.join(backupDir, name + '-' + day + '.json');

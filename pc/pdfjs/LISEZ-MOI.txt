@@ -1,0 +1,1 @@
+pdf.js 6.2.108 (Mozilla, licence Apache 2.0) : sert a lire le texte des factures PDF.

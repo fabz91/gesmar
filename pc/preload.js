@@ -12,6 +12,13 @@ contextBridge.exposeInMainWorld('api', {
   updateInfo: () => ipcRenderer.invoke('gm:updateInfo'),
   updateCheck: (url) => ipcRenderer.invoke('gm:updateCheck', url),
   updateApply: (url) => ipcRenderer.invoke('gm:updateApply', url),
-  updateReset: () => ipcRenderer.invoke('gm:updateReset')
+  updateReset: () => ipcRenderer.invoke('gm:updateReset'),
+  // v86 : factures (dossier OneDrive de la comptable)
+  facDossier: () => ipcRenderer.invoke('gm:facDossier'),
+  facChoisir: () => ipcRenderer.invoke('gm:facChoisir'),
+  facLister: () => ipcRenderer.invoke('gm:facLister'),
+  facLire: (rel) => ipcRenderer.invoke('gm:facLire', rel),
+  facOuvrir: (rel) => ipcRenderer.invoke('gm:facOuvrir', rel),
+  pdfjs: () => ipcRenderer.invoke('gm:pdfjs')
 });
 contextBridge.exposeInMainWorld('SYNC', { updateUrl: cfg.updateUrl || '', url: cfg.supabaseUrl || '', key: cfg.supabaseKey || '' });

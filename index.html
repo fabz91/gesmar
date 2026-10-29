@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="85">
+<meta name="gm-version" content="86">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -317,6 +317,21 @@ nav.tabs button{line-height:1.4}
 /* v72 : avoir sans activité depuis 7 jours = ligne rouge ; triangle clignotant sur l'onglet tant qu'il en reste */
 tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transparent)}tr.lrow td b{color:var(--bad)}
 #avLate.blink svg{animation:updBlink 1s ease-in-out infinite}
+
+/* v86 : factures et avoirs automatiques */
+.facov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:grid;place-items:center;padding:16px}
+.facbox{background:var(--surface);color:var(--fg);border-radius:12px;max-width:1180px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.facbox>.band{border-radius:12px 12px 0 0;position:sticky;top:0;z-index:2}
+.factab td{vertical-align:top}.factab select{max-width:200px}
+.facmt{width:110px;text-align:right}
+.facwarn{color:var(--warn);font-size:12px;margin-top:3px}
+.facprop{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.avvues{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
+.avvues button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 16px;font:800 13px var(--display);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:flex;gap:8px;align-items:baseline}
+.avvues button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:var(--on-green)}
+.avvues .c{font:500 12px var(--body);text-transform:none;opacity:.85}
+.avvues .cnt{display:inline-block;padding:0 6px;border-radius:9px;background:var(--red-2);color:var(--on-red);font:700 11px var(--body);text-transform:none}
+.band .pillbtn .cnt{display:inline-block;min-width:16px;padding:0 4px;margin-left:5px;border-radius:8px;background:#fff;color:var(--red);font-size:11px}
 </style>
 </head>
 <body>
@@ -365,7 +380,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=85;
+const APP_VERSION=86;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -373,7 +388,7 @@ const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (26
 
 const S={db:null,store:null,magasins:[],config:{},assets:null,modal:false,fourn:[],mois:{},avoirs:[],year:2026,tab:"saisie",month:new Date().getMonth(),
   fStat:"en_cours",fFourn:"",fText:"",edit:null,confirmDel:null,loaded:{f:false,m:false,a:false}};
-try{S.tab=localStorage.getItem("gesmar.tab")||"saisie";if(!["bord","saisie","avoirs","fourn"].includes(S.tab))S.tab="bord";S.store=localStorage.getItem("gesmar.store")}catch(e){}
+try{S.avVue=localStorage.getItem("gesmar.avvue")||"man";S.tab=localStorage.getItem("gesmar.tab")||"saisie";if(!["bord","saisie","avoirs","fourn"].includes(S.tab))S.tab="bord";S.store=localStorage.getItem("gesmar.store")}catch(e){}
 const P=x=>"magasins/"+S.store+"/"+x;
 const slug=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"");
 const storeNom=()=>(S.magasins.find(m=>m.id===S.store)||{}).nom||"—";
@@ -473,7 +488,7 @@ function monthStats(y,m){
     if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */ if(j.caN1)r.caN1+=j.caN1;
     for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
   /* v51 : plus de HT : le CA HT du mois et le HT par jour ne sont plus utilisés */
-  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m)))r.avoirs+=a.montant*TVA_AVOIRS} // v70 : avoirs saisis HT, passés en TTC (5,5 %) pour la marge TTC
+  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m))&&!a.avoirAuto)r.avoirs+=a.montant*TVA_AVOIRS} /* v86 : un avoir lié à un avoir lu sur facture est déjà dans les achats */ // v70 : avoirs saisis HT, passés en TTC (5,5 %) pour la marge TTC
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
   r.marge=r.ca-r.achats;r.taux=r.ca?r.marge/r.ca:null;r.tauxCorr=r.ca?(r.marge+r.avoirs)/r.ca:null;r.tauxHD=r.ca?(r.marge+r.demarque)/r.ca:null;return r}
 const dayISO=(y,m,d)=>y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
@@ -510,6 +525,7 @@ function render(){
   app.classList.toggle("wide",S.tab==="saisie");
   app.innerHTML=({bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn}[S.tab]||vBord)(); // v77 : onglet Fournisseurs (simple) revenu
   if(active){const el=document.getElementById(active);if(el&&el.tagName!=="BUTTON"&&!el.closest("#modalRoot"))el.focus()}
+  facBadge();if(S.fac&&S.fac.ouvert)facRender();
 }
 
 function periode(mode){
@@ -668,7 +684,7 @@ function vSaisie(){
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.taux)}</span><span class="d">Marge ${eur.format(st.marge)}</span></div>
     <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} TTC obtenus ce mois</span></div>
   </div>
-  <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Fournisseur</button></div><div class="scroll sheet-scroll"><table class="sheet">
+  <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Fournisseur</button><button class="pillbtn" data-act="factures" title="Lire les factures du dossier OneDrive">📄 Factures<span class="cnt" id="facCnt" hidden></span></button></div><div class="scroll sheet-scroll"><table class="sheet">
     <thead>${head1}${head2}</thead>
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td>${hasN1?`<td>${caN1Tot?n2.format(caN1Tot):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${false?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour afficher dans ce mois) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Afficher ${esc(f.nom)} dans ce mois">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button></span>`).join("")}</div>`:""}</div>
@@ -715,8 +731,12 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
   list=list.slice().sort((a,b)=>(isLate(b)-isLate(a))||String(b.date).localeCompare(String(a.date)));
   const fl=S.fourn.filter(f=>!f.groupe); /* v41 : tous les fournisseurs (Épicerie, A/A, Frais passent par DIAPAR) */
   const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
+  /* v86 : deux parties : avoirs manuels (déclarés par le magasin) et automatiques (lus sur les factures) */
+  const nAuto=(S.avoirsAuto||[]).length,nProp=facPropositions().length;
+  const vues=`<div class="avvues" role="tablist"><button data-avvue="man" aria-pressed="${S.avVue!=="auto"}">Avoirs manuels<span class="c">${all.filter(a=>EN_COURS.includes(a.statut)).length} en cours</span></button><button data-avvue="auto" aria-pressed="${S.avVue==="auto"}">Avoirs automatiques<span class="c">${nAuto}</span>${nProp?`<span class="cnt">${nProp} à valider</span>`:""}</button></div>`;
+  if(S.avVue==="auto")return `<h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>${vues}${vAvoirsAuto()}`;
   return `
-  <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>
+  <h2 style="margin-top:4px">Avoirs fournisseurs — ${esc(storeNom())}</h2>${vues}
   <div class="row" style="margin-bottom:10px"><select id="fFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${avOptsMois(S.fFourn)}</select></div>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   <p class="sub" style="margin:2px 0 10px">Un avoir déclaré, relancé ou accepté sans activité pendant ${RELANCE_JOURS} jours passe en rouge.</p>
@@ -725,7 +745,7 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Produit</th><th class="l">Qté</th><th class="l">Motif</th><th>Montant HT</th><th class="l">Statut</th><th class="l">Dernière action</th><th></th></tr></thead>
     <tbody>${list.length?list.map(a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a);
       return `<tr${late?' class="lrow"':""}><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
-      <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}</td>
+      <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}${a.avoirAuto?`<div class="hist">✓ Retrouvé sur une facture (avoirs automatiques)</div>`:""}</td>
       <td class="l">${esc(a.quantite)}</td><td class="l">${esc(a.motif)}</td>
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
       <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
@@ -970,6 +990,371 @@ document.addEventListener("submit",async e=>{e.preventDefault();
     try{await S.db.doc(P("fournisseurs/"+id)).set({nom:nom.toUpperCase(),ordre:S.fourn.length,actif:true,colonne:false,avoirs:true,contact:"",mail:""});toast("Fournisseur ajouté : choisissez-le avec « + Fournisseur » dans la saisie");$("#fAddNom")&&($("#fAddNom").value="")}catch(err){fail(err)}}
 });
 
+/* ---------- v86 : lecture des factures (PDF) ----------
+   Fonctions pures (sans écran) : reconstruire les lignes d'un PDF, reconnaître le fournisseur, la date, le montant TTC,
+   les avoirs, et découper les factures regroupées (CDPO, SAINT PRIM) par jour de livraison. */
+const FAC=(()=>{
+  const nk=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();
+  const r2=v=>Math.round(v*100)/100;
+  // "1 158,53" / "1158,53" / "1158.53" / "308" -> nombre
+  const num=s=>{s=String(s).replace(/[\s\u00a0\u202f]/g,"");if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,"").replace(",",".");const v=parseFloat(s);return isFinite(v)?r2(v):null};
+  // Lignes de texte à partir des éléments pdf.js [texte, x, y, largeur, hauteur]
+  function lignes(pages){const out=[];
+    (pages||[]).forEach((pg,pi)=>{const it=pg.items.filter(a=>a[0]&&String(a[0]).trim()!=="").map(a=>({s:/^[\d ,.\-]+$/.test(a[0])&&/\d \d|\d ,|, \d/.test(a[0])?String(a[0]).replace(/ /g,""):a[0],x:a[1],y:a[2],w:a[3],h:a[4]||8})); // « 5 9 4 , 40 » (lettres espacées) -> « 594,40 »
+      it.sort((a,b)=>b.y-a.y||a.x-b.x);const L=[];
+      for(const a of it){let l=L.find(l=>Math.abs(l.y-a.y)<=Math.max(2,Math.min(l.h,a.h)*0.45));if(!l){l={y:a.y,h:a.h,its:[]};L.push(l)}l.its.push(a)}
+      L.sort((a,b)=>b.y-a.y);
+      for(const l of L){l.its.sort((a,b)=>a.x-b.x);let s="",end=null;
+        for(const a of l.its){if(end!=null){const gap=a.x-end,cw=a.s.length?a.w/a.s.length:4;s+=gap>Math.max(cw*1.2,3)?"  ":gap>cw*0.25?" ":""}s+=a.s;end=a.x+a.w}
+        out.push({p:pi+1,t:s})}});
+    return out}
+  const iso=(d,m,y)=>{y=+y;if(y<100)y+=2000;d=+d;m=+m;if(!(d>=1&&d<=31&&m>=1&&m<=12&&y>=2000&&y<=2100))return null;return y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0")};
+  // Nom de fichier de la comptable : « CDPO 20.07.26 845.07€.pdf », « ISLA 09.12.25-58.24€ », « SAINTPRIM 20.01.2026 3745.54€ »
+  function nomInfo(nom){const n=String(nom).replace(/#U20ac/gi,"€").replace(/\.[a-z0-9]+$/i,"");
+    const m=n.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})(?!\d)\s*(?:(-?\s?\d+(?:[.,]\d{1,2})?)\s*€?)?/);
+    if(!m)return{};const date=iso(m[1],m[2],m[3]);let montant=null;
+    if(m[4]!=null){montant=num(m[4].replace(/\s/g,""));
+      // « 283.77€-105.19€ = 178.58€ » : le montant final est après le signe =
+      const eq=n.match(/=\s*(-?\d+(?:[.,]\d{1,2})?)\s*€/);if(eq)montant=num(eq[1])}
+    return{date,montant}}
+  // Documents qui ne sont pas des factures (bons de livraison, relevés, extraits de compte, RIB, commandes…)
+  function ignorer(rel){const segs=String(rel).split(/[\\/]/),nom=segs[segs.length-1],N=nk(nom);
+    if(!/\.pdf$/i.test(nom))return"Pas un PDF";
+    if(segs.slice(0,-1).some(s=>/^RELEV/i.test(nk(s))))return"Relevé (copie des factures)";
+    if(/^(BONDE|BL\d|BLC|001BLC|EXTRAIT|RIB|COMMANDE|RELEV|CRFMARKET)/.test(N)||/RIB$/.test(N)||/BONDELIVRAISON|BONDECOMPTAGE|BONDEDEPOT/.test(N))return"Bon de livraison, relevé ou autre document";
+    return null}
+  const copieDe=nom=>/ - Copie( \(\d+\))?(\.[a-z]+)$/i.test(nom)?nom.replace(/ - Copie( \(\d+\))?(\.[a-z]+)$/i,"$2"):null;
+  // Dossier du fournisseur : le dossier qui suit FOURNISSEURS (ou DIAPAR)
+  function dossier(rel){const segs=String(rel).split(/[\\/]/).slice(0,-1);
+    const i=segs.findIndex(s=>nk(s)==="FOURNISSEURS");if(i>=0&&segs[i+1])return segs[i+1].trim();
+    if(segs.some(s=>nk(s)==="DIAPAR"))return"DIAPAR";
+    return segs.length?segs[segs.length-1].trim():""}
+  function annee(rel){const s=String(rel).split(/[\\/]/).find(x=>/^20\d\d$/.test(x.trim()));return s?+s:null}
+  function magasin(T){const U=T.toUpperCase();if(/CLAMART/.test(U))return"clamart";if(/BRETTEN|BRETAGNE|LONGJUMEAU|BREDIS/.test(U))return"bredis";return null}
+  // Tous les montants suivis de EUR (DIAPAR) : « 6642,45 EUR », « 547,41-EUR », « 14,00CREUR »
+  function eurs(T){const o=[];const re=/(\d{1,3}(?:[ \u00a0]\d{3})+|\d+),(\d\d)\s*(-|CR)?\s*EUR/g;let m;while((m=re.exec(T)))o.push({v:num(m[1]+","+m[2]),neg:!!m[3]});return o}
+  // Règle HT + taxes = TTC : le plus grand c tel que a + b = c (DIAPAR : total des marchandises TTC hors emballages)
+  function triple(am){const s=[...new Set(am.filter(v=>v>0))];let best=null;
+    for(const a of s)for(const b of s){if(b>a)continue;const c=r2(a+b);if(s.includes(c)&&(best==null||c>best))best=c}return best}
+  const TVA_CODE={"0":1,"1":1.055,"2":1.2,"3":1.021,"4":1.1};
+  // Lignes d'avoir DIAPAR (section « *AVOIRS* ») : code article, désignation, montant HT (en centimes, suivi de « - » et du code TVA)
+  function avoirsDiapar(L){const out=[];let on=false;
+    for(const l of L){const t=l.t;
+      if(/\*\s*AVOIRS?\s*\*/.test(t)){on=true;continue}
+      if(!on)continue;
+      if(/^\s*\*-{5,}|^\s*BIO =|TOTAL MARCHANDISES|NB\.?COLS|^\s*\d+\s+PALETTES?\b/i.test(t)){on=false;continue}
+      if(/^\s*\*/.test(t)&&!/AVOIRS/.test(t))continue;
+      let m=t.match(/^\s*\d+\s*-\s+(\d{6})\b.*?\s(\d+)-(\d)\s+\d+\s*$/); // avoir seul : « 1- 275743 02,09,25 0,000 1088-1 1147 »
+      if(m){const ht=+m[2]/100;out.push({code:m[1],libelle:"",ht,ttc:Math.round(ht*(TVA_CODE[m[3]]||1)*100)/100});continue}
+      m=t.match(/^\s*(\d{6})\s+\S+\s+\S+\s+\d+-\s*(.+?)\s{2,}.*?\s(\d+)-(\d)\s+\d+\s*$/); // dans une facture : « 603068 6X 1 6-BRIK.1L J.ORANGE ABC EP* … 706-1 124 »
+      if(m){const ht=+m[3]/100;out.push({code:m[1],libelle:m[2].replace(/\s+\S*\*$/,"").trim(),ht,ttc:Math.round(ht*(TVA_CODE[m[4]]||1)*100)/100})}}
+    return out}
+  function diapar(rel,nom,T,L){const m=nom.match(/FACT-(EPIC|FRAIS)-(\d\d)(\d\d)(\d\d)-(\d+)/i),r={fournisseur:"DIAPAR",verif:[]};
+    if(m){r.date=iso(m[4],m[3],m[2]);r.numero=m[5];r.rayon=m[1].toUpperCase()}else{r.verif.push("Nom de fichier DIAPAR inhabituel")}
+    const E=eurs(T),pos=triple(E.filter(e=>!e.neg).map(e=>e.v)),neg=triple(E.filter(e=>e.neg).map(e=>e.v));
+    // Une facture peut contenir une partie « avoirs » déjà déduite de son total ; un document d'avoir seul n'a que des montants négatifs
+    const avoir=pos==null&&neg!=null;r.type=avoir?"avoir":"facture";
+    const ttc=avoir?neg:pos;
+    if(ttc==null){r.verif.push("Montant TTC introuvable dans le PDF");r.total=null}else r.total=avoir?-ttc:ttc;
+    let col="epicerie";
+    if(r.rayon==="FRAIS"){const th=L.some(l=>/^\s*THERMOTAINER\s+N/i.test(l.t)),pa=L.some(l=>/^\s*PALETTE\s+N/i.test(l.t));
+      // FRAIS (la grosse facture) contient des thermotainers (surgelés) ; A/A (la petite) n'a que des palettes
+      if(th)col="frais";else if(pa)col="aa";
+      else{col=avoir?"frais":ttc!=null&&ttc<3000?"aa":"frais";r.verif.push(avoir?"Avoir : rayon FRAIS ou A/A à vérifier":"Rayon A/A ou FRAIS deviné d'après le montant")}}
+    r.col=col;
+    r.lignes=r.total!=null&&r.date?[{date:r.date,col,montant:r.total}]:[];
+    r.avoirs=avoirsDiapar(L);
+    const f=T.match(/FACT\.?\s*NO\s+(\d+)?\s*DU\s+(\d{1,2})\/(\d\d)\/(\d\d)/);if(f)r.factureOrigine=(f[1]?f[1]+" ":"")+"du "+f[2].padStart(2,"0")+"/"+f[3]+"/"+f[4];
+    return r}
+  // Montant dans le texte : « 1 222,25 », « 1222,25 », « 1222.25 »
+  function contient(T,v){if(v==null)return false;const a=Math.abs(v).toFixed(2),[e,d]=a.split("."),g=e.replace(/\B(?=(\d{3})+(?!\d))/g," ");
+    const re=new RegExp("(^|[^\\d,.])("+[e+","+d,g+","+d,e+"\\."+d,g.replace(/ /g,"\\.")+","+d].map(x=>x.replace(/ /g,"[ \\u00a0\\u202f]")).join("|")+")(?![\\d])");return re.test(T)}
+  const MOTS=[/net\s*[àa]\s*payer/i,/total\s*t\.?\s*t\.?\s*c/i,/montant\s*t\.?\s*t\.?\s*c/i,/total\s*[àa]\s*payer/i];
+  function motCle(L){for(const re of MOTS)for(let i=0;i<L.length;i++){const m=L[i].t.match(re);if(!m)continue;
+      const after=L[i].t.slice(m.index+m[0].length),n=(after.match(/-?\d{1,3}(?:[ \u00a0.]\d{3})*,\d\d|-?\d+[.,]\d\d/g)||[]);
+      if(n.length)return num(n[0])}
+    return null}
+  // Factures regroupées : un montant HT par bon de livraison, avec sa date de livraison
+  function parBL(L){const bl=[];let cur=null;
+    for(const l of L){const t=l.t;
+      let m=t.match(/BL\s*n\S*\s*([\d-]+)\s*-\s*Livraison\s+le\s+(\d\d)\/(\d\d)\/(\d\d)/i); // CDPO
+      if(m){cur={n:m[1],date:iso(m[2],m[3],m[4]),ht:0,lig:0};bl.push(cur);continue}
+      m=t.match(/B\.?\s*L\.?\s*No\s*(\d+)\s+du\s+(\d\d)\/(\d\d)\/(\d\d)/i); // SAINT PRIM
+      if(m){cur={n:m[1],date:iso(m[2],m[3],m[4]),ht:null,lig:0,sp:true};bl.push(cur);continue}
+      m=t.match(/Total\s+BL\s*N\S*\s*(\d+)\s+(-?[\d \u00a0]+,\d\d)/i);
+      if(m){const b=bl.find(x=>x.n===m[1]);if(b)b.ht=num(m[2]);cur=null;continue}
+      if(/Total\s+HT\s+de\s+la\s+page|A\s+REPORTER/i.test(t)){if(cur&&!cur.sp)cur=null;continue}
+      if(cur&&!cur.sp){m=t.match(/\s(-?\d+,\d\d)\s+\d+(?:,\d+)?\s*%\s*$/);if(m){cur.ht=r2(cur.ht+num(m[1]));cur.lig++}}}
+    // un même BL peut apparaître sur deux pages : on regroupe par numéro
+    const by={};for(const b of bl){if(b.ht==null)continue;const k=b.n+"|"+b.date;if(!by[k])by[k]={date:b.date,ht:0};by[k].ht=r2(by[k].ht+b.ht)}
+    return Object.values(by).filter(b=>b.date&&b.ht)}
+  function repartir(bls,total){const ht=bls.reduce((s,b)=>s+b.ht,0);if(!ht||total==null)return null;const k=total/ht;
+    const par={};bls.forEach(b=>par[b.date]=r2((par[b.date]||0)+b.ht*k));
+    const ds=Object.keys(par).sort(),som=r2(ds.reduce((s,d)=>s+par[d],0));if(ds.length)par[ds[ds.length-1]]=r2(par[ds[ds.length-1]]+total-som);
+    return ds.map(d=>({date:d,montant:par[d]}))}
+  function analyser(rel,pages){
+    const segs=String(rel).split(/[\\/]/),nom=segs[segs.length-1],L=lignes(pages),T=L.map(l=>l.t).join("\n");
+    const four=dossier(rel),ni=nomInfo(nom),base={rel,nom,dossier:four,annee:annee(rel),texte:T.length>80,magasin:magasin(T)};
+    if(nk(four)==="DIAPAR"||/^FACT-(EPIC|FRAIS)-/i.test(nom))return Object.assign(base,diapar(rel,nom,T,L));
+    const r=Object.assign(base,{fournisseur:four,type:"facture",verif:[],date:ni.date||null,total:null,source:"pdf"});
+    if(!r.date){const d=T.match(/(\d\d)\/(\d\d)\/(20\d\d|\d\d)\b/);if(d)r.date=iso(d[1],d[2],d[3]);if(r.date)r.verif.push("Date prise dans le PDF")}
+    const mc=base.texte?motCle(L):null;
+    if(!base.texte){r.total=ni.montant;r.source="nom";r.verif.push(ni.montant!=null?"PDF scanné : montant pris du nom du fichier":"PDF scanné, sans montant dans le nom : à remplir")}
+    else if(ni.montant!=null&&contient(T,ni.montant))r.total=ni.montant;
+    else if(ni.montant!=null){r.total=ni.montant;r.source="nom";r.verif.push("Montant du nom du fichier introuvable dans le PDF"+(mc!=null?" (le PDF indique "+mc.toFixed(2).replace(".",",")+" €)":""))}
+    else if(mc!=null){r.total=mc;r.verif.push("Pas de montant dans le nom du fichier : montant lu dans le PDF")}
+    else r.verif.push("Montant introuvable : à remplir");
+    if(r.total!=null&&r.total<0||/\bAVOIR\b/i.test(nom))r.type="avoir";
+    if(r.type==="avoir"&&r.total>0)r.total=-r.total;
+    if(!r.date)r.verif.push("Date introuvable : à remplir");
+    else if(base.annee&&Math.abs(+r.date.slice(0,4)-base.annee)>1){r.verif.push("Date "+r.date.slice(8,10)+"/"+r.date.slice(5,7)+"/"+r.date.slice(0,4)+" : pas l'année du dossier");}
+    const bls=base.texte&&r.type==="facture"?parBL(L):[];
+    let lig=null;if(bls.length>1||(bls.length===1&&bls[0].date!==r.date)){lig=repartir(bls,r.total);if(lig)r.decoupe=true}
+    r.lignes=lig?lig.map(x=>({date:x.date,col:null,montant:x.montant})):(r.total!=null&&r.date?[{date:r.date,col:null,montant:r.total}]:[]);
+    if(r.type==="avoir")r.avoirs=[{code:"",libelle:"",ht:null,ttc:Math.abs(r.total||0),codes:base.texte?[...new Set((T.match(/\b\d{6,13}\b/g)||[]))].slice(0,30):[]}];
+    return r}
+  return{avoirsDiapar,nk,num,lignes,nomInfo,ignorer,copieDe,dossier,annee,magasin,analyser,contient,triple,eurs,parBL}
+})();
+
+/* ---------- v86 : bouton « Factures » (lecture des PDF du dossier OneDrive) ----------
+   Le programme PC (nouveau kit) liste le dossier choisi et lit les PDF ; la page les analyse avec pdf.js (FAC ci-dessus).
+   Rien n'est écrit sans validation. Registre synchronisé : magasins/<id>/factures/<clé> (importée ou ignorée),
+   avoirs lus : magasins/<id>/avoirsAuto/<clé>. Cache par PC (fichiers déjà analysés) : gesmar-factures-cache. */
+const FAC_API=()=>!!(window.api&&typeof window.api.facLister==="function");
+const FAC_ALIAS={VANDERMOORTELE:"CROUSTICO",VANDEMOORTELE:"CROUSTICO",ISLAMONDIAL:"ISLA",ISLADELICE:"ISLA",LEBATISTOU:"BATISTOU",LUCIENGEORGELIN:"LUCIEN",SAINTPRIMPARIS:"SAINT PRIM",SAINTPRIM:"SAINT PRIM"};
+const facKey=s=>{let h=5381,h2=52711;s=String(s);for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h=(h*33)^c;h2=(h2*31)^c}return"f"+(h>>>0).toString(36)+(h2>>>0).toString(36)};
+const facNomDate=nom=>{const m=String(nom).match(/FACT-(?:EPIC|FRAIS)-(\d\d)(\d\d)(\d\d)-/i);if(m)return"20"+m[1]+"-"+m[2]+"-"+m[3];return FAC.nomInfo(nom).date||null};
+const facDepart=()=>(S.facReg&&S.facReg.depart)||null;
+let FAC_CACHE=null;
+function facCache(){if(!FAC_CACHE){try{FAC_CACHE=JSON.parse(rawLoad("gesmar-factures-cache")||"{}")||{}}catch(e){FAC_CACHE={}}}return FAC_CACHE}
+function facCacheSave(){try{rawSave("gesmar-factures-cache",JSON.stringify(FAC_CACHE||{}))}catch(e){}}
+let FAC_PDF=null;
+async function facPdf(){if(FAC_PDF)return FAC_PDF;
+  const src=await window.api.pdfjs();const u=x=>URL.createObjectURL(new Blob([x],{type:"text/javascript"}));
+  const lib=await import(u(src.lib));lib.GlobalWorkerOptions.workerSrc=u(src.worker);FAC_PDF=lib;return lib}
+async function facItems(rel){const lib=await facPdf();const data=await window.api.facLire(rel);
+  const task=lib.getDocument({data:data instanceof Uint8Array?data:new Uint8Array(data),isEvalSupported:false,verbosity:0});const doc=await task.promise;const pages=[];
+  try{for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),tc=await pg.getTextContent();
+    pages.push({items:tc.items.filter(it=>it.str!==undefined).map(it=>[it.str,Math.round(it.transform[4]*10)/10,Math.round(it.transform[5]*10)/10,Math.round(it.width*10)/10,Math.round(Math.hypot(it.transform[2],it.transform[3])*10)/10])})}}
+  finally{try{await task.destroy()}catch(_){}}
+  return pages}
+// Fournisseur de GESMAR pour un dossier de la comptable : lien mémorisé, nom habituel, sinon nouveau fournisseur
+function facFid(dossier){const k=FAC.nk(dossier),liens=(S.facReg&&S.facReg.liens)||{};
+  if(liens[k]&&S.fourn.find(f=>f.id===liens[k]))return liens[k];
+  const cible=FAC.nk(FAC_ALIAS[k]||dossier),L=S.fourn.filter(f=>!f.groupe&&!isParent(f)&&FAC.nk(f.nom)===cible).sort((a,b)=>isInactif(a)-isInactif(b));
+  return L.length?L[0].id:null}
+const facIdent=r=>FAC.nk(r.dossier)+"|"+(r.date||"")+"|"+(r.total==null?"":r.total.toFixed(2));
+S.fac={etat:"",liste:[],ecartes:[],prog:"",ouvert:false,vus:0,dernier:0};
+async function facScan(silent){
+  if(S.fac.busy)return;if(!FAC_API()){S.fac.etat="noapi";return}
+  if(!S.store||!S.fourn.length)return;
+  S.fac.busy=true;S.fac.etat="lecture";S.fac.prog="Recherche des factures…";facRender();
+  try{const L=await window.api.facLister();
+    if(L.err==="nodir"){S.fac.etat="nodir";return}
+    if(L.err){S.fac.etat="absent";S.fac.root=L.root;return}
+    S.fac.root=L.root;const dep=facDepart();if(!dep){S.fac.etat="nodepart";return}
+    const reg=S.facImp||{},C=facCache(),files=L.files,noms=new Set(files.map(f=>f.rel.toLowerCase()));
+    const an=new Date().getFullYear();S.fac.annees=[...new Set(files.map(f=>FAC.annee(f.rel)).filter(Boolean))].sort();
+    S.fac.sansAnnee=new Date().getMonth()<=1&&S.fac.annees.length&&!S.fac.annees.includes(an)?an:null;
+    const aLire=[],ecartes=[];
+    for(const f of files){const k=facKey(f.rel);if(reg[k])continue;
+      const segs=f.rel.split("/"),nom=segs[segs.length-1],cp=FAC.copieDe(nom);
+      // factures d'avant la mise en service : déjà saisies à la main, on ne les lit pas
+      const dn=facNomDate(nom),mt=new Date(f.mtime),miso=mt.getFullYear()+"-"+String(mt.getMonth()+1).padStart(2,"0")+"-"+String(mt.getDate()).padStart(2,"0");
+      if(miso<dep&&(!dn||dn<dep))continue;
+      const ig=FAC.ignorer(f.rel);if(ig){if(/\.pdf$/i.test(f.rel))ecartes.push({rel:f.rel,raison:ig});continue}
+      if(cp&&noms.has(segs.slice(0,-1).concat(cp).join("/").toLowerCase())){ecartes.push({rel:f.rel,raison:"Copie d'un fichier déjà présent"});continue}
+      aLire.push(f)}
+    let n=0;const res=[];
+    for(const f of aLire){n++;const c=C[f.rel];let r;
+      if(c&&c.size===f.size&&c.mtime===f.mtime)r=c.r;
+      else{S.fac.prog="Lecture des factures : "+n+" / "+aLire.length;facRender();
+        try{r=FAC.analyser(f.rel,await facItems(f.rel))}catch(e){console.error(e);r=FAC.analyser(f.rel,[]);r.verif=["PDF illisible ("+(e&&e.message||"erreur")+")"].concat(r.verif||[])}
+        delete r.texteBrut;C[f.rel]={size:f.size,mtime:f.mtime,r}}
+      res.push(Object.assign({},r))}
+    facCacheSave();
+    // doublons : même fournisseur, même date, même montant qu'une facture déjà importée ou déjà dans la liste
+    const deja=new Set(Object.values(reg).filter(x=>x&&x.s==="i"&&x.id).map(x=>x.id)),vus=new Set(),liste=[];
+    for(const r of res){const id=facIdent(r);
+      if(r.total!=null&&(deja.has(id)||vus.has(id))){ecartes.push({rel:r.rel,raison:"Déjà importée (même fournisseur, date et montant)"});continue}vus.add(id);
+      const old=S.fac.liste.find(x=>x.rel===r.rel);
+      r.key=facKey(r.rel);r.ident=id;r.mag=r.magasin||S.store;
+      r.fid=FAC.nk(r.dossier)==="DIAPAR"?"diapar":facFid(r.dossier);
+      r.nouveau=!r.fid;r.choix=old?old.choix:(r.fid||"__new__");
+      r.avant=r.date&&r.date<dep;
+      r.ok=old?old.ok:(r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant);
+      r.saisi=old&&old.saisi!=null?old.saisi:null;
+      // case déjà remplie dans la saisie : le montant s'ajoutera (ex. facture déjà tapée à la main)
+      r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" € déjà saisis":null}).filter(Boolean);
+      liste.push(r)}
+    liste.sort((a,b)=>String(a.date||"9").localeCompare(String(b.date||"9"))||String(a.dossier).localeCompare(String(b.dossier)));
+    S.fac.liste=liste;S.fac.ecartes=ecartes;S.fac.etat="ok";S.fac.dernier=Date.now()}
+  catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
+  finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}}
+const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
+function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facAImporter().length;b.hidden=!n;b.textContent=n}
+async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
+async function facSetDepart(v){if(!v){toast("Choisissez une date");return}
+  try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});await facScan()}catch(e){fail(e)}}
+// Ajoute des montants dans la saisie (en plus de ce qui y est déjà) et affiche la colonne dans le mois
+async function facEcrire(lignes){const parMois={};for(const l of lignes){if(!l.date||!l.col||l.montant==null)continue;(parMois[l.date.slice(0,7)]=parMois[l.date.slice(0,7)]||[]).push(l)}
+  for(const[key,L]of Object.entries(parMois)){const doc=S.mois[key],J=(doc&&doc.jours)||{},patch={};
+    for(const l of L){const d=l.date.slice(8,10),cur=(patch[d]&&patch[d].achats&&patch[d].achats[l.col]!=null)?patch[d].achats[l.col]:((J[d]&&J[d].achats&&J[d].achats[l.col])||0);
+      patch[d]=patch[d]||{achats:{}};patch[d].achats[l.col]=Math.round((cur+l.montant)*100)/100}
+    const ref=S.db.doc(P("mois/"+key));
+    if(doc)await ref.update({jours:patch});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch});
+    if(!S.mois[key])S.mois[key]={annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch};
+    const mc=monthCols(key),add=[...new Set(L.map(l=>l.col))].filter(c=>!mc.includes(c));
+    if(add.length){const ids=mc.concat(add);await setMonthCols(key,ids);
+      // copie locale tout de suite (les mises à jour de la base arrivent un peu après) pour les mois suivants du même import
+      for(const[k,d]of Object.entries(S.mois))if(/^\d{4}-\d{2}$/.test(k)&&k!==key&&d&&!Array.isArray(d.colonnes))d.colonnes=colFourn().map(f=>f.id);
+      S.mois[key]=Object.assign({},S.mois[key]||{},{colonnes:ids});S.fourn.forEach(f=>{f.colonne=ids.includes(f.id)})}}}
+async function facCreerFourn(nom){const nm=String(nom).trim().toUpperCase()||"NOUVEAU";const k=FAC.nk(nm).toLowerCase();let id=k.slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.slice(0,26)+n}
+  const ordre=S.fourn.reduce((m,f)=>Math.max(m,f.ordre??0),0)+1;
+  await S.db.doc(P("fournisseurs/"+id)).set({nom:nm,ordre,actif:true,colonne:false,avoirs:true,contact:"",mail:""});S.fourn.push({id,nom:nm,ordre,actif:true,colonne:false});return id}
+async function facImporter(){
+  const L=facAImporter().filter(r=>r.ok);if(!L.length){toast("Cochez au moins une facture");return}
+  const sans=L.filter(r=>r.lignes&&!r.lignes.length&&r.saisi==null);if(sans.length){toast("Montant ou date manquant pour "+sans.length+" facture(s) : complétez ou décochez");return}
+  const nf=[...new Set(L.filter(r=>r.choix==="__new__").map(r=>r.dossier))];
+  if(!await askConfirm("Importer "+L.length+" facture(s) dans "+storeNom()+" ?"+(nf.length?"\n\nNouveau(x) fournisseur(s) créé(s) : "+nf.join(", "):"")+"\n\nLes montants s'ajoutent aux cases de la saisie (jour de la facture, ou jour de livraison pour les factures regroupées)."))return;
+  HIST.lastT=Date.now();let nOk=0,nAv=0;const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{}),crees={};
+  try{
+    for(const r of L){let fid=r.choix;
+      if(fid==="__new__"){const k=FAC.nk(r.dossier);fid=crees[k]||(crees[k]=await facCreerFourn(r.dossier))}
+      if(FAC.nk(r.dossier)!=="DIAPAR")liens[FAC.nk(r.dossier)]=fid;
+      const f=S.fourn.find(x=>x.id===fid);if(f&&isInactif(f))await fUpdate(fid,{actif:true,supprime:false});
+      let lignes=(r.lignes||[]).map(l=>({date:l.date,col:l.col||fid,montant:l.montant}));
+      if(r.saisi!=null&&r.date)lignes=[{date:r.date,col:(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col||fid,montant:r.type==="avoir"?-Math.abs(r.saisi):r.saisi}];
+      await facEcrire(lignes);
+      const total=lignes.reduce((s,l)=>s+l.montant,0);
+      await S.db.doc(P("factures/"+r.key)).set({s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,le:todayISO()});
+      // avoirs lus : document d'avoir, ou partie « avoirs » d'une facture DIAPAR (déjà déduite du total)
+      const avf=fid==="epicerie"||fid==="aa"||fid==="frais"?"diapar":fid;
+      if(r.type==="avoir"||(r.avoirs&&r.avoirs.length)){
+        const lig=(r.avoirs||[]).map(a=>({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc}));
+        const tt=r.type==="avoir"?Math.abs(r.saisi!=null?r.saisi:r.total||0):Math.round(lig.reduce((s,a)=>s+(a.ttc||0),0)*100)/100;
+        await S.db.doc(P("avoirsAuto/"+r.key)).set({fournisseur:avf,date:r.date||"",numero:r.numero||"",total:tt,lignes:lig.filter(a=>a.code||a.ht!=null),
+          codes:(r.avoirs&&r.avoirs[0]&&r.avoirs[0].codes)||[],dansFacture:r.type!=="avoir",factureOrigine:r.factureOrigine||"",fichier:r.rel,nom:r.nom,manuel:null,refus:[],creeLe:todayISO()});nAv++}
+      nOk++}
+    const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({liens});else await ref.set({depart:facDepart()||todayISO(),liens});
+    const done=new Set(L.map(r=>r.rel));S.fac.liste=S.fac.liste.filter(r=>!done.has(r.rel));
+    toast(nOk+" facture(s) importée(s)"+(nAv?", "+nAv+" avoir(s) lu(s)":"")+(Object.keys(crees).length?", "+Object.keys(crees).length+" fournisseur(s) créé(s)":""));
+    facRender();facBadge();render();setTimeout(()=>facProposer(true),400)}
+  catch(e){fail(e)}}
+async function facIgnorer(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
+  try{await S.db.doc(P("factures/"+r.key)).set({s:"x",n:r.nom,le:todayISO()});S.fac.liste=S.fac.liste.filter(x=>x!==r);toast("Document ignoré : il ne sera plus proposé");facRender();facBadge()}catch(e){fail(e)}}
+
+/* ----- rapprochement avoir lu / avoir manuel ----- */
+const facFournAv=id=>id==="diapar"?["diapar","epicerie","aa","frais"]:[id];
+function facCandidats(x){const codes=new Set([...(x.lignes||[]).map(a=>String(a.code||"").replace(/^0+/,"")),...(x.codes||[]).map(c=>String(c).replace(/^0+/,""))].filter(Boolean));
+  const out=[];
+  for(const a of S.avoirs){if(!EN_COURS.includes(a.statut)||a.avoirAuto||(x.refus||[]).includes(a.id))continue;
+    if(!facFournAv(x.fournisseur).includes(a.fournisseur))continue;
+    if(a.date&&x.date&&a.date>x.date)continue;
+    const c=String(a.code||"").replace(/\s/g,"").replace(/^0+/,"");let sc=0,raison="";
+    if(c&&codes.has(c)){sc=10;raison="même code article ("+a.code+")"}
+    else if(a.montant){const ht=a.montant,lig=(x.lignes||[]).find(l=>l.ht!=null&&Math.abs(l.ht-ht)<=0.02);
+      if(lig){sc=6;raison="même montant HT ("+eur2.format(ht)+")"}
+      else if(!(x.lignes||[]).length&&Math.abs(ht*TVA_AVOIRS-x.total)<=Math.max(0.05,x.total*0.01)){sc=5;raison="montant proche ("+eur2.format(x.total)+" TTC)"}}
+    if(sc)out.push({a,sc,raison})}
+  return out.sort((p,q)=>q.sc-p.sc)}
+function facPropositions(){const out=[];for(const x of (S.avoirsAuto||[])){if(x.manuel)continue;const c=facCandidats(x);if(c.length)out.push({x,c:c[0]})}return out}
+async function facLier(autoId,manId){const x=(S.avoirsAuto||[]).find(z=>z.id===autoId),a=S.avoirs.find(z=>z.id===manId);if(!x||!a)return;const t=todayISO();
+  try{await S.db.doc(P("avoirs/"+manId)).update({statut:"deduit",dateStatut:t,majLe:t,avoirAuto:autoId});await S.db.doc(P("avoirsAuto/"+autoId)).update({manuel:manId});toast("Avoir « "+(a.produit||"")+" » passé en Déduit")}catch(e){fail(e)}}
+async function facRefuser(autoId,manId){const x=(S.avoirsAuto||[]).find(z=>z.id===autoId);if(!x)return;
+  try{await S.db.doc(P("avoirsAuto/"+autoId)).update({refus:[...(x.refus||[]),manId]})}catch(e){fail(e)}}
+// Après un import : fenêtre qui demande de valider chaque avoir manuel retrouvé sur les factures
+function facProposer(apresImport){const P1=facPropositions();if(!P1.length){if(!apresImport)toast("Aucun avoir manuel à rapprocher");return}
+  const o=document.createElement("div");o.className="facov";o.id="facProp";
+  const ligne=p=>`<div class="facprop"><div><b>${esc(p.c.a.produit||"Avoir")}</b> — ${esc(fName(p.c.a.fournisseur))}, déclaré le ${frDate(p.c.a.date)}${p.c.a.montant?", "+eur2.format(p.c.a.montant)+" HT":""}
+    <div class="hist">Retrouvé ${p.x.dansFacture?"dans la facture":"sur l'avoir"} ${esc(p.x.fournisseur==="diapar"?"DIAPAR":fName(p.x.fournisseur))}${p.x.numero?" n° "+esc(p.x.numero):""} du ${frDate(p.x.date)} : ${esc(p.c.raison)}</div></div>
+    <div class="row" style="flex-wrap:nowrap"><button class="btn small primary" data-faclier="${esc(p.x.id)}" data-man="${esc(p.c.a.id)}">Valider : Déduit</button><button class="btn small" data-facrefus="${esc(p.x.id)}" data-man="${esc(p.c.a.id)}">Non</button></div></div>`;
+  o.innerHTML=`<div class="facbox" style="max-width:760px"><div class="band">Avoirs retrouvés sur les factures</div><div style="padding:14px 16px">
+    <p class="sub" style="margin:0 0 10px">Ces avoirs manuels semblent avoir été accordés par le fournisseur. Validez pour les passer en <b>Déduit</b>.</p>
+    ${P1.map(ligne).join("")}<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-facpropx="1">Fermer</button></div></div></div>`;
+  o.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b){if(e.target===o)o.remove();return}
+    if(b.dataset.faclier){await facLier(b.dataset.faclier,b.dataset.man);b.closest(".facprop").remove()}
+    else if(b.dataset.facrefus){await facRefuser(b.dataset.facrefus,b.dataset.man);b.closest(".facprop").remove()}
+    else if(b.dataset.facpropx)o.remove();
+    if(!o.querySelector(".facprop"))o.remove()});
+  document.getElementById("facProp")&&document.getElementById("facProp").remove();document.body.appendChild(o)}
+
+/* ----- fenêtre « Factures » ----- */
+function facOuvrir(){S.fac.ouvert=true;facRender();if(FAC_API()&&!S.fac.busy&&(Date.now()-(S.fac.dernier||0)>60000||S.fac.etat!=="ok"))facScan()}
+function facFermer(){S.fac.ouvert=false;const o=document.getElementById("facRoot");if(o)o.remove()}
+function facOpts(r){const L=S.fourn.filter(f=>!f.groupe&&!isParent(f)).sort((a,b)=>String(a.nom).localeCompare(String(b.nom)));
+  return `${r.fid?"":`<option value="__new__" ${r.choix==="__new__"?"selected":""}>Créer « ${esc(String(r.dossier).toUpperCase())} »</option>`}`+L.map(f=>`<option value="${esc(f.id)}" ${r.choix===f.id?"selected":""}>${esc(f.nom)}${isInactif(f)?" (inactif)":""}</option>`).join("")}
+const FAC_COL={epicerie:"Épicerie",aa:"A/A",frais:"Frais"};
+function facRender(){if(!S.fac.ouvert)return;let o=document.getElementById("facRoot");
+  if(!o){o=document.createElement("div");o.id="facRoot";o.className="facov";document.body.appendChild(o)}
+  const a=document.activeElement;if(a&&o.contains(a)&&/INPUT|SELECT/.test(a.tagName)&&!S.fac.force)return;S.fac.force=false;
+  const F=S.fac,dep=facDepart();let body="";
+  if(!FAC_API())body=`<p>La lecture des factures marche dans le <b>programme GESMAR du PC</b>, installé avec le <b>nouveau kit</b> (version 86 ou plus).</p><p class="sub">Réinstallez GESMAR une fois avec le nouveau kit : vos données sont gardées. Ensuite, cette fenêtre trouve toute seule les nouvelles factures.</p>`;
+  else if(F.etat==="nodir")body=`<p>Choisissez le dossier <b>Documents</b> du OneDrive de la comptable : celui qui contient <b>2026</b> (et plus tard 2027).</p><button class="btn primary" data-facdir="1">Choisir le dossier</button>`;
+  else if(F.etat==="absent")body=`<p>Le dossier <b>${esc(F.root||"")}</b> est introuvable. OneDrive est-il bien ouvert sur ce PC ?</p><button class="btn primary" data-facdir="1">Choisir un autre dossier</button> <button class="btn" data-facscan="1">Réessayer</button>`;
+  else if(F.etat==="nodepart")body=`<p>À partir de quelle date GESMAR doit-il importer les factures ?</p><p class="sub">Les factures d'avant ont déjà été tapées à la main : elles ne seront pas lues.</p>
+    <div class="row"><input type="date" id="facDep" value="${todayISO()}"><button class="btn primary" data-facdep="1">Valider</button></div>`;
+  else if(F.etat==="erreur")body=`<p>⚠️ Lecture impossible : ${esc(F.err||"")}</p><button class="btn" data-facscan="1">Réessayer</button>`;
+  else if(F.etat==="lecture"&&!F.liste.length)body=`<p>${esc(F.prog||"Lecture…")}</p>`;
+  else{const L=facAImporter(),autres=F.liste.filter(r=>r.mag!==S.store),nOk=L.filter(r=>r.ok).length;
+    const etat=r=>r.type==="avoir"?`<span class="pill s-relance">Avoir</span>`:r.verif&&r.verif.length||r.avant||r.nouveau||(r.deja&&r.deja.length)?`<span class="pill s-declare">À vérifier</span>`:`<span class="pill s-deduit">OK</span>`;
+    const det=r=>{const x=[];if(r.numero)x.push("N° "+esc(r.numero));if(r.lignes&&r.lignes[0]&&FAC_COL[r.lignes[0].col])x.push(FAC_COL[r.lignes[0].col]);
+      if(r.decoupe)x.push(`<span title="${esc(r.lignes.map(l=>frDate(l.date)+" : "+n2.format(l.montant)+" €").join("\n"))}">réparti sur ${r.lignes.length} jours de livraison ⓘ</span>`);
+      if(r.avoirs&&r.avoirs.length&&r.type!=="avoir")x.push(r.avoirs.length+" ligne(s) d'avoir déjà déduite(s)");
+      const v=(r.verif||[]).slice();if(r.deja&&r.deja.length)v.push("Case déjà remplie ("+r.deja.join(", ")+") : le montant s'y ajoutera");if(r.avant)v.push("Datée d'avant le "+frDate(dep)+" : déjà saisie ?");if(r.nouveau)v.push("Nouveau fournisseur");
+      return x.join(" · ")+(v.length?`<div class="facwarn">${v.map(esc).join("<br>")}</div>`:"")};
+    const mt=r=>r.decoupe?`<b>${n2.format(r.total)}</b>`:`<input class="facmt" data-facmt="${esc(r.rel)}" inputmode="decimal" value="${r.saisi!=null?n2.format(r.saisi):r.total!=null?n2.format(r.total):""}" placeholder="à remplir" aria-label="Montant TTC">`;
+    const row=r=>`<tr><td><input type="checkbox" data-facok="${esc(r.rel)}" ${r.ok?"checked":""} aria-label="Importer"></td><td class="l">${r.date?frDate(r.date):'<span class="facwarn">?</span>'}</td>
+      <td class="l">${FAC.nk(r.dossier)==="DIAPAR"?"<b>DIAPAR</b>":`<select data-facf="${esc(r.rel)}" aria-label="Fournisseur">${facOpts(r)}</select>`}<div class="hist">${esc(r.dossier)}</div></td>
+      <td class="l" style="white-space:normal;min-width:220px"><div class="hist" style="margin:0 0 2px">${esc(r.nom)}</div>${det(r)}</td>
+      <td>${mt(r)}</td><td class="l">${etat(r)}</td>
+      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end"><button class="btn small" data-facpdf="${esc(r.rel)}" title="Ouvrir le PDF">PDF</button><button class="btn small" data-facign="${esc(r.rel)}" title="Ne plus proposer ce document">Ignorer</button></div></td></tr>`;
+    body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b> dès que la comptable les a créés.</div>`:""}
+      ${F.prog?`<p class="sub">${esc(F.prog)}</p>`:""}
+      ${L.length?`<div class="scroll" style="max-height:58vh"><table class="factab"><thead><tr><th></th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Détail</th><th>Montant TTC</th><th class="l">État</th><th></th></tr></thead><tbody>${L.map(row).join("")}</tbody></table></div>`
+        :`<div class="empty-state">Aucune nouvelle facture${dep?" depuis le "+frDate(dep):""}.</div>`}
+      ${autres.length?`<p class="sub" style="margin-top:8px">${autres.length} facture(s) d'un autre magasin (${[...new Set(autres.map(r=>(S.magasins.find(m=>m.id===r.mag)||{}).nom||r.mag))].join(", ")}) : changez de magasin (maison) pour les importer.</p>`:""}
+      ${F.ecartes.length?`<details style="margin-top:8px"><summary class="sub" style="cursor:pointer">${F.ecartes.length} document(s) écarté(s) (bons de livraison, relevés, copies, déjà importés…)</summary><div class="hist" style="max-height:24vh;overflow:auto;margin-top:6px">${F.ecartes.map(x=>esc(x.rel)+" — "+esc(x.raison)).join("<br>")}</div></details>`:""}
+      <div class="row" style="justify-content:space-between;margin-top:12px"><div class="row"><button class="btn" data-facscan="1" ${F.busy?"disabled":""}>Relire le dossier</button><button class="btn" data-facdir="1">Changer de dossier</button></div>
+        <button class="btn primary" data-facimp="1" ${!nOk||F.busy?"disabled":""}>Importer ${nOk} facture${nOk>1?"s":""}</button></div>`}
+  o.innerHTML=`<div class="facbox"><div class="band">Factures — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">
+    ${FAC_API()&&F.root?`<div class="hist" style="margin-bottom:8px">Dossier : ${esc(F.root)}${dep?" · factures à partir du "+frDate(dep):""}</div>`:""}${body}</div></div>`}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-act='factures']");
+  if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
+  if(b.dataset.act==="factures"){facOuvrir();return}
+  if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){S.fac.liste=[];facScan()}
+  else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter();
+  else if(b.dataset.facpdf)window.api.facOuvrir(b.dataset.facpdf).catch(()=>toast("Ouverture du PDF impossible"));else if(b.dataset.facign)facIgnorer(b.dataset.facign)});
+document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#facRoot"))return;
+  const R=rel=>S.fac.liste.find(x=>x.rel===rel);
+  if(t.dataset.facok){const r=R(t.dataset.facok);if(r)r.ok=t.checked;S.fac.force=true;facRender()}
+  if(t.dataset.facf){const r=R(t.dataset.facf);if(r)r.choix=t.value}
+  if(t.dataset.facmt){const r=R(t.dataset.facmt),v=parseNum(t.value);if(!r)return;if(Number.isNaN(v)){toast("Montant illisible : par ex. 845,07");return}r.saisi=v;if(v!=null&&r.date)r.ok=true;S.fac.force=true;facRender()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.fac.ouvert&&!document.querySelector(".facov#facProp")){facFermer()}});
+// Recherche automatique : au démarrage, puis toutes les 15 minutes et au retour sur la fenêtre (au plus toutes les 5 minutes)
+function facAuto(){if(!FAC_API())return;const go=()=>{if(S.fac.busy||Date.now()-(S.fac.dernier||0)<300000)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;facScan(true)};
+  setTimeout(go,8000);setInterval(go,900000);window.addEventListener("focus",go)}
+/* ----- onglet Avoirs : partie « Avoirs automatiques » ----- */
+function vAvoirsAuto(){const L=(S.avoirsAuto||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.creeLe).localeCompare(String(a.creeLe)));
+  const fn=id=>id==="diapar"?"DIAPAR":fName(id);
+  const prod=x=>{const l=(x.lignes||[]);if(!l.length)return `<span class="hist">${x.dansFacture?"":"Détail dans le PDF"}</span>`;
+    return l.slice(0,4).map(a=>`<div>${a.code?`<span class="hist" style="display:inline">${esc(a.code)}</span> `:""}${esc(a.libelle||"")}${a.ht!=null?` <span class="hist" style="display:inline">· ${eur2.format(a.ht)} HT</span>`:""}</div>`).join("")+(l.length>4?`<div class="hist">+ ${l.length-4} autre(s)</div>`:"")};
+  const rap=x=>{if(x.manuel){const a=S.avoirs.find(z=>z.id===x.manuel);return a?`<span class="pill s-deduit">✓ Lié</span> <b>${esc(a.produit||"")}</b><div class="hist">Avoir manuel du ${frDate(a.date)} passé en Déduit</div>`:`<span class="pill s-deduit">✓ Lié</span>`}
+    const c=facCandidats(x);if(!c.length)return `<span class="hist">Aucun avoir manuel correspondant</span>`;const p=c[0];
+    return `<div class="facwarn" style="margin:0 0 4px">Correspond à l'avoir manuel <b>${esc(p.a.produit||"")}</b> du ${frDate(p.a.date)} (${esc(p.raison)})</div>
+      <div class="row" style="flex-wrap:nowrap"><button class="btn small primary" data-avlier="${esc(x.id)}" data-man="${esc(p.a.id)}">Valider : Déduit</button><button class="btn small" data-avrefus="${esc(x.id)}" data-man="${esc(p.a.id)}">Non</button></div>`};
+  return `<div class="panel flush"><div class="band">Avoirs automatiques (lus sur les factures)</div><div class="scroll"><table>
+    <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Document</th><th class="l">Produits</th><th>Montant TTC</th><th class="l">Avoir manuel</th><th></th></tr></thead>
+    <tbody>${L.length?L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(fn(x.fournisseur))}</td>
+      <td class="l" style="white-space:normal;min-width:150px">${x.dansFacture?`Dans la facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Déjà déduit du total de la facture</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté en moins dans la saisie</div>`}${x.factureOrigine?`<div class="hist">Pour la facture ${esc(x.factureOrigine)}</div>`:""}</td>
+      <td class="l" style="white-space:normal;min-width:200px">${prod(x)}</td><td>${eur2.format(x.total||0)}</td>
+      <td class="l" style="white-space:normal;min-width:230px">${rap(x)}</td>
+      <td>${FAC_API()&&x.fichier?`<button class="btn small" data-facpdf="${esc(x.fichier)}">PDF</button>`:""}</td></tr>`).join("")
+      :`<tr><td colspan="7" class="l"><div class="empty-state">Aucun avoir lu pour l'instant. Ils arrivent avec le bouton « Factures » de la saisie.</div></td></tr>`}</tbody></table></div></div>`}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-avlier],[data-avrefus],[data-avvue]");if(!b||b.closest("#facProp"))return;
+  if(b.dataset.avvue){S.avVue=b.dataset.avvue;S.edit=null;try{localStorage.setItem("gesmar.avvue",S.avVue)}catch(_){}render();return}
+  if(b.dataset.avlier)facLier(b.dataset.avlier,b.dataset.man);else if(b.dataset.avrefus)facRefuser(b.dataset.avrefus,b.dataset.man)});
+
 /* ---------- données ---------- */
 let pending=null;function schedule(){ // n'interrompt pas une saisie en cours
   const a=document.activeElement;if(a&&a.dataset&&(a.dataset.f||a.dataset.fnom||a.dataset.fcontact||a.dataset.fmail||a.id==="mnote"||a.id==="coefHT"||a.id==="mht"||a.dataset.rn||(a.id||"").startsWith("dem")||(a.id||"").startsWith("inv")||(a.id||"").startsWith("mg")||(a.id||"").startsWith("av-"))){pending=true;return}render()}
@@ -1199,13 +1584,16 @@ function importPC(){window.api.importData().then(t=>{if(t){const aj=isAjout(t);i
 let unsubs=[];
 function subscribeStore(){
   unsubs.forEach(u=>{try{u()}catch(_){}});unsubs=[];
-  S.fourn=[];S.mois={};S.avoirs=[];S.inv=[];S.reglages=null;S.confirmDem=null;S.confirmInv=null;S.fFourn="";S.edit=null;S.confirmDel=null;
+  S.fourn=[];S.mois={};S.avoirs=[];S.inv=[];S.reglages=null;S.avoirsAuto=[];S.facImp={};S.facReg=null;if(S.fac){S.fac.liste=[];S.fac.ecartes=[];S.fac.dernier=0}S.confirmDem=null;S.confirmInv=null;S.fFourn="";S.edit=null;S.confirmDel=null;
   if(!S.store)return render();
   const db=S.db,err=e=>console.error(e);
   unsubs.push(db.collection(P("fournisseurs")).onSnapshot(s=>{S.fourn=s.docs.map(d=>({id:d.id,...d.data()}));schedule()},err));
   unsubs.push(db.collection(P("mois")).onSnapshot(s=>{S.mois={};s.docs.forEach(d=>S.mois[d.id]=d.data());schedule()},err));
   unsubs.push(db.doc(P("reglages/general")).onSnapshot(d=>{S.reglages=d.exists?d.data():null;schedule()},err));
   unsubs.push(db.collection(P("avoirs")).onSnapshot(s=>{S.avoirs=s.docs.map(d=>({id:d.id,...d.data()}));schedule()},err));
+  unsubs.push(db.collection(P("avoirsAuto")).onSnapshot(s=>{S.avoirsAuto=s.docs.map(d=>({id:d.id,...d.data()}));schedule()},err)); // v86
+  unsubs.push(db.collection(P("factures")).onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());S.facImp=o},err));
+  unsubs.push(db.doc(P("reglages/factures")).onSnapshot(d=>{S.facReg=d.exists?d.data():null},err));
   unsubs.push(db.collection(P("inventaires")).onSnapshot(s=>{S.inv=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.date);schedule()},err));
   render();
 }
@@ -1311,7 +1699,7 @@ document.addEventListener("click",e=>{if(e.target.dataset&&e.target.dataset.act=
         if(r.status==="new"){await new Promise(f=>setTimeout(f,2000));const x=await window.api.updateApply(majUrl());if(x.status==="done")return;soir=true}}catch(e){soir=true}
       S.majBusy=false};
     setInterval(()=>{const n=new Date(),d=n.toDateString();if(n.getHours()>=H&&fait!==d){fait=d;soir=true}if(soir)soirGo()},60000)}
-  S.db=wrapDb(db);render();
+  S.db=wrapDb(db);render();facAuto(); // v86 : recherche automatique des nouvelles factures
   setTimeout(()=>SYNC.start().catch(()=>{}),300);
   db.doc("config/app").onSnapshot(d=>{S.config=d.exists?d.data():{};schedule()},e=>console.error(e));
   db.collection("magasins").onSnapshot(s=>{
