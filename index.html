@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="96">
+<meta name="gm-version" content="97">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -136,6 +136,9 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--surface);bor
 .sheet th.day,.sheet td.day{width:78px;position:sticky;left:0;background:var(--surface);z-index:1;text-align:left;padding:4px 10px;font-weight:700}
 .sheet th.day{z-index:2}
 .sheet td.we{color:var(--red)}
+.sheet td.hasfac{position:relative}.sheet td.hasfac input{padding-right:20px}
+.facdoc{position:absolute;right:3px;top:50%;transform:translateY(-50%);width:13px;height:15px;padding:0;margin:0;border:0;background:none;color:var(--muted,#8a8f98);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.facdoc:hover{color:var(--accent,#e0592a)}.facdoc svg{width:11px;height:13px}
 .sheet td input{display:block;width:100%;height:100%;min-width:0;box-sizing:border-box;border:0;border-radius:0;background:transparent;text-align:right;padding:6px 6px;font-variant-numeric:tabular-nums;font-size:13px}
 .sheet td input::placeholder{font-size:12px}
 /* sélection verte = exactement la case */
@@ -300,6 +303,7 @@ nav.tabs button{line-height:1.4}
 .kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}
 .sheet td{height:20px}
 .sheet td input{padding:1px 4px;font-size:12px}
+.sheet td.hasfac input{padding-right:17px}
 .sheet td input::placeholder{font-size:11px}
 .sheet th{padding:3px 2px;font-size:10px}
 .sheet th.day,.sheet td.day{width:60px;padding:1px 6px;font-size:12px}
@@ -389,7 +393,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=96;
+const APP_VERSION=97;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -668,11 +672,11 @@ function vSaisie(){
   let caN1Tot=0;for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");caN1Tot+=+(n1Day(dd,J[dd]||{})||0)}
   const n1ca=caN1Tot||n1st.caTTC; // v53 : rappel N-1 sous le CA et les achats
   const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal" value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
-  let rows="";
+  let rows="";const FD=FAC_API()?facDocs():null;
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
     const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
     rows+=`<tr${wd===0?' class="dim"':""}><td class="day ${wd===0?"we":""}">${["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][wd]} ${d}</td><td class="ca">${cell(dd,"ca",j.ca)}</td>${hasN1?`<td>${cell(dd,"caN1",n1Day(dd,j))}</td>`:""}
-      ${runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${cell(dd,"a:"+f.id,a[f.id])}</td>`).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
+      ${runs.map(r=>r.mem.map(f=>{const pdf=a[f.id]&&FD&&FD[key+"-"+dd+"|"+f.id];return `<td class="${r.groupe?"":"fc"}${pdf?" hasfac":""}">${cell(dd,"a:"+f.id,a[f.id])}${pdf?`<button class="facdoc" data-facdoc="${esc(pdf.join("\n"))}" title="Ouvrir la facture (PDF)" aria-label="Ouvrir la facture"><svg viewBox="0 0 12 14" aria-hidden="true"><path d="M1.5 .5h6l3 3v10h-9z" fill="currentColor" fill-opacity=".18" stroke="currentColor"/><path d="M7.5 .5v3h3M3.5 7h5M3.5 9.5h5" stroke="currentColor" fill="none"/></svg></button>`:""}</td>`}).join("")).join("")}<td class="calc">${tot?n2.format(tot):""}</td></tr>`}
   const tf=f=>st.par[f.id]?n2.format(st.par[f.id]):"";
   const rs="";
   S._runs=runs.map(r=>r.mem.map(f=>f.id));
@@ -1168,7 +1172,7 @@ async function facScan(silent){
   try{const L=await window.api.facLister();
     if(L.err==="nodir"){S.fac.etat="nodir";return}
     if(L.err){S.fac.etat="absent";S.fac.root=L.root;return}
-    S.fac.root=L.root;const dep=facDepart();if(!dep){S.fac.etat="nodepart";return}
+    S.fac.root=L.root;S.fac.rels={};L.files.forEach(f=>{S.fac.rels[facKey(f.rel)]=f.rel});FAC_DOCS=null;const dep=facDepart();if(!dep){S.fac.etat="nodepart";return}
     const reg=S.facImp||{},C=facCache(),files=L.files,noms=new Set(files.map(f=>f.rel.toLowerCase()));
     const an=new Date().getFullYear();S.fac.annees=[...new Set(files.map(f=>FAC.annee(f.rel)).filter(Boolean))].sort();
     S.fac.sansAnnee=new Date().getMonth()<=1&&S.fac.annees.length&&!S.fac.annees.includes(an)?an:null;
@@ -1217,6 +1221,16 @@ async function facScan(silent){
   finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
   if(S.fac.relire){S.fac.relire=false;setTimeout(()=>facScan(),200)}}
+// v97 : petite feuille dans la saisie : quelle facture (PDF) a rempli chaque case (jour + fournisseur)
+let FAC_DOCS=null,FAC_DOCS_SRC=null;
+function facDocs(){const reg=S.facImp||{};if(FAC_DOCS&&FAC_DOCS_SRC===reg)return FAC_DOCS;const M={},C=facCache(),rels=(S.fac&&S.fac.rels)||{};
+  const byKey={};Object.keys(C).forEach(rel=>{byKey[facKey(rel)]=rel});
+  for(const[k,x]of Object.entries(reg)){if(!x||x.s!=="i")continue;const rel=x.r||rels[k]||byKey[k];if(!rel)continue;
+    let cells=Array.isArray(x.j)&&x.j.length?x.j:null;
+    if(!cells){const c=C[rel]&&C[rel].r,lg=(c&&c.lignes)||[];
+      cells=lg.length>1?lg.map(l=>l.date+"|"+(l.col||x.f)):x.d?[x.d+"|"+((lg[0]&&lg[0].col)||x.f)]:[]}
+    for(const c of cells)(M[c]=M[c]||[]).includes(rel)||M[c].push(rel)}
+  FAC_DOCS=M;FAC_DOCS_SRC=reg;return M}
 const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
 const facATraiter=()=>facAImporter().filter(r=>!facAutoOn()||!facPret(r)); // v91 : celles que GESMAR n'a pas pu écrire seul
 function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facATraiter().length;b.hidden=!n;b.textContent=n;const k=b.closest(".facbtn");if(k)k.classList.toggle("on",!!n)}
@@ -1263,7 +1277,7 @@ async function facImporter(auto,only){
       const dejaSaisie=r.etatSaisie==="egal"&&r.saisi==null&&!only; // v92 : déjà dans la saisie : rien à écrire
       if(dejaSaisie)nDeja++;else await facEcrire(lignes,!!r.remplacer);
       const total=lignes.reduce((s,l)=>s+l.montant,0);
-      await S.db.doc(P("factures/"+r.key)).set({dj:dejaSaisie?1:0,s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,le:todayISO()});
+      await S.db.doc(P("factures/"+r.key)).set({dj:dejaSaisie?1:0,s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,r:r.rel,j:[...new Set(lignes.map(l=>l.date+"|"+l.col))],le:todayISO()});
       // avoirs lus : document d'avoir, ou partie « avoirs » d'une facture DIAPAR (déjà déduite du total)
       const avf=fid==="epicerie"||fid==="aa"||fid==="frais"?"diapar":fid;
       if(r.type==="avoir"||(r.avoirs&&r.avoirs.length)){
@@ -1387,9 +1401,10 @@ function facRecentes(){const L=Object.values(S.facImp||{}).filter(x=>x&&x.s==="i
   if(!L.length)return"";
   return `<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Dernières factures importées (${L.length})</summary><div class="scroll" style="max-height:30vh;margin-top:6px"><table><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th></tr></thead><tbody>
     ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}${x.dj?`<div class="hist">déjà saisie</div>`:""}</td></tr>`).join("")}</tbody></table></div></details>`}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-facrep],[data-act='factures'],[data-act='facReglages']");
+document.addEventListener("click",e=>{const b=e.target.closest("[data-facdoc],[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-facrep],[data-act='factures'],[data-act='facReglages']");
   if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
   if(b.dataset.act==="factures"){facOuvrir();return}
+  if(b.dataset.facdoc){b.dataset.facdoc.split("\n").forEach(rel=>window.api.facOuvrir(rel).catch(()=>toast("Ouverture du PDF impossible")));return}
   if(b.dataset.facauto){facSetAuto(b.dataset.facauto==="1");return}
   if(b.dataset.faccl){facClasser(b.dataset.faccl);return}
   if(b.dataset.facrep){facClasser(b.dataset.facrep,true);return}
@@ -1408,7 +1423,9 @@ document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closes
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.fac.ouvert&&!document.querySelector(".facov#facProp")){facFermer()}});
 // Recherche automatique : au démarrage, puis toutes les 15 minutes et au retour sur la fenêtre (au plus toutes les 5 minutes)
 function facAuto(){if(!FAC_API())return;const go=()=>{if(S.fac.busy||Date.now()-(S.fac.dernier||0)<300000)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;facScan(true)};
-  setTimeout(go,8000);setInterval(go,900000);window.addEventListener("focus",go)}
+  setTimeout(go,8000);setInterval(go,900000);window.addEventListener("focus",go);
+  // v97 : au démarrage, la base (fournisseurs, réglages) peut arriver après 8 s : on réessaie jusqu'à une lecture réussie, pour que le compteur « Factures à traiter » revienne tout seul
+  let n=0;const t=setInterval(()=>{if(S.fac.etat==="ok"||++n>40){clearInterval(t);return}if(!S.fac.busy&&!S.fac.imp&&S.store&&S.fourn.length&&S.facReg)facScan(true)},3000)}
 /* v89 : fenêtre « Avoir sur facture » : la déclaration et l'avoir lu côte à côte */
 function facComparer(manId,autoId){const PROP=facPourDecl();
   let b=manId?S.avoirs.find(z=>z.id===manId):null,x=null,raison="";
