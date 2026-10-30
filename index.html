@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="107">
+<meta name="gm-version" content="108">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=107;
+const APP_VERSION=108;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1292,7 +1292,9 @@ async function facScan(silent){
       const dn=facNomDate(nom),mt=new Date(f.mtime),miso=mt.getFullYear()+"-"+String(mt.getMonth()+1).padStart(2,"0")+"-"+String(mt.getDate()).padStart(2,"0");
       // v93 : « Factures à partir du » = date de la facture (date du nom de fichier) ; sans date dans le nom : date de modification du fichier
       if(dn?dn<dep:miso<dep)continue;
-      const ig=FAC.ignorer(f.rel);if(ig){if(/\.pdf$/i.test(f.rel))ecartes.push({rel:f.rel,raison:ig});continue}
+      // v108 : un « bon de livraison chiffré » (ex. LE BATISTOU : _001_BLC_…) est lu comme une facture si ce fournisseur a une facture modèle
+      let ig=FAC.ignorer(f.rel);if(ig&&/^Bon de livraison/.test(ig)){const fm=S.fourn.find(x=>x.id===facFid(FAC.dossier(f.rel)));if(fm&&fm.modele)ig=null}
+      if(ig){if(/\.pdf$/i.test(f.rel))ecartes.push({rel:f.rel,raison:ig});continue}
       if(cp&&noms.has(segs.slice(0,-1).concat(cp).join("/").toLowerCase())){ecartes.push({rel:f.rel,raison:"Copie d'un fichier déjà présent"});continue}
       aLire.push(f)}
     let n=0;const res=[];
