@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="103">
+<meta name="gm-version" content="104">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -399,8 +399,8 @@ const SLABEL=Object.assign({a_reclamer:"Déclaré",reclame:"Déclaré"},Object.f
 const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="reclame")a.statut="declare"});
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
-const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=103;
+const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
+const APP_VERSION=104;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -786,7 +786,7 @@ function vForm(){
     <label>Code article<input id="av-code" value="${esc(a.code)}"></label>
     <label>N° de facture / BL<input id="av-facture" value="${esc(a.facture)}"></label>
     <label>Quantité<input id="av-quantite" value="${esc(a.quantite)}" placeholder="Ex. 2 colis"></label>
-    <label>Motif<select id="av-motif">${MOTIFS.map(m=>`<option ${a.motif===m?"selected":""}>${m}</option>`).join("")}</select></label>
+    <label>Motif<select id="av-motif">${(a.motif&&!MOTIFS.includes(a.motif)?[a.motif,...MOTIFS]:MOTIFS).map(m=>`<option ${a.motif===m?"selected":""}>${esc(m)}</option>`).join("")}</select></label>
     <label>Montant HT (€)<input id="av-montant" inputmode="decimal" value="${a.montant!=null?n2.format(a.montant):""}" placeholder="Laisser vide si inconnu"></label>
     <label>Statut<select id="av-statut">${STATUTS.map(([k,l])=>`<option value="${k}" ${a.statut===k?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="wide">Infos<textarea id="av-infos" rows="2">${esc(a.infos)}</textarea></label>
