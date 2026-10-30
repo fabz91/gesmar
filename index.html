@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="102">
+<meta name="gm-version" content="103">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -342,6 +342,7 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .cmpl{display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--line);font-size:13px}.cmpl>span{color:var(--muted);min-width:110px}
 .facbtn{margin-left:auto;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 14px;font:800 13px var(--display);letter-spacing:.03em;cursor:pointer;display:flex;align-items:center;gap:6px}
 .facbtn.on{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.facbtn .cnt{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--red-2);color:var(--on-red);font-size:11px;text-align:center}
+.segm{display:inline-grid;grid-template-columns:1fr 1fr;width:max-content;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:-4px}.segm button{min-width:90px;padding:6px 14px;border:0;background:var(--surface);color:var(--muted,#777);font:600 13px var(--body);cursor:pointer}.segm button+button{border-left:1px solid var(--line)}.segm button[aria-pressed="true"]{background:var(--green);color:#fff;cursor:default}
 .facreg{display:grid;gap:10px;font-size:13px}.facreg .row{gap:8px;flex-wrap:wrap;align-items:center}
 .facmode{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .facprop{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -399,7 +400,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Reçu abîmé","Reçu allongé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=102;
+const APP_VERSION=103;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1411,7 +1412,8 @@ function facReglagesFac(){const F=S.fac,dep=facDepart();
     <div class="row"><button class="btn small" data-facdir="1">${F.root?"Changer de dossier":"Choisir le dossier"}</button></div>
     <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"></div>
     <div class="row"><button class="btn small primary" data-facscan="1" ${F.busy||!F.root?"disabled":""}>Enregistrer</button></div>
-    <div class="row" style="justify-content:space-between"><span><b>Import ${facAutoOn()?"automatique":"manuel"}</b>${facAutoOn()?" : toutes les 15 minutes":" : à valider dans Factures à traiter"}</span><button class="btn small" data-facauto="${facAutoOn()?"0":"1"}">${facAutoOn()?"Passer en manuel":"Passer en automatique"}</button></div>
+    <div><b>Import facture</b></div>
+    <div class="segm" role="group" aria-label="Import facture"><button data-facauto="0" aria-pressed="${!facAutoOn()}">Manuel</button><button data-facauto="1" aria-pressed="${facAutoOn()}">Auto</button></div>
     ${etat?`<div class="hist">${etat}</div>`:""}${F.dernierImport?`<div class="hist">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
     ${facPopBtns()}</div>`}
 // v102 : « Dernières factures importées » et « Factures ignorées » : boutons qui ouvrent une fenêtre
@@ -1445,7 +1447,7 @@ function facRecentes(){const L=Object.values(S.facImp||{}).filter(x=>x&&x.s==="i
   return `<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Dernières factures importées (${L.length})</summary><div class="scroll" style="max-height:30vh;margin-top:6px"><table><thead><tr><th class="l">Importée le</th><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Fichier</th><th>Montant TTC</th></tr></thead><tbody>
     ${L.map(x=>`<tr><td class="l">${frDate(x.le)}</td><td class="l">${frDate(x.d)}</td><td class="l">${esc(x.f==="diapar"?"DIAPAR":fName(x.f))}</td><td class="l" style="white-space:normal">${esc(x.n||"")}</td><td>${x.m!=null?n2.format(x.m):""}${x.dj?`<div class="hist">déjà saisie</div>`:""}</td></tr>`).join("")}</tbody></table></div></details>`}
 document.addEventListener("click",e=>{const p=e.target.closest("[data-facpop]");if(p){facPop(p.dataset.facpop);return}});
-document.addEventListener("click",e=>{const c=e.target.closest("[data-cascan],[data-cadir]");if(c){if(c.dataset.cadir)caChoisir();else caScan(false,true);return}});
+document.addEventListener("click",e=>{const c=e.target.closest("[data-cascan],[data-cadir]");if(c){if(c.dataset.cadir)caChoisir();else{const v=($("#caDep")||{}).value;if(v&&v!==caCfg().depuis)caSetDepuis(v);else caScan(false,true)}return}});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-facund],[data-facdoc],[data-facx],[data-facdir],[data-facscan],[data-facdep],[data-facimp],[data-facpdf],[data-facign],[data-facauto],[data-faccl],[data-facrep],[data-act='factures'],[data-act='facReglages']");
   if(!b){if(e.target&&e.target.id==="facRoot")facFermer();return}
   if(b.dataset.act==="factures"){facOuvrir();return}
@@ -1458,7 +1460,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-facund],[d
   if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){const v=($("#facDep")||{}).value;if(v&&v!==facDepart()){facSetDepart(v);return}S.fac.liste=[];facScan()}
   else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter(false);
   else if(b.dataset.facpdf)window.api.facOuvrir(b.dataset.facpdf).catch(()=>toast("Ouverture du PDF impossible"));else if(b.dataset.facign)facIgnorer(b.dataset.facign)});
-document.addEventListener("change",e=>{if(e.target&&e.target.id==="caDep"){caSetDepuis(e.target.value);return}if(e.target&&e.target.id==="caMag"){caSetMag(e.target.value);return}}); // v93 : date enregistrée tout de suite
+document.addEventListener("change",e=>{if(e.target&&e.target.id==="caMag"){caSetMag(e.target.value);return}}); // v93 : date enregistrée tout de suite
 document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#facRoot"))return;
   const R=rel=>S.fac.liste.find(x=>x.rel===rel);
   if(t.dataset.facok){const r=R(t.dataset.facok);if(r)r.ok=t.checked;S.fac.force=true;facRender()}
@@ -1512,8 +1514,9 @@ function caReglagesHtml(){if(!CA_API())return PC?`<div class="facreg"><div class
   const C=caCfg(),E=S.ca;const etat=E.busy?"Lecture…":E.etat==="absent"?"⚠️ Dossier introuvable sur ce PC":E.etat==="erreur"?"⚠️ "+esc(E.err||"Lecture impossible"):E.etat==="autre"?"Ce dossier est celui de la caisse de "+esc((S.magasins.find(m=>m.id===C.mag)||{}).nom||"un autre magasin")+" : rien n'est rempli ici. Pour ce magasin, choisissez son dossier avec « Changer de dossier ».":"";
   return `<div class="facreg">
     <div><b>Dossier</b> : ${esc(E.dir||"C:\\transfert\\reception\\001")}</div>
+    <div class="row"><button class="btn small" data-cadir="1">Changer de dossier</button></div>
     <div class="row"><label for="caDep"><b>CA à partir du</b></label><input type="date" id="caDep" value="${esc(C.depuis||"")}"></div>
-    <div class="row"><button class="btn small" data-cascan="1" ${E.busy?"disabled":""}>Relire maintenant</button><button class="btn small" data-cadir="1">Changer de dossier</button></div>
+    <div class="row"><button class="btn small primary" data-cascan="1" ${E.busy?"disabled":""}>Enregistrer</button></div>
     ${etat?`<div class="hist">${etat}</div>`:""}${E.msg?`<div class="hist">Dernière mise à jour : ${esc(E.msg)}</div>`:""}</div>`}
 function facAuto(){if(!FAC_API())return;const go=()=>{if(S.fac.busy||Date.now()-(S.fac.dernier||0)<300000)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;facScan(true)};
   setTimeout(go,8000);setInterval(go,900000);window.addEventListener("focus",go);
