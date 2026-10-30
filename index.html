@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="106">
+<meta name="gm-version" content="107">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=106;
+const APP_VERSION=107;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -848,19 +848,18 @@ function vFourn(){
   const key=mkey(+todayISO().slice(0,4),+todayISO().slice(5,7)-1),mc=monthCols(key),moisNom=MOIS[+todayISO().slice(5,7)-1];
   const carte=f=>{const ids=fIds(f),par=isParent(f),ray=par?S.fourn.filter(x=>x.groupe===f.id):[];
     const dans=par?ray.some(x=>mc.includes(x.id)):mc.includes(f.id);
-    const ry=fRythme(ids),der=fDerniere(f);
+    const der=fDerniere(f);
     const av=S.avoirs.filter(a=>ids.includes(a.fournisseur)&&EN_COURS.includes(a.statut)),avL=av.filter(isLate).length;
     const rel=der&&FAC_API()?facRelDe(der.k,der.x):"";
     const mod=f.modele;
-    return `<div class="fcard${ry&&ry.retard?" fretard":""}">
+    return `<div class="fcard">
       <div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur" title="Cliquer pour modifier le nom"></div>
       ${par?`<div class="fc-ray">Rayons : ${ray.map(x=>esc(x.nom)).join(" · ")}</div>`:""}
       <div class="fc-l">${dans?`<span class="fc-ok">✓ Dans la saisie ${/^[aeiouy]/i.test(moisNom)?"d'":"de "}${esc(moisNom.toLowerCase())}</span>`:`<button class="btn small" data-fsaisie="${esc(f.id)}">+ Ajouter à la saisie ${/^[aeiouy]/i.test(moisNom)?"d'":"de "}${esc(moisNom.toLowerCase())}</button>`}</div>
       <div class="fc-l"><span class="fc-k">Dernière facture</span>${der?`<span>${frDate(der.x.d)}${der.x.m!=null?" · "+n2.format(der.x.m)+" €":""}</span>${rel?`<button class="fc-pdf" data-poppdf2="${esc(rel)}" title="Ouvrir la facture">PDF</button>`:""}`:`<span class="fc-vide">aucune lue</span>`}</div>
-      ${ry&&ry.retard?`<div class="fc-alerte">⚠️ Pas de facture depuis ${ry.since} jours<br><span>d'habitude tous les ${Math.round(ry.med)} jours</span></div>`:""}
       <div class="fc-l"><span class="fc-k">Avoirs en cours</span>${av.length?`<button class="fc-av${avL?" red":""}" data-fav="${esc(f.id)}" title="Voir ces avoirs">${avL===av.length?av.length+" en retard":av.length+(avL?" · "+avL+" en retard":"")}</button>`:`<span class="fc-vide">aucun</span>`}</div>
       <input id="fm-${esc(f.id)}" class="fc-mail" data-fmail="${esc(f.id)}" value="${esc(f.mail||"")}" placeholder="Mail pour les avoirs" type="email" inputmode="email" aria-label="Mail de ${esc(f.nom)}">
-      <div class="fc-bas">${par?`<span class="fc-vide">Factures DIAPAR lues automatiquement</span>`:FAC_API()?`<button class="btn small" data-fmodele="${esc(f.id)}" title="Montrer à GESMAR où lire le montant et la date sur ses factures">${mod?"✓ Facture modèle":"📄 Facture modèle"}</button>`:mod?`<span class="fc-ok">✓ Facture modèle</span>`:"<span></span>"}
+      <div class="fc-bas">${par||der||mod?`<span class="fc-ok">✓ Factures lues automatiquement</span>`:FAC_API()?`<button class="btn small" data-fmodele="${esc(f.id)}" title="Aucune facture lue pour ce fournisseur : montrer à GESMAR où lire le montant et la date">📄 Facture modèle</button>`:"<span></span>"}
         ${par?"":`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</div>
     </div>`};
   const carteIna=f=>`<div class="fcard ina"><div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur"></div><div class="fc-bas"><span class="fc-vide">Inactif</span><button class="btn small" data-fback="${esc(f.id)}">Remettre</button></div></div>`;
