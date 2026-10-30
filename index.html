@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="108">
+<meta name="gm-version" content="109">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=108;
+const APP_VERSION=109;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1204,7 +1204,7 @@ const facAutoOn=()=>!(S.facReg&&S.facReg.auto===false);
 const saisieBloquee=()=>!!(S.facReg&&S.facReg.depart&&S.facReg.auto!==false);
 // v92 : une facture prête = bon magasin, date et montant lus, pas datée d'avant le départ, et cases de la saisie vides
 // (ou déjà remplies avec exactement ce montant : facture déjà tapée à la main, on ne la rajoute pas)
-const facPret=r=>r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant&&r.lignes&&r.lignes.length>0&&r.etatSaisie!=="diff";
+const facPret=r=>!r.doublonBL&&r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant&&r.lignes&&r.lignes.length>0&&r.etatSaisie!=="diff";
 let FAC_CACHE=null;
 function facCache(){if(!FAC_CACHE){try{FAC_CACHE=JSON.parse(rawLoad("gesmar-factures-cache")||"{}")||{}}catch(e){FAC_CACHE={}}}return FAC_CACHE}
 function facCacheSave(){try{rawSave("gesmar-factures-cache",JSON.stringify(FAC_CACHE||{}))}catch(e){}}
@@ -1327,6 +1327,22 @@ async function facScan(silent){
       if(!old&&r.etatSaisie==="diff")r.ok=false;
       r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" €":null}).filter(Boolean);
       liste.push(r)}
+    // v109 : jamais de doublon entre bons de livraison (chiffrés) et factures d'un même fournisseur
+    {const isBL=nom=>{const N=FAC.nk(nom);return /^(BONDE|BL\d|BLC|001BLC)/.test(N)||/BONDELIVRAISON/.test(N)};
+      const near=(a,b,j)=>a&&b&&Math.abs(Date.parse(a)-Date.parse(b))<=j*864e5;
+      const R=Object.values(reg).filter(x=>x&&x.s==="i"&&x.f).map(x=>({f:x.f,d:x.d,m:x.m,bl:isBL(x.n||""),imp:true}));
+      liste.forEach(r=>{r.bl=isBL(r.nom)});
+      const garde=[];
+      for(const r of liste){if(r.total==null||!r.date||!r.fid){garde.push(r);continue}
+        const autres=R.filter(x=>x.f===r.fid).concat(liste.filter(x=>x!==r&&x.fid===r.fid&&x.total!=null&&x.date).map(x=>({f:x.fid,d:x.date,m:x.total,bl:x.bl,imp:false})));
+        const opp=autres.filter(x=>x.bl!==r.bl);
+        const meme=opp.find(x=>Math.abs((x.m||0)-r.total)<=0.02&&near(x.d,r.date,15));
+        // même montant à quelques jours d'écart : c'est la même livraison. On garde la facture (ou le document déjà importé).
+        if(meme&&(r.bl||meme.imp)){ecartes.push({rel:r.rel,raison:(r.bl?"Bon de livraison":"Facture")+" déjà compté(e) : même montant que "+(meme.bl?"le bon de livraison":"la facture")+" du "+frDate(meme.d)});continue}
+        // facture alors que des bons de livraison ont déjà été comptés (ou l'inverse) : pas d'écriture automatique
+        if(!meme&&opp.some(x=>near(x.d,r.date,45))){r.doublonBL=true;r.ok=false;r.verif=(r.verif||[]).concat(r.bl?"Des factures de ce fournisseur sont déjà comptées : ce bon de livraison est peut-être déjà dedans (sinon Classer, si doublon Ignorer)":"Des bons de livraison de ce fournisseur sont déjà comptés : cette facture les reprend peut-être (sinon Classer, si doublon Ignorer)")}
+        garde.push(r)}
+      liste.length=0;garde.forEach(r=>liste.push(r))}
     liste.sort((a,b)=>String(a.date||"9").localeCompare(String(b.date||"9"))||String(a.dossier).localeCompare(String(b.dossier)));
     S.fac.liste=liste;S.fac.ecartes=ecartes;S.fac.etat="ok";S.fac.dernier=Date.now()}
   catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
