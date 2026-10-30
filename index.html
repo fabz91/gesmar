@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="109">
+<meta name="gm-version" content="110">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=109;
+const APP_VERSION=110;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -702,7 +702,8 @@ function vSaisie(){
   const hasN1=true; // v37 : colonne CA N-1 toujours affichée
   const st=monthStats(y,m),n1st=monthStats(y-1,m);
   // v59 : CA N-1 de chaque jour repris automatiquement du même jour l'an dernier (sauf s'il a été tapé à la main)
-  const J1=((S.mois[mkey(y-1,m)]||{}).jours)||{},n1Day=(dd,j)=>j.caN1!=null&&j.caN1!==""?j.caN1:((J1[dd]&&J1[dd].ca)||null);
+  // v110 : même jour de la semaine il y a 52 semaines (364 jours), comme dans l'Excel (avant : même date, donc un jour de décalage)
+  const n1Day=(dd,j)=>{if(j.caN1!=null&&j.caN1!=="")return j.caN1;const t=new Date(y,m,+dd-364),k=mkey(t.getFullYear(),t.getMonth()),J1=((S.mois[k]||{}).jours)||{},d1=String(t.getDate()).padStart(2,"0");return (J1[d1]&&J1[d1].ca)||null};
   let caN1Tot=0;for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");caN1Tot+=+(n1Day(dd,J[dd]||{})||0)}
   const n1ca=caN1Tot||n1st.caTTC; // v53 : rappel N-1 sous le CA et les achats
   const LOCK=saisieBloquee();const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal"${LOCK?' readonly tabindex="-1"':""} value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
