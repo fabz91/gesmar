@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="104">
+<meta name="gm-version" content="105">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -343,6 +343,7 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .facbtn{margin-left:auto;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 14px;font:800 13px var(--display);letter-spacing:.03em;cursor:pointer;display:flex;align-items:center;gap:6px}
 .facbtn.on{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.facbtn .cnt{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--red-2);color:var(--on-red);font-size:11px;text-align:center}
 .segm{display:inline-grid;grid-template-columns:1fr 1fr;width:max-content;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:-4px}.segm button{min-width:90px;padding:6px 14px;border:0;background:var(--surface);color:var(--muted,#777);font:600 13px var(--body);cursor:pointer}.segm button+button{border-left:1px solid var(--line)}.segm button[aria-pressed="true"]{background:var(--green);color:#fff;cursor:default}
+.lockmsg{margin-left:auto;font:600 11px var(--body);background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;cursor:help}.sheet.locked input[data-f]{cursor:default;color:var(--fg)}.sheet.locked input[data-f]:focus{outline:none;box-shadow:none}
 .facreg{display:grid;gap:10px;font-size:13px}.facreg .row{gap:8px;flex-wrap:wrap;align-items:center}
 .facmode{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .facprop{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -400,7 +401,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=104;
+const APP_VERSION=105;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -678,7 +679,7 @@ function vSaisie(){
   const J1=((S.mois[mkey(y-1,m)]||{}).jours)||{},n1Day=(dd,j)=>j.caN1!=null&&j.caN1!==""?j.caN1:((J1[dd]&&J1[dd].ca)||null);
   let caN1Tot=0;for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");caN1Tot+=+(n1Day(dd,J[dd]||{})||0)}
   const n1ca=caN1Tot||n1st.caTTC; // v53 : rappel N-1 sous le CA et les achats
-  const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal" value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
+  const LOCK=saisieBloquee();const cell=(d,field,val,ph)=>`<input id="c-${d}-${field}" data-d="${d}" data-f="${field}" inputmode="decimal"${LOCK?' readonly tabindex="-1"':""} value="${val==null?"":n2.format(val)}"${ph?` placeholder="≈ ${n2.format(ph)}" title="Estimé depuis le TTC"`:""} aria-label="${field} jour ${d}">`;
   let rows="";const FD=FAC_API()?facDocs():null;
   for(let d=1;d<=nd;d++){const dd=String(d).padStart(2,"0");const j=J[dd]||{};const a=j.achats||{};
     const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);const wd=new Date(y,m,d).getDay();
@@ -690,7 +691,7 @@ function vSaisie(){
   // v46 : nom sur toute la largeur ; au-dessus : ‹ (vers la gauche), ✕ (retirer), › (vers la droite) — v50 : rien pour Épicerie, A/A, Frais (fixes)
   const nameCell=(f,del,ri)=>{if(!S.fourn.find(x=>x.id===f.id))return esc(f.nom);const n=esc(f.nom),first=ri===0,last=ri===runs.length-1;
     const mv=(d,lab,dis)=>`<button class="fmv" data-mv="${esc(f.id)}" data-dir="${d}" ${dis?"disabled":""} title="${lab}" aria-label="${lab}">${d<0?"‹":"›"}</button>`;
-    return `<div class="fhead">${!del?`<div class="fctl fctl-ph" aria-hidden="true"></div>`:`<div class="fctl">${mv(-1,"Déplacer "+n+" vers la gauche",first)}${del?`<button class="fx" data-hidecol="${esc(f.id)}" title="Retirer ${n} de la saisie" aria-label="Retirer ${n} de la saisie">✕</button>`:""}${mv(1,"Déplacer "+n+" vers la droite",last)}</div>`}<input id="rn-${esc(f.id)}" class="fname" data-rn="${esc(f.id)}" value="${n}" aria-label="Nom du fournisseur" title="${n} : cliquer pour modifier le nom"></div>`};
+    return `<div class="fhead">${!del?`<div class="fctl fctl-ph" aria-hidden="true"></div>`:`<div class="fctl">${mv(-1,"Déplacer "+n+" vers la gauche",first)}${del?`<button class="fx" data-hidecol="${esc(f.id)}" title="Retirer ${n} de la saisie" aria-label="Retirer ${n} de la saisie">✕</button>`:""}${mv(1,"Déplacer "+n+" vers la droite",last)}</div>`}<input id="rn-${esc(f.id)}" class="fname" data-rn="${esc(f.id)}" value="${n}"${saisieBloquee()?" readonly":""} aria-label="Nom du fournisseur" title="${n} : cliquer pour modifier le nom"></div>`};
   const head1=`<tr><th class="day"${rs}>Jour</th><th${rs}>CA TTC</th>${hasN1?`<th${rs}>CA N-1</th>`:""}${runs.map((r,ri)=>r.groupe?r.mem.map(f=>`<th class="fray">${nameCell(f,false,ri)}</th>`).join(""):`<th class="fcol">${nameCell(r.mem[0],true,ri)}</th>`).join("")}<th${rs}>Total achats</th></tr>`;
   const head2="";
   const hidAmt=retirees.map(f=>[f,st.par[f.id]||0]);
@@ -704,7 +705,7 @@ function vSaisie(){
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.taux)}</span><span class="d">Marge ${eur.format(st.marge)}</span></div>
     <div class="kpi"><span class="lbl">Après avoirs</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">${eur.format(st.avoirs)} TTC obtenus ce mois</span></div>
   </div>
-  <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="addFourn">+ Fournisseur</button></div><div class="scroll sheet-scroll"><table class="sheet">
+  <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}${LOCK?`<span class="lockmsg" title="Pour taper à la main : Réglages ⚙ → Dossier des factures → Manuel">🔒 Import auto : saisie bloquée</span>`:`<button class="pillbtn" data-act="addFourn">+ Fournisseur</button>`}</div><div class="scroll sheet-scroll"><table class="sheet${LOCK?" locked":""}">
     <thead>${head1}${head2}</thead>
     <tbody>${rows}<tr class="tot"><td class="day">Total</td><td>${n2.format(st.caTTC)}</td>${hasN1?`<td>${caN1Tot?n2.format(caN1Tot):""}</td>`:""}${totCells}<td>${n2.format(st.achats)}</td></tr></tbody>
   </table></div>${false?`<div class="hidden-cols"><span>Colonnes retirées (cliquez pour afficher dans ce mois) :</span>${hidAmt.map(([f,v])=>`<span class="rchip"><button data-showcol="${esc(f.id)}" title="Afficher ${esc(f.nom)} dans ce mois">+ ${esc(f.nom)}${v?` · ${eur.format(v)} ce mois`:""}</button></span>`).join("")}</div>`:""}</div>
@@ -828,6 +829,7 @@ function vFourn(){
 
 /* ---------- actions ---------- */
 async function saveCell(inp){
+  if(saisieBloquee()&&inp.readOnly)return;
   const d=inp.dataset.d,f=inp.dataset.f;const v=parseNum(inp.value);
   if(Number.isNaN(v)){toast("Montant illisible : utilisez des chiffres, par ex. 1234,56");inp.focus();return}
   const key=mkey(S.year,S.month);const doc=S.mois[key];const j=(doc&&doc.jours&&doc.jours[d])||{};
@@ -1149,6 +1151,8 @@ const facDepart=()=>(S.facReg&&S.facReg.depart)||null;
 // v87 : import automatique (par défaut) : chaque lecture écrit tout de suite les nouvelles factures et avoirs lisibles.
 // Mode manuel de la v86 (liste à valider) : réglage reglages/factures.auto = false (bouton dans la fenêtre Factures).
 const facAutoOn=()=>!(S.facReg&&S.facReg.auto===false);
+// v105 : import automatique réglé pour ce magasin → tableau de saisie bloqué (Manuel le débloque)
+const saisieBloquee=()=>!!(S.facReg&&S.facReg.depart&&S.facReg.auto!==false);
 // v92 : une facture prête = bon magasin, date et montant lus, pas datée d'avant le départ, et cases de la saisie vides
 // (ou déjà remplies avec exactement ce montant : facture déjà tapée à la main, on ne la rajoute pas)
 const facPret=r=>r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant&&r.lignes&&r.lignes.length>0&&r.etatSaisie!=="diff";
@@ -1311,7 +1315,7 @@ async function facImporter(auto,only){
   catch(e){fail(e)}
   finally{S.fac.imp=false}}
 async function facSetAuto(on){try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({auto:on});else await ref.set({depart:todayISO(),liens:{},auto:on});
-  S.facReg=Object.assign({},S.facReg||{},{auto:on});S.fac.force=true;facRender();toast(on?"Import automatique activé":"Import manuel : les factures attendent votre validation");if(on)facScan()}catch(e){fail(e)}}
+  S.facReg=Object.assign({},S.facReg||{},{auto:on});S.fac.force=true;facRender();if(typeof render==="function")render();toast(on?"Import automatique : saisie bloquée":"Import manuel : saisie débloquée, factures plus lues automatiquement");if(on)facScan()}catch(e){fail(e)}}
 // v91 : classer à la main une facture que GESMAR n'a pas pu lire (fournisseur, date et montant choisis dans la fenêtre)
 async function facClasser(rel,remplacer){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
   const row=document.querySelector(`#facRoot [data-facmt="${CSS.escape(rel)}"]`),dt=document.querySelector(`#facRoot [data-facdate="${CSS.escape(rel)}"]`);
@@ -1518,10 +1522,10 @@ function caReglagesHtml(){if(!CA_API())return PC?`<div class="facreg"><div class
     <div class="row"><label for="caDep"><b>CA à partir du</b></label><input type="date" id="caDep" value="${esc(C.depuis||"")}"></div>
     <div class="row"><button class="btn small primary" data-cascan="1" ${E.busy?"disabled":""}>Enregistrer</button></div>
     ${etat?`<div class="hist">${etat}</div>`:""}${E.msg?`<div class="hist">Dernière mise à jour : ${esc(E.msg)}</div>`:""}</div>`}
-function facAuto(){if(!FAC_API())return;const go=()=>{if(S.fac.busy||Date.now()-(S.fac.dernier||0)<300000)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;facScan(true)};
+function facAuto(){if(!FAC_API())return;const go=()=>{if(!facAutoOn())return;if(S.fac.busy||Date.now()-(S.fac.dernier||0)<300000)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;facScan(true)};
   setTimeout(go,8000);setInterval(go,900000);window.addEventListener("focus",go);
   // v97 : au démarrage, la base (fournisseurs, réglages) peut arriver après 8 s : on réessaie jusqu'à une lecture réussie, pour que le compteur « Factures à traiter » revienne tout seul
-  let n=0;const t=setInterval(()=>{if(S.fac.etat==="ok"||++n>40){clearInterval(t);return}if(!S.fac.busy&&!S.fac.imp&&S.store&&S.fourn.length&&S.facReg)facScan(true)},3000)}
+  let n=0;const t=setInterval(()=>{if(S.fac.etat==="ok"||++n>40){clearInterval(t);return}if(!S.fac.busy&&!S.fac.imp&&S.store&&S.fourn.length&&S.facReg&&facAutoOn())facScan(true)},3000)}
 /* v89 : fenêtre « Avoir sur facture » : la déclaration et l'avoir lu côte à côte */
 function facComparer(manId,autoId){const PROP=facPourDecl();
   let b=manId?S.avoirs.find(z=>z.id===manId):null,x=null,raison="";
