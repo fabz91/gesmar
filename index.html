@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="105">
+<meta name="gm-version" content="106">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -343,6 +343,32 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .facbtn{margin-left:auto;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 14px;font:800 13px var(--display);letter-spacing:.03em;cursor:pointer;display:flex;align-items:center;gap:6px}
 .facbtn.on{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.facbtn .cnt{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--red-2);color:var(--on-red);font-size:11px;text-align:center}
 .segm{display:inline-grid;grid-template-columns:1fr 1fr;width:max-content;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:-4px}.segm button{min-width:90px;padding:6px 14px;border:0;background:var(--surface);color:var(--muted,#777);font:600 13px var(--body);cursor:pointer}.segm button+button{border-left:1px solid var(--line)}.segm button[aria-pressed="true"]{background:var(--green);color:#fff;cursor:default}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.fcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.fcard.fretard{border-color:#e8912d;box-shadow:inset 4px 0 0 #e8912d}
+.fcard.ina{opacity:.75}
+.fc-nom{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;border-radius:6px;padding:3px 4px;margin:-3px -4px;font:800 16px var(--display);color:var(--fg)}
+.fc-nom:hover{border-color:var(--line)}.fc-nom:focus{border-color:var(--green);background:var(--sunk);outline:none}
+.fc-ray{font-size:12px;color:var(--muted)}
+.fc-l{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:24px}
+.fc-k{color:var(--muted);flex:1 1 auto}
+.fc-ok{color:var(--green);font-weight:700}
+.fc-vide{color:var(--muted);font-style:italic}
+.fc-pdf{border:1px solid var(--line);background:var(--sunk);color:var(--fg);border-radius:6px;font:700 11px var(--body);padding:2px 6px;cursor:pointer}
+.fc-av{border:1px solid var(--line);background:var(--sunk);color:var(--fg);border-radius:999px;font:700 12px var(--body);padding:2px 10px;cursor:pointer}
+.fc-av.red{background:var(--red);border-color:var(--red);color:#fff}
+.fc-alerte{background:#fdf0dc;color:#8a4b00;border-radius:8px;padding:6px 8px;font-weight:700}.fc-alerte span{font-weight:400}
+:root[data-theme="dark"] .fc-alerte{background:#4a3517;color:#ffd08a}
+.fc-mail{width:100%;box-sizing:border-box;font-size:12px}
+.fc-bas{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:auto;padding-top:4px;border-top:1px solid var(--line)}
+.fina{margin-top:16px}.fina summary{cursor:pointer;font-weight:700;margin-bottom:10px;color:var(--muted)}
+.mtext{max-height:58vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sunk);font:12px ui-monospace,Consolas,monospace;white-space:pre}
+.ml{min-height:16px}
+.mtok{font:inherit;border:1px solid #9bc7a6;background:#e5f3e8;color:#14532d;border-radius:4px;padding:0 3px;margin:0 1px;cursor:pointer}
+.mtok.d{border-color:#9fb8e0;background:#e6eefb;color:#1e3a8a}
+.mtok:disabled{border-color:transparent;background:transparent;color:inherit;cursor:default}
+.mtok.selm{background:var(--green);border-color:var(--green);color:#fff}.mtok.seld{background:#2f5fb3;border-color:#2f5fb3;color:#fff}
+.mres{margin:0 0 10px;padding:6px 10px;border-radius:8px;background:var(--sunk)}
 .lockmsg{margin-left:auto;font:600 11px var(--body);background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;cursor:help}.sheet.locked input[data-f]{cursor:default;color:var(--fg)}.sheet.locked input[data-f]:focus{outline:none;box-shadow:none}
 .facreg{display:grid;gap:10px;font-size:13px}.facreg .row{gap:8px;flex-wrap:wrap;align-items:center}
 .facmode{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
@@ -401,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=105;
+const APP_VERSION=106;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -803,28 +829,48 @@ function fUsage(id){const ans=new Set();Object.entries(S.mois).forEach(([k,d])=>
   return {ans:[...ans].sort(),av:S.avoirs.filter(a=>a.fournisseur===id).length}}
 const isRayon=f=>!!f.groupe,isParent=f=>S.fourn.some(x=>x.groupe===f.id);
 const isInactif=f=>f.actif===false||!!f.supprime; // v79 : fournisseur inactif (retiré, avec historique)
+// v106 : onglet Fournisseurs en cartes : saisie du mois en cours, dernière facture, alerte « facture en retard », avoirs en cours, mail, facture modèle
+function fIds(f){return isParent(f)?[f.id,...S.fourn.filter(x=>x.groupe===f.id).map(x=>x.id)]:[f.id]}
+function fRythme(ids){const set=new Set(ids),t=todayISO(),min=new Date(Date.now()-200*864e5).toISOString().slice(0,10),D=new Set();
+  Object.entries(S.mois).forEach(([k,d])=>{if(!/^\d{4}-\d{2}$/.test(k)||!d||!d.jours)return;Object.entries(d.jours).forEach(([dd,j])=>{const iso=k+"-"+dd;if(iso<min||iso>t)return;if(Object.entries((j&&j.achats)||{}).some(([id,v])=>set.has(id)&&v))D.add(iso)})});
+  const L=[...D].sort();if(!L.length)return null;const last=L[L.length-1],since=daysSince(last);
+  if(L.length<4)return {last,since};
+  const g=[];for(let i=1;i<L.length;i++)g.push((Date.parse(L[i])-Date.parse(L[i-1]))/864e5);g.sort((a,b)=>a-b);const med=g[Math.floor(g.length/2)];
+  return {last,since,med,retard:since>Math.max(med*2,med+7)&&since<=120}}
+function fDerniere(f){const ids=new Set(fIds(f));if(isParent(f))ids.add("diapar");let best=null;
+  Object.entries(S.facImp||{}).forEach(([k,x])=>{if(x&&x.s==="i"&&ids.has(x.f)&&(!best||String(x.d)>String(best.x.d)))best={k,x}});return best}
 function vFourn(){
   const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
-  // v81 : classés par montant d'achats de l'année en cours (DIAPAR = total de ses rayons, ses rayons juste en dessous)
   const an=todayISO().slice(0,4),tot={};Object.entries(S.mois).forEach(([k,d])=>{if(k.startsWith(an+"-")&&d&&d.jours)Object.values(d.jours).forEach(j=>Object.entries((j&&j.achats)||{}).forEach(([id,v])=>{tot[id]=(tot[id]||0)+(v||0)}))});
-  const mt=f=>isParent(f)?S.fourn.filter(x=>x.groupe===f.id).reduce((s,x)=>s+(tot[x.id]||0),0):(tot[f.id]||0),tete=f=>isRayon(f)?S.fourn.find(x=>x.id===f.groupe)||f:f;
-  const tri=(a,b)=>{const A=tete(a),B=tete(b);if(A!==B)return mt(B)-mt(A)||nk(A.nom).localeCompare(nk(B.nom));if(isParent(a)!==isParent(b))return isParent(b)-isParent(a);return mt(b)-mt(a)||nk(a.nom).localeCompare(nk(b.nom))};
-  const act=S.fourn.filter(f=>!isInactif(f)).sort(tri),ina=S.fourn.filter(isInactif).sort(tri); // v79 : actifs + tableau « Fournisseurs inactifs »
-  const ligne=f=>{const u=fUsage(f.id),fixe=isRayon(f)||isParent(f);
-    return `<tr><td class="l"><input id="fn-${esc(f.id)}" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" style="width:220px" aria-label="Nom du fournisseur"></td>
-      <td class="l"><input id="fc-${esc(f.id)}" data-fcontact="${esc(f.id)}" value="${esc(f.contact||"")}" placeholder="Téléphone" inputmode="tel" style="width:180px" aria-label="Téléphone de ${esc(f.nom)}"></td>
-      <td class="l"><input id="fm-${esc(f.id)}" data-fmail="${esc(f.id)}" value="${esc(f.mail||"")}" placeholder="Mail" type="email" inputmode="email" style="width:240px" aria-label="Mail de ${esc(f.nom)}"></td>
-      <td class="l">${[mt(f)?`<b>${eur.format(mt(f))}</b> en ${an}`:"",isParent(f)?"":u.ans.length?"Achats "+u.ans.join(", "):"Aucun achat",u.av?`${u.av} avoir${u.av>1?"s":""}`:""].filter(Boolean).join(" · ")}</td>
-      <td style="text-align:right">${fixe?"":isInactif(f)?`<button class="btn small" data-fback="${esc(f.id)}">Remettre</button>`:`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</td></tr>`};
+  const mt=f=>fIds(f).reduce((s,id)=>s+(tot[id]||0),0);
+  const tri=(a,b)=>mt(b)-mt(a)||nk(a.nom).localeCompare(nk(b.nom)); // classement silencieux : les plus gros d'abord
+  const act=S.fourn.filter(f=>!isInactif(f)&&!isRayon(f)).sort(tri),ina=S.fourn.filter(f=>isInactif(f)&&!isRayon(f)).sort(tri);
+  const key=mkey(+todayISO().slice(0,4),+todayISO().slice(5,7)-1),mc=monthCols(key),moisNom=MOIS[+todayISO().slice(5,7)-1];
+  const carte=f=>{const ids=fIds(f),par=isParent(f),ray=par?S.fourn.filter(x=>x.groupe===f.id):[];
+    const dans=par?ray.some(x=>mc.includes(x.id)):mc.includes(f.id);
+    const ry=fRythme(ids),der=fDerniere(f);
+    const av=S.avoirs.filter(a=>ids.includes(a.fournisseur)&&EN_COURS.includes(a.statut)),avL=av.filter(isLate).length;
+    const rel=der&&FAC_API()?facRelDe(der.k,der.x):"";
+    const mod=f.modele;
+    return `<div class="fcard${ry&&ry.retard?" fretard":""}">
+      <div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur" title="Cliquer pour modifier le nom"></div>
+      ${par?`<div class="fc-ray">Rayons : ${ray.map(x=>esc(x.nom)).join(" · ")}</div>`:""}
+      <div class="fc-l">${dans?`<span class="fc-ok">✓ Dans la saisie ${/^[aeiouy]/i.test(moisNom)?"d'":"de "}${esc(moisNom.toLowerCase())}</span>`:`<button class="btn small" data-fsaisie="${esc(f.id)}">+ Ajouter à la saisie ${/^[aeiouy]/i.test(moisNom)?"d'":"de "}${esc(moisNom.toLowerCase())}</button>`}</div>
+      <div class="fc-l"><span class="fc-k">Dernière facture</span>${der?`<span>${frDate(der.x.d)}${der.x.m!=null?" · "+n2.format(der.x.m)+" €":""}</span>${rel?`<button class="fc-pdf" data-poppdf2="${esc(rel)}" title="Ouvrir la facture">PDF</button>`:""}`:`<span class="fc-vide">aucune lue</span>`}</div>
+      ${ry&&ry.retard?`<div class="fc-alerte">⚠️ Pas de facture depuis ${ry.since} jours<br><span>d'habitude tous les ${Math.round(ry.med)} jours</span></div>`:""}
+      <div class="fc-l"><span class="fc-k">Avoirs en cours</span>${av.length?`<button class="fc-av${avL?" red":""}" data-fav="${esc(f.id)}" title="Voir ces avoirs">${avL===av.length?av.length+" en retard":av.length+(avL?" · "+avL+" en retard":"")}</button>`:`<span class="fc-vide">aucun</span>`}</div>
+      <input id="fm-${esc(f.id)}" class="fc-mail" data-fmail="${esc(f.id)}" value="${esc(f.mail||"")}" placeholder="Mail pour les avoirs" type="email" inputmode="email" aria-label="Mail de ${esc(f.nom)}">
+      <div class="fc-bas">${par?`<span class="fc-vide">Factures DIAPAR lues automatiquement</span>`:FAC_API()?`<button class="btn small" data-fmodele="${esc(f.id)}" title="Montrer à GESMAR où lire le montant et la date sur ses factures">${mod?"✓ Facture modèle":"📄 Facture modèle"}</button>`:mod?`<span class="fc-ok">✓ Facture modèle</span>`:"<span></span>"}
+        ${par?"":`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</div>
+    </div>`};
+  const carteIna=f=>`<div class="fcard ina"><div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur"></div><div class="fc-bas"><span class="fc-vide">Inactif</span><button class="btn small" data-fback="${esc(f.id)}">Remettre</button></div></div>`;
   return `
-  <h2 style="margin-top:4px">Fournisseurs — ${esc(storeNom())}</h2>
-  <form id="fAdd" class="row" style="margin-bottom:12px"><input id="fAddNom" placeholder="Nom du nouveau fournisseur" required style="flex:1;max-width:320px"><button class="btn primary" type="submit">Ajouter</button></form>
-  <div class="panel flush"><div class="band">Fournisseurs (${act.length})</div><div class="scroll"><table>
-    <thead><tr><th class="l">Nom</th><th class="l">Téléphone</th><th class="l">Mail <span style="font-weight:500;text-transform:none">(avoir auto)</span></th><th class="l">Utilisation</th><th></th></tr></thead>
-    <tbody>${act.map(ligne).join("")||`<tr><td colspan="5" class="l"><div class="empty-state">Aucun fournisseur.</div></td></tr>`}</tbody></table></div></div>
-  ${ina.length?`<div class="gap"></div><div class="panel flush"><div class="band">Fournisseurs inactifs (${ina.length})</div><div class="scroll"><table>
-    <thead><tr><th class="l">Nom</th><th class="l">Téléphone</th><th class="l">Mail <span style="font-weight:500;text-transform:none">(avoir auto)</span></th><th class="l">Utilisation</th><th></th></tr></thead>
-    <tbody>${ina.map(ligne).join("")}</tbody></table></div></div>`:""}`;
+  <div class="row" style="margin:4px 0 12px;justify-content:space-between;align-items:center">
+    <h2 style="margin:0">Fournisseurs — ${esc(storeNom())}</h2>
+    <form id="fAdd" class="row" style="margin:0"><input id="fAddNom" placeholder="Nom du nouveau fournisseur" required style="width:240px"><button class="btn primary" type="submit">Ajouter</button></form>
+  </div>
+  <div class="fgrid">${act.map(carte).join("")||`<div class="empty-state">Aucun fournisseur.</div>`}</div>
+  ${ina.length?`<details class="fina"><summary>Fournisseurs inactifs (${ina.length})</summary><div class="fgrid">${ina.map(carteIna).join("")}</div></details>`:""}`;
 }
 
 /* ---------- actions ---------- */
@@ -1115,15 +1161,19 @@ const FAC=(()=>{
     const par={};bls.forEach(b=>par[b.date]=r2((par[b.date]||0)+b.ht*k));
     const ds=Object.keys(par).sort(),som=r2(ds.reduce((s,d)=>s+par[d],0));if(ds.length)par[ds[ds.length-1]]=r2(par[ds[ds.length-1]]+total-som);
     return ds.map(d=>({date:d,montant:par[d]}))}
-  function analyser(rel,pages){
+  function analyser(rel,pages,mod){
     const segs=String(rel).split(/[\\/]/),nom=segs[segs.length-1],L=lignes(pages),T=L.map(l=>l.t).join("\n");
     const four=dossier(rel),ni=nomInfo(nom),base={rel,nom,dossier:four,annee:annee(rel),texte:T.length>80,magasin:magasin(T)};
     if(nk(four)==="DIAPAR"||/^FACT-(EPIC|FRAIS)-/i.test(nom))return Object.assign(base,diapar(rel,nom,T,L));
     const r=Object.assign(base,{fournisseur:four,type:"facture",verif:[],date:ni.date||null,total:null,source:"pdf"});
+    // v106 : facture modèle du fournisseur (montant TTC et date repérés par le texte écrit juste avant)
+    const mm=mod&&base.texte&&typeof modLire==="function"?modLire(L,mod.mt,"n"):null,md=mod&&base.texte&&typeof modLire==="function"?modLire(L,mod.dt,"d"):null;
+    if(!r.date&&md)r.date=md;
     if(!r.date){const d=T.match(/(\d\d)\/(\d\d)\/(20\d\d|\d\d)\b/);if(d)r.date=iso(d[1],d[2],d[3]);if(r.date)r.verif.push("Date prise dans le PDF")}
-    const mc=base.texte?motCle(L):null;
+    const mc=base.texte?(mm!=null?mm:motCle(L)):null;
     if(!base.texte){r.total=ni.montant;r.source="nom";r.verif.push(ni.montant!=null?"PDF scanné : montant pris du nom du fichier":"PDF scanné, sans montant dans le nom : à remplir")}
     else if(ni.montant!=null&&contient(T,ni.montant))r.total=ni.montant;
+    else if(mm!=null){r.total=mm;r.source="modele";if(ni.montant!=null&&Math.abs(ni.montant-mm)>0.01)r.verif.push("Le nom du fichier indique "+ni.montant.toFixed(2).replace(".",",")+" € : montant de la facture modèle gardé")}
     else if(ni.montant!=null){r.total=ni.montant;r.source="nom";r.verif.push("Montant du nom du fichier introuvable dans le PDF"+(mc!=null?" (le PDF indique "+mc.toFixed(2).replace(".",",")+" €)":""))}
     else if(mc!=null){r.total=mc;r.verif.push("Pas de montant dans le nom du fichier : montant lu dans le PDF")}
     else r.verif.push("Montant introuvable : à remplir");
@@ -1169,6 +1219,55 @@ async function facItems(rel){const lib=await facPdf();const data=await window.ap
     pages.push({items:tc.items.filter(it=>it.str!==undefined).map(it=>[it.str,Math.round(it.transform[4]*10)/10,Math.round(it.transform[5]*10)/10,Math.round(it.width*10)/10,Math.round(Math.hypot(it.transform[2],it.transform[3])*10)/10])})}}
   finally{try{await task.destroy()}catch(_){}}
   return pages}
+/* v106 : facture modèle. On ouvre une facture PDF d'un fournisseur ; on clique sur le montant TTC puis sur la date.
+   GESMAR retient le texte écrit juste avant (ex. « Net à payer ») et s'en sert pour lire les factures suivantes de ce fournisseur. */
+const MOD_RE=/(\d{1,2}[\/.\-]\d{1,2}[\/.\-](?:20\d\d|\d\d))(?!\d)|(-?\d{1,3}(?:[   .]\d{3})+,\d\d|-?\d+[.,]\d\d)(?![\d])/g;
+function modToks(t){const o=[];let m;MOD_RE.lastIndex=0;while((m=MOD_RE.exec(t)))o.push({type:m[1]?"d":"n",s:m[0],a:m.index,b:m.index+m[0].length});return o}
+function modLab(L,i,tok){const mots=s=>String(s).replace(/[\d.,:;€%\-\/()*]+/g," ").trim().split(/\s+/).filter(w=>/[a-z]/i.test(w));
+  let w=mots(L[i].t.slice(0,tok.a)).slice(-3);if(FAC.nk(w.join("")).length>=3)return FAC.nk(w.join(""));
+  for(let j=i-1;j>=0&&j>=i-3;j--){w=mots(L[j].t).slice(-3);if(FAC.nk(w.join("")).length>=3)return "^"+FAC.nk(w.join(""))}return "^"}
+// Toutes les places (ligne, n°) des montants / dates avec leur étiquette et leur rang parmi ceux de même étiquette sur la ligne
+function modPlaces(L,type){const out=[];L.forEach((l,i)=>{const toks=modToks(l.t).filter(x=>x.type===type),cnt={};toks.forEach(tok=>{const lab=modLab(L,i,tok);cnt[lab]=(cnt[lab]||0);out.push({i,tok,lab,k:cnt[lab]++})})});return out}
+function modLire(L,regle,type){if(!regle)return null;const P=modPlaces(L,type).filter(p=>p.lab===regle.l&&p.k===regle.k);if(!P.length)return null;
+  const p=type==="n"?P[P.length-1]:P[0];
+  if(type==="n")return FAC.num(p.tok.s);const m=p.tok.s.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);if(!m)return null;let y=+m[3];if(y<100)y+=2000;
+  return y+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0")}
+async function facItemsData(data){const lib=await facPdf();
+  const task=lib.getDocument({data:data instanceof Uint8Array?data:new Uint8Array(data),isEvalSupported:false,verbosity:0});const doc=await task.promise;const pages=[];
+  try{for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),tc=await pg.getTextContent();
+    pages.push({items:tc.items.filter(it=>it.str!==undefined).map(it=>[it.str,Math.round(it.transform[4]*10)/10,Math.round(it.transform[5]*10)/10,Math.round(it.width*10)/10,Math.round(Math.hypot(it.transform[2],it.transform[3])*10)/10])})}}
+  finally{try{await task.destroy()}catch(_){}}
+  return pages}
+function modChoisir(fid){const inp=document.createElement("input");inp.type="file";inp.accept="application/pdf,.pdf";
+  inp.onchange=async()=>{const fl=inp.files&&inp.files[0];if(!fl)return;toast("Lecture de la facture…");
+    try{const L=FAC.lignes(await facItemsData(new Uint8Array(await fl.arrayBuffer())));
+      if(L.map(l=>l.t).join("").replace(/\s/g,"").length<80){toast("Ce PDF est une image (scanné) : GESMAR ne peut pas le lire. Choisissez une facture reçue par mail.");return}
+      S.mod={fid,nom:fl.name,L,mt:null,dt:null};modRender()}catch(e){console.error(e);toast("Lecture du PDF impossible")}};
+  inp.click()}
+function modFermer(){S.mod=null;const o=document.getElementById("modRoot");if(o)o.remove()}
+function modRender(){const M=S.mod;if(!M)return modFermer();let o=document.getElementById("modRoot");
+  if(!o){o=document.createElement("div");o.id="modRoot";o.className="facov";document.body.appendChild(o);
+    o.addEventListener("click",e=>{const b=e.target.closest("button");if(!b){if(e.target===o)modFermer();return}
+      if(b.dataset.mx)modFermer();else if(b.dataset.mreset){M.mt=null;M.dt=null;modRender()}
+      else if(b.dataset.mtok){const[i,a]=b.dataset.mtok.split(":").map(Number),l=M.L[i],tok=modToks(l.t).find(x=>x.a===a);if(!tok)return;
+        const pl=modPlaces(M.L,tok.type).find(p=>p.i===i&&p.tok.a===a);const sel={l:pl.lab,k:pl.k,i,a,s:tok.s};
+        if(!M.mt&&tok.type==="n")M.mt=sel;else if(M.mt&&!M.dt&&tok.type==="d")M.dt=sel;modRender()}
+      else if(b.dataset.msave)modSave()})}
+  const f=S.fourn.find(x=>x.id===M.fid)||{nom:""};const step=!M.mt?"n":!M.dt?"d":"";
+  const ligne=(l,i)=>{const toks=modToks(l.t);if(!toks.length)return `<div class="ml">${esc(l.t)}</div>`;let h="",p=0;
+    toks.forEach(tok=>{h+=esc(l.t.slice(p,tok.a));const on=(M.mt&&M.mt.i===i&&M.mt.a===tok.a)?" selm":(M.dt&&M.dt.i===i&&M.dt.a===tok.a)?" seld":"";
+      h+=`<button class="mtok ${tok.type}${on}" data-mtok="${i}:${tok.a}" ${step===tok.type||on?"":"disabled"}>${esc(tok.s)}</button>`;p=tok.b});
+    return `<div class="ml">${h}${esc(l.t.slice(p))}</div>`};
+  const consigne=step==="n"?"<b>1.</b> Cliquez sur le <b>montant total TTC</b> de la facture (celui à mettre dans la saisie).":step==="d"?"<b>2.</b> Cliquez maintenant sur la <b>date de la facture</b>.":"✓ C'est noté. Vérifiez puis cliquez sur <b>Enregistrer</b>.";
+  o.innerHTML=`<div class="facbox" style="max-width:860px"><div class="band">Facture modèle — ${esc(f.nom)}<button class="pillbtn" data-mx="1">Fermer</button></div>
+    <div style="padding:14px 16px"><p class="sub" style="margin:0 0 6px">${esc(M.nom)}</p><p style="margin:0 0 10px">${consigne}</p>
+    ${M.mt?`<div class="mres">Montant TTC : <b>${esc(M.mt.s)} €</b>${M.dt?` · Date : <b>${esc(M.dt.s)}</b>`:""}</div>`:""}
+    <div class="mtext">${M.L.map(ligne).join("")}</div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">${M.mt?`<button class="btn small" data-mreset="1">Recommencer</button>`:""}<button class="btn small" data-mx="1">Annuler</button><button class="btn small primary" data-msave="1" ${M.mt&&M.dt?"":"disabled"}>Enregistrer</button></div></div></div>`}
+async function modSave(){const M=S.mod;if(!M||!M.mt||!M.dt)return;const f=S.fourn.find(x=>x.id===M.fid);
+  try{await fUpdate(M.fid,{modele:{mt:{l:M.mt.l,k:M.mt.k},dt:{l:M.dt.l,k:M.dt.k},fichier:M.nom,le:todayISO()}});
+    if(f)f.modele={mt:{l:M.mt.l,k:M.mt.k},dt:{l:M.dt.l,k:M.dt.k},fichier:M.nom,le:todayISO()};
+    modFermer();toast("Facture modèle enregistrée pour "+(f?f.nom:"ce fournisseur"));if(FAC_API()&&facDepart())facScan(true);render()}catch(e){fail(e)}}
 // Fournisseur de GESMAR pour un dossier de la comptable : lien mémorisé, nom habituel, sinon nouveau fournisseur
 function facFid(dossier){const k=FAC.nk(dossier),liens=(S.facReg&&S.facReg.liens)||{};
   if(liens[k]&&S.fourn.find(f=>f.id===liens[k]))return liens[k];
@@ -1199,10 +1298,11 @@ async function facScan(silent){
       aLire.push(f)}
     let n=0;const res=[];
     for(const f of aLire){n++;const c=C[f.rel];let r;
-      if(c&&c.size===f.size&&c.mtime===f.mtime)r=c.r;
+      const fm=S.fourn.find(x=>x.id===facFid(FAC.dossier(f.rel))),mod=fm&&fm.modele||null,sig=mod?JSON.stringify([mod.mt,mod.dt]):"";
+      if(c&&c.size===f.size&&c.mtime===f.mtime&&(c.sig||"")===sig)r=c.r;
       else{S.fac.prog="Lecture des factures : "+n+" / "+aLire.length;facRender();
-        try{r=FAC.analyser(f.rel,await facItems(f.rel))}catch(e){console.error(e);r=FAC.analyser(f.rel,[]);r.verif=["PDF illisible ("+(e&&e.message||"erreur")+")"].concat(r.verif||[])}
-        delete r.texteBrut;C[f.rel]={size:f.size,mtime:f.mtime,r}}
+        try{r=FAC.analyser(f.rel,await facItems(f.rel),mod)}catch(e){console.error(e);r=FAC.analyser(f.rel,[]);r.verif=["PDF illisible ("+(e&&e.message||"erreur")+")"].concat(r.verif||[])}
+        delete r.texteBrut;C[f.rel]={size:f.size,mtime:f.mtime,r,sig}}
       res.push(Object.assign({},r))}
     facCacheSave();
     // doublons : même fournisseur, même date, même montant qu'une facture déjà importée ou déjà dans la liste
@@ -1316,6 +1416,14 @@ async function facImporter(auto,only){
   finally{S.fac.imp=false}}
 async function facSetAuto(on){try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({auto:on});else await ref.set({depart:todayISO(),liens:{},auto:on});
   S.facReg=Object.assign({},S.facReg||{},{auto:on});S.fac.force=true;facRender();if(typeof render==="function")render();toast(on?"Import automatique : saisie bloquée":"Import manuel : saisie débloquée, factures plus lues automatiquement");if(on)facScan()}catch(e){fail(e)}}
+// v106 : boutons des cartes Fournisseurs
+document.addEventListener("click",e=>{const b=e.target.closest("[data-fsaisie],[data-fav],[data-fmodele],[data-poppdf2]");if(!b)return;
+  if(b.dataset.poppdf2){window.api.facOuvrir(b.dataset.poppdf2).catch(()=>toast("Ouverture du PDF impossible"));return}
+  if(b.dataset.fmodele){modChoisir(b.dataset.fmodele);return}
+  const f=S.fourn.find(x=>x.id===(b.dataset.fsaisie||b.dataset.fav));if(!f)return;
+  if(b.dataset.fav){S.tab="avoirs";S.avVue="man";S.fStat="en_cours";S.fFourn=f.id;S.edit=null;render();return}
+  if(b.dataset.fsaisie){const t=todayISO(),key=mkey(+t.slice(0,4),+t.slice(5,7)-1),mc=monthCols(key),ids=isParent(f)?S.fourn.filter(x=>x.groupe===f.id).map(x=>x.id):[f.id];
+    ids.forEach(id=>{if(!mc.includes(id))mc.push(id)});setMonthCols(key,mc).then(()=>toast(f.nom+" ajouté à la saisie de "+MOIS[+t.slice(5,7)-1].toLowerCase()))}});
 // v91 : classer à la main une facture que GESMAR n'a pas pu lire (fournisseur, date et montant choisis dans la fenêtre)
 async function facClasser(rel,remplacer){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
   const row=document.querySelector(`#facRoot [data-facmt="${CSS.escape(rel)}"]`),dt=document.querySelector(`#facRoot [data-facdate="${CSS.escape(rel)}"]`);
