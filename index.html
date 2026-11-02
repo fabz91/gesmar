@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="110">
+<meta name="gm-version" content="111">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=110;
+const APP_VERSION=111;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1275,6 +1275,15 @@ function facFid(dossier){const k=FAC.nk(dossier),liens=(S.facReg&&S.facReg.liens
   return L.length?L[0].id:null}
 const facIdent=r=>FAC.nk(r.dossier)+"|"+(r.date||"")+"|"+(r.total==null?"":r.total.toFixed(2));
 S.fac={etat:"",liste:[],ecartes:[],prog:"",ouvert:false,vus:0,dernier:0};
+/* v111 : le dossier des factures de ce PC appartient à UN magasin (BREDIS sur le PC de Bredis, CLAMART sur celui de Clamart).
+   Une facture sans adresse reconnue va au magasin du dossier (avant : au magasin ouvert, ce qui pouvait mélanger les deux).
+   Magasin du dossier : deviné d'après son chemin (« OneDrive - BREDIS », « … Clamart … »), sinon le magasin ouvert à la première lecture ;
+   « Changer de dossier » le rattache au magasin ouvert. Gardé sur ce PC (gesmar-fac-mag). */
+let FAC_MAG=null;
+function facDossierMagSave(m){FAC_MAG=m||"";try{rawSave("gesmar-fac-mag",JSON.stringify({mag:FAC_MAG}))}catch(e){}}
+function facDossierMag(){if(FAC_MAG==null){try{FAC_MAG=(JSON.parse(rawLoad("gesmar-fac-mag")||"null")||{}).mag||""}catch(e){FAC_MAG=""}}
+  if(!FAC_MAG&&S.fac&&S.fac.root){const U=String(S.fac.root).toUpperCase();const m=/CLAMART/.test(U)?"clamart":/BREDIS|LONGJUMEAU/.test(U)?"bredis":S.store;if(m)facDossierMagSave(m)}
+  return FAC_MAG||S.store}
 async function facScan(silent){
   if(S.fac.busy||S.fac.imp){S.fac.relire=true;return} // v93 : une lecture est déjà en cours : on relira juste aprèsif(!FAC_API()){S.fac.etat="noapi";return}
   if(!S.store||!S.fourn.length)return;
@@ -1313,7 +1322,7 @@ async function facScan(silent){
       if(r.date&&r.date<dep)continue; // v93 : facture datée d'avant « Factures à partir du » : ignorée (déjà saisie à la main)
       if(r.total!=null&&(deja.has(id)||vus.has(id))){ecartes.push({rel:r.rel,raison:"Déjà importée (même fournisseur, date et montant)"});continue}vus.add(id);
       const old=S.fac.liste.find(x=>x.rel===r.rel);
-      r.key=facKey(r.rel);r.ident=id;r.mag=r.magasin||S.store;
+      r.key=facKey(r.rel);r.ident=id;r.mag=r.magasin||facDossierMag();
       r.fid=FAC.nk(r.dossier)==="DIAPAR"?"diapar":facFid(r.dossier);
       r.nouveau=!r.fid;r.choix=old?old.choix:(r.fid||"__new__");
       r.avant=r.date&&r.date<dep;
@@ -1363,7 +1372,7 @@ function facDocs(){const reg=S.facImp||{};if(FAC_DOCS&&FAC_DOCS_SRC===reg)return
 const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
 const facATraiter=()=>facAImporter().filter(r=>!facAutoOn()||!facPret(r)); // v91 : celles que GESMAR n'a pas pu écrire seul
 function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facATraiter().length;b.hidden=!n;b.textContent=n;const k=b.closest(".facbtn");if(k)k.classList.toggle("on",!!n)}
-async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
+async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;facDossierMagSave(S.store);FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
 async function facSetDepart(v){if(!v){toast("Choisissez une date");return}
   try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});toast("Factures à partir du "+frDate(v)+" : lecture du dossier…");S.fac.liste=[];await facScan()}catch(e){fail(e)}}
 // v98 : cases déjà remplies pour ce fournisseur entre le début de la période (1er, 11 ou 21 du mois) et la date de la facture, hors jours de la facture
@@ -1539,6 +1548,7 @@ function facReglagesFac(){const F=S.fac,dep=facDepart();
   const etat=F.busy?esc(F.prog||"Lecture…"):F.etat==="absent"?"⚠️ Dossier introuvable sur ce PC (OneDrive ouvert ?)":F.etat==="erreur"?"⚠️ "+esc(F.err||"Lecture impossible"):"";
   return `<div class="facreg">
     <div><b>Dossier</b> : ${F.root?esc(F.root):"aucun"}${F.root&&/[\\/]20\d\d[\\/]?$/.test(F.root)?`<div class="facwarn">Choisissez plutôt le dossier <b>Documents</b> (celui au-dessus de ${esc(F.root.match(/(20\d\d)[\\/]?$/)[1])}) : sinon le dossier de l'année prochaine ne sera pas lu.</div>`:""}</div>
+    ${F.root?(()=>{const fm=facDossierMag(),nm=id=>esc((S.magasins.find(m=>m.id===id)||{}).nom||id);return `<div><b>Magasin</b> : ${nm(fm)}</div>`+(fm!==S.store?`<div class="facwarn">Ce dossier est celui des factures de <b>${nm(fm)}</b> : ici, seules les factures à l'adresse de ${nm(S.store)} sont lues. Pour ${nm(S.store)}, choisissez son dossier avec « Changer de dossier ».</div>`:"")})():""}
     <div class="row"><button class="btn small" data-facdir="1">${F.root?"Changer de dossier":"Choisir le dossier"}</button></div>
     <div class="row"><label for="facDep"><b>Factures à partir du</b></label><input type="date" id="facDep" value="${esc(dep||todayISO())}"></div>
     <div class="row"><button class="btn small primary" data-facscan="1" ${F.busy||!F.root?"disabled":""}>Enregistrer</button></div>
