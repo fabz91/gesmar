@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="113">
+<meta name="gm-version" content="114">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=113;
+const APP_VERSION=114;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -854,7 +854,7 @@ function vFourn(){
     const rel=der&&FAC_API()?facRelDe(der.k,der.x):"";
     const mod=f.modele;
     return `<div class="fcard">
-      <div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur" title="Cliquer pour modifier le nom"></div>
+      <div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" readonly tabindex="-1" aria-label="Nom du fournisseur" title="Même nom que le dossier de la comptable"></div>
       ${par?`<div class="fc-ray">Rayons : ${ray.map(x=>esc(x.nom)).join(" · ")}</div>`:""}
       <div class="fc-l">${dans?`<span class="fc-ok">✓ Dans la saisie ${/^[aeiouy]/i.test(moisNom)?"d'":"de "}${esc(moisNom.toLowerCase())}</span>`:`<button class="btn small" data-fsaisie="${esc(f.id)}">+ Ajouter à la saisie ${/^[aeiouy]/i.test(moisNom)?"d'":"de "}${esc(moisNom.toLowerCase())}</button>`}</div>
       <div class="fc-l"><span class="fc-k">Dernière facture</span>${der?`<span>${frDate(der.x.d)}${der.x.m!=null?" · "+n2.format(der.x.m)+" €":""}</span>${rel?`<button class="fc-pdf" data-poppdf2="${esc(rel)}" title="Ouvrir la facture">PDF</button>`:""}`:`<span class="fc-vide">aucune lue</span>`}</div>
@@ -863,7 +863,7 @@ function vFourn(){
       <div class="fc-bas">${par||der||mod?`<span class="fc-ok">✓ Factures lues automatiquement</span>`:FAC_API()?`<button class="btn small" data-fmodele="${esc(f.id)}" title="Aucune facture lue pour ce fournisseur : montrer à GESMAR où lire le montant et la date">📄 Facture modèle</button>`:"<span></span>"}
         ${par?"":`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</div>
     </div>`};
-  const carteIna=f=>`<div class="fcard ina"><div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur"></div><div class="fc-bas"><span class="fc-vide">Inactif</span><span class="row" style="gap:6px;margin:0"><button class="btn small" data-fback="${esc(f.id)}">Remettre</button><button class="btn small" data-fdel="${esc(f.id)}">Supprimer</button></span></div></div>`;
+  const carteIna=f=>`<div class="fcard ina"><div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" readonly tabindex="-1" aria-label="Nom du fournisseur"></div><div class="fc-bas"><span class="fc-vide">Inactif</span><span class="row" style="gap:6px;margin:0"><button class="btn small" data-fback="${esc(f.id)}">Remettre</button><button class="btn small" data-fdel="${esc(f.id)}">Supprimer</button></span></div></div>`;
   return `
   <div class="row" style="margin:4px 0 12px;justify-content:space-between;align-items:center">
     <h2 style="margin:0">Fournisseurs — ${esc(storeNom())}</h2>
@@ -1037,14 +1037,7 @@ document.addEventListener("change",e=>{
   if(t.id==="fFourn"){S.fFourn=t.value;render();return}
   if(t.dataset.fflag){fUpdate(t.dataset.id,{[t.dataset.fflag]:t.checked});return}
   if(t.dataset.rn){const f=S.fourn.find(x=>x.id===t.dataset.rn);t.value=f?f.nom:t.value;return} // v113 : plus de changement de nom dans la saisie
-  // v113 : le nom se change seulement dans l'onglet Fournisseurs (actifs et inactifs) ; il change partout (saisie, avoirs, tableau de bord, factures)
-  if(t.dataset.fnom){const id=t.dataset.fnom,f=S.fourn.find(x=>x.id===id),v=t.value.trim().toUpperCase();if(!f)return;
-    if(!v||v===f.nom){t.value=f.nom;return}
-    const nkx=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();
-    const ex=S.fourn.find(x=>x.id!==id&&!isRayon(x)&&nkx(x.nom)===nkx(v));if(ex){toast("Un autre fournisseur s'appelle déjà "+ex.nom);t.value=f.nom;return}
-    const old=f.nom;fUpdate(id,{nom:v}).then(async()=>{toast(old+" renommé en "+v);
-      // les factures du dossier qui porte l'ancien nom restent rattachées à ce fournisseur
-      try{if(S.facReg&&!isParent(f)){const L=Object.assign({},S.facReg.liens||{}),k=FAC.nk(old);if(!L[k]){L[k]=id;await S.db.doc(P("reglages/factures")).update({liens:L})}}}catch(e){console.error(e)}});return}
+  if(t.dataset.fnom){const f=S.fourn.find(x=>x.id===t.dataset.fnom);if(f)t.value=f.nom;return} // v114 : nom bloqué partout (= nom du dossier de la comptable)
   if(t.id==="mht"){const v=parseNum(t.value);if(Number.isNaN(v)){toast("Montant illisible : par ex. 262556,21");return}
     const key=mkey(S.year,S.month);const ref=S.db.doc(P("mois/"+key));
     (S.mois[key]?ref.update({caHTmois:v}):ref.set({annee:S.year,mois:S.month+1,jours:{},caHTmois:v})).then(()=>toast(v?"CA HT du mois enregistré":"CA HT du mois effacé"),fail);return}
@@ -1301,6 +1294,7 @@ async function facScan(silent){
     if(L.err==="nodir"){S.fac.etat="nodir";return}
     if(L.err){S.fac.etat="absent";S.fac.root=L.root;return}
     S.fac.root=L.root;S.fac.rels={};L.files.forEach(f=>{S.fac.rels[facKey(f.rel)]=f.rel});FAC_DOCS=null;const dep=facDepart();if(!dep){S.fac.etat="nodepart";return}
+    try{await facSyncFourn(L.files)}catch(e){console.error(e)}
     const reg=S.facImp||{},C=facCache(),files=L.files,noms=new Set(files.map(f=>f.rel.toLowerCase()));
     const an=new Date().getFullYear();S.fac.annees=[...new Set(files.map(f=>FAC.annee(f.rel)).filter(Boolean))].sort();
     S.fac.sansAnnee=new Date().getMonth()<=1&&S.fac.annees.length&&!S.fac.annees.includes(an)?an:null;
@@ -1408,6 +1402,27 @@ async function facEcrire(lignes,remplacer){const parMois={};for(const l of ligne
 async function facCreerFourn(nom){const nm=String(nom).trim().toUpperCase()||"NOUVEAU";const k=FAC.nk(nm).toLowerCase();let id=k.slice(0,30)||"fournisseur",n=1;while(S.fourn.find(f=>f.id===id)){n++;id=k.slice(0,26)+n}
   const ordre=S.fourn.reduce((m,f)=>Math.max(m,f.ordre??0),0)+1;
   await S.db.doc(P("fournisseurs/"+id)).set({nom:nm,ordre,actif:true,colonne:false,avoirs:true,contact:"",mail:""});S.fourn.push({id,nom:nm,ordre,actif:true,colonne:false});return id}
+/* v114 : les fournisseurs suivent les dossiers de la comptable (…/<année>/FOURNISSEURS/<NOM>/…).
+   Chaque nouveau dossier crée un fournisseur actif du même nom (en majuscules) ; un fournisseur rattaché à un dossier prend le nom du dossier
+   (s'il est rattaché à plusieurs dossiers : celui qui a reçu le fichier le plus récent). Les montants et l'historique ne changent pas (même fiche).
+   Seulement pour le magasin du dossier, à partir de l'année de « Factures à partir du ». DIAPAR et ses rayons ne bougent pas. */
+async function facSyncFourn(files){if(!S.store||facDossierMag()!==S.store||!S.fourn.length)return;const dep=facDepart();if(!dep)return;const an=+dep.slice(0,4);
+  const dos={};
+  for(const f of files){const segs=String(f.rel).split(/[\\/]/),i=segs.findIndex(x=>FAC.nk(x)==="FOURNISSEURS");if(i<0||segs.length<i+3)continue;
+    const a=FAC.annee(f.rel);if(a&&a<an)continue;if(!/\.pdf$/i.test(f.rel))continue;
+    const d=segs[i+1].trim(),k=FAC.nk(d);if(!k||k==="DIAPAR"||k==="FOURNISSEURS"||/^20\d\d$/.test(d))continue;
+    const o=dos[k]||(dos[k]={nom:d,t:0});if(f.mtime>o.t){o.t=f.mtime;o.nom=d}}
+  const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{});let chg=false;const parF={};
+  for(const[k,o]of Object.entries(dos)){let fid=facFid(o.nom);
+    if(!fid){fid=await facCreerFourn(o.nom);toast("Nouveau fournisseur : "+o.nom.toUpperCase())}
+    if(liens[k]!==fid){liens[k]=fid;chg=true}
+    const p=parF[fid];if(!p||o.t>p.t)parF[fid]=o}
+  const nkx=x=>FAC.nk(x);
+  for(const[fid,o]of Object.entries(parF)){const f=S.fourn.find(x=>x.id===fid);if(!f||isRayon(f)||isParent(f)||fid==="diapar")continue;
+    const want=o.nom.toUpperCase().replace(/\s+/g," ").trim();if(!want||f.nom===want)continue;
+    if(S.fourn.some(x=>x.id!==fid&&!isRayon(x)&&nkx(x.nom)===nkx(want)))continue; // un autre fournisseur porte déjà ce nom : on ne touche à rien
+    await fUpdate(fid,{nom:want});f.nom=want}
+  if(chg){const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({liens});else await ref.set({depart:dep,liens});S.facReg=Object.assign({},S.facReg||{},{liens})}}
 async function facImporter(auto,only){
   if(S.fac.imp)return;
   let L;
