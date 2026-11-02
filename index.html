@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="115">
+<meta name="gm-version" content="116">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=115;
+const APP_VERSION=116;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -748,7 +748,7 @@ function vDemarque(y,m,doc,st){
   const L=(Array.isArray(doc.demarque)?doc.demarque:[]).map((x,i)=>({...x,i})).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   const t=todayISO();const def=t.startsWith(mkey(y,m))?t:dayISO(y,m,1);
   const parMotif={};L.forEach(x=>parMotif[x.motif]=(parMotif[x.motif]||0)+(+x.montant||0));
-  return `<div class="panel flush"><div class="band">Démarque connue — ${esc(MOIS[m])} ${y}<span style="display:flex;gap:6px"><button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button><button class="pillbtn" data-act="focusDem">+ Démarque</button></span></div>
+  return `<div class="panel flush"><div class="band">Démarque connue — ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button></div>
   <form id="demForm" class="row" style="padding:12px 14px;border-bottom:1px solid var(--line)">
     <input id="demDate" type="date" value="${def}" min="${dayISO(y,m,1)}" max="${dayISO(y,m,new Date(y,m+1,0).getDate())}" required aria-label="Date">
     <select id="demMotif" aria-label="Motif">${DEM_MOTIFS.map(x=>`<option>${x}</option>`).join("")}</select>
@@ -977,10 +977,17 @@ function addFournSaisie(){const key=mkey(S.year,S.month),mc=monthCols(key),nk=t=
   const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:grid;place-items:center;padding:16px";
   o.innerHTML=`<div style="background:var(--surface,#fff);color:var(--fg,#18231b);border-radius:12px;max-width:420px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
     <div style="font:800 15px var(--display);margin-bottom:10px">Ajouter un fournisseur à ${esc(MOIS[S.month])} ${S.year}</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn small primary" data-all="add" ${L.length?"":"disabled"}>Tout ajouter${L.length?" ("+L.length+")":""}</button><button class="btn small" data-all="rm">Tout enlever</button></div>
     ${L.length?`<div style="display:grid;gap:6px;max-height:55vh;overflow:auto">${L.map(f=>`<button class="btn" style="justify-content:flex-start" data-pick="${esc(f.id)}">${esc(f.nom)}</button>`).join("")}</div>`:`<p class="sub">Tous les fournisseurs sont déjà dans ce mois. Pour en créer un, allez dans l'onglet Fournisseurs.</p>`}
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px"><button class="btn" data-gofourn="1">Onglet Fournisseurs</button><button class="btn" data-x="1">Fermer</button></div></div>`;
-  o.addEventListener("click",e=>{const b=e.target.closest("[data-pick],[data-x],[data-gofourn]");if(!b&&e.target!==o)return;e.stopPropagation();o.remove(); /* v82 : data-goto servait déjà (mois du tableau de bord) et renvoyait vers la saisie */
+  o.addEventListener("click",e=>{const b=e.target.closest("[data-pick],[data-x],[data-gofourn],[data-all]");if(!b&&e.target!==o)return;e.stopPropagation();o.remove(); /* v82 : data-goto servait déjà (mois du tableau de bord) et renvoyait vers la saisie */
     if(b&&b.dataset.pick){const m2=monthCols(key);m2.push(b.dataset.pick);setMonthCols(key,m2).then(()=>toast(fName(b.dataset.pick)+" ajouté à "+MOIS[S.month]))}
+    // v116 : tous les fournisseurs actifs d'un coup ; « Tout enlever » garde Épicerie, A/A, Frais et ceux qui ont des montants ce mois
+    if(b&&b.dataset.all==="add"){const m2=monthCols(key);L.forEach(f=>{if(!m2.includes(f.id))m2.push(f.id)});setMonthCols(key,m2).then(()=>toast(L.length+" fournisseur(s) ajouté(s) à "+MOIS[S.month]))}
+    if(b&&b.dataset.all==="rm"){const J=Object.values(((S.mois[key]||{}).jours)||{}),avec=id=>J.some(j=>j&&j.achats&&j.achats[id]);
+      const m1=monthCols(key),m2=m1.filter(id=>{const f=S.fourn.find(x=>x.id===id);return !f||f.groupe||avec(id)}),n=m1.length-m2.length;
+      if(!n){toast("Rien à enlever : les colonnes restantes ont des montants ce mois");return}
+      setMonthCols(key,m2).then(()=>toast(n+" fournisseur(s) enlevé(s) de "+MOIS[S.month]+(m2.some(id=>{const f=S.fourn.find(x=>x.id===id);return f&&!f.groupe})?" (ceux qui ont des montants restent)":"")))}
     if(b&&b.dataset.gofourn){S.tab="fourn";try{localStorage.setItem("gesmar.tab",S.tab)}catch(_){}render()}});
   document.body.appendChild(o)}
 async function fUpdate(id,patch){try{await S.db.doc(P("fournisseurs/"+id)).update(patch)}catch(e){fail(e)}}
