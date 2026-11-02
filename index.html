@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="116">
+<meta name="gm-version" content="117">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=116;
+const APP_VERSION=117;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -972,23 +972,27 @@ async function addInventaire(){
   try{await S.db.doc(P("inventaires/"+date)).set({date,valeur:v,note:$("#invNote").value.trim()});toast("Inventaire du "+frDate(date)+" enregistré")}catch(e){fail(e)}
 }
 // v77 : « + Fournisseur » : on choisit un fournisseur de l'onglet Fournisseurs (on ne crée plus de fournisseur depuis la saisie)
-function addFournSaisie(){const key=mkey(S.year,S.month),mc=monthCols(key),nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
-  const L=S.fourn.filter(f=>!isInactif(f)&&!isParent(f)&&!mc.includes(f.id)).sort((a,b)=>nk(a.nom).localeCompare(nk(b.nom)));
+// v117 : « + Fournisseur » : liste à cocher de TOUS les fournisseurs actifs (coché = colonne dans la saisie du mois).
+// Tout cocher / Tout décocher ; un fournisseur qui a des montants ce mois reste coché (grisé). Épicerie, A/A, Frais restent toujours.
+function addFournSaisie(){const key=mkey(S.year,S.month),mc=monthCols(key),nk=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+  const J=Object.values(((S.mois[key]||{}).jours)||{}),avec=id=>J.some(j=>j&&j.achats&&j.achats[id]);
+  const L=S.fourn.filter(f=>!isInactif(f)&&!isParent(f)&&!f.groupe).sort((a,b)=>nk(a.nom).localeCompare(nk(b.nom)));
   const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:grid;place-items:center;padding:16px";
-  o.innerHTML=`<div style="background:var(--surface,#fff);color:var(--fg,#18231b);border-radius:12px;max-width:420px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
-    <div style="font:800 15px var(--display);margin-bottom:10px">Ajouter un fournisseur à ${esc(MOIS[S.month])} ${S.year}</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn small primary" data-all="add" ${L.length?"":"disabled"}>Tout ajouter${L.length?" ("+L.length+")":""}</button><button class="btn small" data-all="rm">Tout enlever</button></div>
-    ${L.length?`<div style="display:grid;gap:6px;max-height:55vh;overflow:auto">${L.map(f=>`<button class="btn" style="justify-content:flex-start" data-pick="${esc(f.id)}">${esc(f.nom)}</button>`).join("")}</div>`:`<p class="sub">Tous les fournisseurs sont déjà dans ce mois. Pour en créer un, allez dans l'onglet Fournisseurs.</p>`}
-    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px"><button class="btn" data-gofourn="1">Onglet Fournisseurs</button><button class="btn" data-x="1">Fermer</button></div></div>`;
-  o.addEventListener("click",e=>{const b=e.target.closest("[data-pick],[data-x],[data-gofourn],[data-all]");if(!b&&e.target!==o)return;e.stopPropagation();o.remove(); /* v82 : data-goto servait déjà (mois du tableau de bord) et renvoyait vers la saisie */
-    if(b&&b.dataset.pick){const m2=monthCols(key);m2.push(b.dataset.pick);setMonthCols(key,m2).then(()=>toast(fName(b.dataset.pick)+" ajouté à "+MOIS[S.month]))}
-    // v116 : tous les fournisseurs actifs d'un coup ; « Tout enlever » garde Épicerie, A/A, Frais et ceux qui ont des montants ce mois
-    if(b&&b.dataset.all==="add"){const m2=monthCols(key);L.forEach(f=>{if(!m2.includes(f.id))m2.push(f.id)});setMonthCols(key,m2).then(()=>toast(L.length+" fournisseur(s) ajouté(s) à "+MOIS[S.month]))}
-    if(b&&b.dataset.all==="rm"){const J=Object.values(((S.mois[key]||{}).jours)||{}),avec=id=>J.some(j=>j&&j.achats&&j.achats[id]);
-      const m1=monthCols(key),m2=m1.filter(id=>{const f=S.fourn.find(x=>x.id===id);return !f||f.groupe||avec(id)}),n=m1.length-m2.length;
-      if(!n){toast("Rien à enlever : les colonnes restantes ont des montants ce mois");return}
-      setMonthCols(key,m2).then(()=>toast(n+" fournisseur(s) enlevé(s) de "+MOIS[S.month]+(m2.some(id=>{const f=S.fourn.find(x=>x.id===id);return f&&!f.groupe})?" (ceux qui ont des montants restent)":"")))}
-    if(b&&b.dataset.gofourn){S.tab="fourn";try{localStorage.setItem("gesmar.tab",S.tab)}catch(_){}render()}});
+  o.innerHTML=`<div style="background:var(--surface,#fff);color:var(--fg,#18231b);border-radius:12px;max-width:440px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+    <div style="font:800 15px var(--display);margin-bottom:10px">Fournisseurs de ${esc(MOIS[S.month])} ${S.year}</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn small" data-tout="1">Tout cocher</button><button class="btn small" data-tout="0">Tout décocher</button></div>
+    ${L.length?`<div style="display:grid;gap:2px;max-height:55vh;overflow:auto">${L.map(f=>{const lock=avec(f.id);return `<label style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;cursor:${lock?"default":"pointer"}" title="${lock?"A des montants ce mois : reste dans la saisie":""}"><input type="checkbox" data-fc="${esc(f.id)}" ${mc.includes(f.id)||lock?"checked":""} ${lock?"disabled":""} style="width:18px;height:18px"><span>${esc(f.nom)}</span>${lock?`<span class="hist" style="margin-left:auto">montants ce mois</span>`:""}</label>`}).join("")}</div>`:`<p class="sub">Aucun fournisseur actif. Allez dans l'onglet Fournisseurs.</p>`}
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px"><button class="btn" data-gofourn="1">Onglet Fournisseurs</button><span style="display:flex;gap:8px"><button class="btn" data-x="1">Annuler</button><button class="btn primary" data-ok="1">Enregistrer</button></span></div></div>`;
+  o.addEventListener("click",e=>{const b=e.target.closest("[data-tout],[data-x],[data-gofourn],[data-ok]");
+    if(!b){if(e.target===o)o.remove();return}e.stopPropagation();
+    if(b.dataset.tout){o.querySelectorAll("input[data-fc]:not([disabled])").forEach(c=>c.checked=b.dataset.tout==="1");return}
+    o.remove(); /* v82 : data-goto servait déjà (mois du tableau de bord) */
+    if(b.dataset.gofourn){S.tab="fourn";try{localStorage.setItem("gesmar.tab",S.tab)}catch(_){}render();return}
+    if(b.dataset.ok){const on=new Set([...o.querySelectorAll("input[data-fc]")].filter(c=>c.checked).map(c=>c.dataset.fc));
+      const m1=monthCols(key),ids=new Set(L.map(f=>f.id));
+      const m2=m1.filter(id=>!ids.has(id)||on.has(id));L.forEach(f=>{if(on.has(f.id)&&!m2.includes(f.id))m2.push(f.id)});
+      const plus=m2.filter(x=>!m1.includes(x)).length,moins=m1.filter(x=>!m2.includes(x)).length;
+      if(!plus&&!moins)return;setMonthCols(key,m2).then(()=>toast(MOIS[S.month]+" : "+(plus?plus+" ajouté(s)":"")+(plus&&moins?", ":"")+(moins?moins+" enlevé(s)":"")))}});
   document.body.appendChild(o)}
 async function fUpdate(id,patch){try{await S.db.doc(P("fournisseurs/"+id)).update(patch)}catch(e){fail(e)}}
 async function fMove(id,dir){
