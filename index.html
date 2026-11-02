@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="111">
+<meta name="gm-version" content="112">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=111;
+const APP_VERSION=112;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -845,7 +845,7 @@ function vFourn(){
   const an=todayISO().slice(0,4),tot={};Object.entries(S.mois).forEach(([k,d])=>{if(k.startsWith(an+"-")&&d&&d.jours)Object.values(d.jours).forEach(j=>Object.entries((j&&j.achats)||{}).forEach(([id,v])=>{tot[id]=(tot[id]||0)+(v||0)}))});
   const mt=f=>fIds(f).reduce((s,id)=>s+(tot[id]||0),0);
   const tri=(a,b)=>mt(b)-mt(a)||nk(a.nom).localeCompare(nk(b.nom)); // classement silencieux : les plus gros d'abord
-  const act=S.fourn.filter(f=>!isInactif(f)&&!isRayon(f)).sort(tri),ina=S.fourn.filter(f=>isInactif(f)&&!isRayon(f)).sort(tri);
+  const act=S.fourn.filter(f=>!isInactif(f)&&!isRayon(f)).sort(tri),ina=S.fourn.filter(f=>isInactif(f)&&!f.supprime&&!isRayon(f)).sort(tri),sup=S.fourn.filter(f=>f.supprime&&!isRayon(f)&&!isParent(f)); // v112 : supprimés = cachés partout, gardés en mémoire
   const key=mkey(+todayISO().slice(0,4),+todayISO().slice(5,7)-1),mc=monthCols(key),moisNom=MOIS[+todayISO().slice(5,7)-1];
   const carte=f=>{const ids=fIds(f),par=isParent(f),ray=par?S.fourn.filter(x=>x.groupe===f.id):[];
     const dans=par?ray.some(x=>mc.includes(x.id)):mc.includes(f.id);
@@ -863,11 +863,11 @@ function vFourn(){
       <div class="fc-bas">${par||der||mod?`<span class="fc-ok">✓ Factures lues automatiquement</span>`:FAC_API()?`<button class="btn small" data-fmodele="${esc(f.id)}" title="Aucune facture lue pour ce fournisseur : montrer à GESMAR où lire le montant et la date">📄 Facture modèle</button>`:"<span></span>"}
         ${par?"":`<button class="btn small" data-fout="${esc(f.id)}">Retirer</button>`}</div>
     </div>`};
-  const carteIna=f=>`<div class="fcard ina"><div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur"></div><div class="fc-bas"><span class="fc-vide">Inactif</span><button class="btn small" data-fback="${esc(f.id)}">Remettre</button></div></div>`;
+  const carteIna=f=>`<div class="fcard ina"><div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" aria-label="Nom du fournisseur"></div><div class="fc-bas"><span class="fc-vide">Inactif</span><span class="row" style="gap:6px;margin:0"><button class="btn small" data-fback="${esc(f.id)}">Remettre</button><button class="btn small" data-fdel="${esc(f.id)}">Supprimer</button></span></div></div>`;
   return `
   <div class="row" style="margin:4px 0 12px;justify-content:space-between;align-items:center">
     <h2 style="margin:0">Fournisseurs — ${esc(storeNom())}</h2>
-    <form id="fAdd" class="row" style="margin:0"><input id="fAddNom" placeholder="Nom du nouveau fournisseur" required style="width:240px"><button class="btn primary" type="submit">Ajouter</button></form>
+    <form id="fAdd" class="row" style="margin:0"><input id="fAddNom" list="fSupList" autocomplete="off" placeholder="Nom du nouveau fournisseur" required style="width:240px"><datalist id="fSupList">${[...new Set(sup.map(f=>f.nom))].sort().map(n=>`<option value="${esc(n)}">`).join("")}</datalist><button class="btn primary" type="submit">Ajouter</button></form>
   </div>
   <div class="fgrid">${act.map(carte).join("")||`<div class="empty-state">Aucun fournisseur.</div>`}</div>
   ${ina.length?`<details class="fina"><summary>Fournisseurs inactifs (${ina.length})</summary><div class="fgrid">${ina.map(carteIna).join("")}</div></details>`:""}`;
@@ -989,6 +989,9 @@ document.addEventListener("click",async e=>{
     // v82 : Retirer = toujours passer en inactif (même un fournisseur tout neuf) ; un inactif ne se supprime pas
     fUpdate(id,{actif:false,colonne:false}).then(()=>toast((f?f.nom:"Fournisseur")+" passé en inactif"));return}
   if(t.dataset.fback){fUpdate(t.dataset.fback,{actif:true,supprime:false});return}
+  // v112 : Supprimer un inactif = le cacher partout ; la saisie, les avoirs, les factures et les totaux ne changent pas. Retaper son nom dans « Ajouter » le fait revenir.
+  if(t.dataset.fdel){const id=t.dataset.fdel,f=S.fourn.find(x=>x.id===id);
+    askConfirm("Supprimer "+(f?f.nom:"ce fournisseur")+" de la liste ?\n\nRien n'est effacé : ses montants restent dans la saisie et les totaux. Pour le recréer, tapez son nom dans « Ajouter ».").then(ok=>{if(ok)fUpdate(id,{actif:false,colonne:false,supprime:true}).then(()=>toast((f?f.nom:"Fournisseur")+" supprimé (il reste proposé dans « Ajouter »)"))});return}
   if(t.dataset.showcol){const id=t.dataset.showcol,key=mkey(S.year,S.month),mc=monthCols(key);if(!mc.includes(id))mc.push(id);setMonthCols(key,mc);return}
   if(t.dataset.demask!=null){S.confirmDem=+t.dataset.demask;render();return}
   if(t.dataset.demdel!=null){delDemarque(+t.dataset.demdel);return}
