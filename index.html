@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="112">
+<meta name="gm-version" content="113">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=112;
+const APP_VERSION=113;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -718,7 +718,7 @@ function vSaisie(){
   // v46 : nom sur toute la largeur ; au-dessus : ‹ (vers la gauche), ✕ (retirer), › (vers la droite) — v50 : rien pour Épicerie, A/A, Frais (fixes)
   const nameCell=(f,del,ri)=>{if(!S.fourn.find(x=>x.id===f.id))return esc(f.nom);const n=esc(f.nom),first=ri===0,last=ri===runs.length-1;
     const mv=(d,lab,dis)=>`<button class="fmv" data-mv="${esc(f.id)}" data-dir="${d}" ${dis?"disabled":""} title="${lab}" aria-label="${lab}">${d<0?"‹":"›"}</button>`;
-    return `<div class="fhead">${!del?`<div class="fctl fctl-ph" aria-hidden="true"></div>`:`<div class="fctl">${mv(-1,"Déplacer "+n+" vers la gauche",first)}${del?`<button class="fx" data-hidecol="${esc(f.id)}" title="Retirer ${n} de la saisie" aria-label="Retirer ${n} de la saisie">✕</button>`:""}${mv(1,"Déplacer "+n+" vers la droite",last)}</div>`}<input id="rn-${esc(f.id)}" class="fname" data-rn="${esc(f.id)}" value="${n}"${saisieBloquee()?" readonly":""} aria-label="Nom du fournisseur" title="${n} : cliquer pour modifier le nom"></div>`};
+    return `<div class="fhead">${!del?`<div class="fctl fctl-ph" aria-hidden="true"></div>`:`<div class="fctl">${mv(-1,"Déplacer "+n+" vers la gauche",first)}${del?`<button class="fx" data-hidecol="${esc(f.id)}" title="Retirer ${n} de la saisie" aria-label="Retirer ${n} de la saisie">✕</button>`:""}${mv(1,"Déplacer "+n+" vers la droite",last)}</div>`}<input id="rn-${esc(f.id)}" class="fname" data-rn="${esc(f.id)}" value="${n}" readonly tabindex="-1" aria-label="Nom du fournisseur" title="${n} (le nom se change dans l'onglet Fournisseurs)"></div>`};
   const head1=`<tr><th class="day"${rs}>Jour</th><th${rs}>CA TTC</th>${hasN1?`<th${rs}>CA N-1</th>`:""}${runs.map((r,ri)=>r.groupe?r.mem.map(f=>`<th class="fray">${nameCell(f,false,ri)}</th>`).join(""):`<th class="fcol">${nameCell(r.mem[0],true,ri)}</th>`).join("")}<th${rs}>Total achats</th></tr>`;
   const head2="";
   const hidAmt=retirees.map(f=>[f,st.par[f.id]||0]);
@@ -1036,9 +1036,15 @@ document.addEventListener("change",e=>{
   if(t.dataset.f){saveCell(t);return}
   if(t.id==="fFourn"){S.fFourn=t.value;render();return}
   if(t.dataset.fflag){fUpdate(t.dataset.id,{[t.dataset.fflag]:t.checked});return}
-  if(t.dataset.rn){const v=t.value.trim().toUpperCase(),id=t.dataset.rn;const f=S.fourn.find(x=>x.id===id);
-    if(v&&f&&v!==f.nom)fUpdate(id,{nom:v}).then(()=>toast("Renommé en "+v));else{t.value=f?f.nom:t.value}return}
-  if(t.dataset.fnom){const v=t.value.trim();if(v)fUpdate(t.dataset.fnom,{nom:v});return}
+  if(t.dataset.rn){const f=S.fourn.find(x=>x.id===t.dataset.rn);t.value=f?f.nom:t.value;return} // v113 : plus de changement de nom dans la saisie
+  // v113 : le nom se change seulement dans l'onglet Fournisseurs (actifs et inactifs) ; il change partout (saisie, avoirs, tableau de bord, factures)
+  if(t.dataset.fnom){const id=t.dataset.fnom,f=S.fourn.find(x=>x.id===id),v=t.value.trim().toUpperCase();if(!f)return;
+    if(!v||v===f.nom){t.value=f.nom;return}
+    const nkx=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase();
+    const ex=S.fourn.find(x=>x.id!==id&&!isRayon(x)&&nkx(x.nom)===nkx(v));if(ex){toast("Un autre fournisseur s'appelle déjà "+ex.nom);t.value=f.nom;return}
+    const old=f.nom;fUpdate(id,{nom:v}).then(async()=>{toast(old+" renommé en "+v);
+      // les factures du dossier qui porte l'ancien nom restent rattachées à ce fournisseur
+      try{if(S.facReg&&!isParent(f)){const L=Object.assign({},S.facReg.liens||{}),k=FAC.nk(old);if(!L[k]){L[k]=id;await S.db.doc(P("reglages/factures")).update({liens:L})}}}catch(e){console.error(e)}});return}
   if(t.id==="mht"){const v=parseNum(t.value);if(Number.isNaN(v)){toast("Montant illisible : par ex. 262556,21");return}
     const key=mkey(S.year,S.month);const ref=S.db.doc(P("mois/"+key));
     (S.mois[key]?ref.update({caHTmois:v}):ref.set({annee:S.year,mois:S.month+1,jours:{},caHTmois:v})).then(()=>toast(v?"CA HT du mois enregistré":"CA HT du mois effacé"),fail);return}
