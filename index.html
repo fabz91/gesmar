@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="114">
+<meta name="gm-version" content="115">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=114;
+const APP_VERSION=115;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -748,7 +748,7 @@ function vDemarque(y,m,doc,st){
   const L=(Array.isArray(doc.demarque)?doc.demarque:[]).map((x,i)=>({...x,i})).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   const t=todayISO();const def=t.startsWith(mkey(y,m))?t:dayISO(y,m,1);
   const parMotif={};L.forEach(x=>parMotif[x.motif]=(parMotif[x.motif]||0)+(+x.montant||0));
-  return `<div class="panel flush"><div class="band">Démarque connue — ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="focusDem">+ Démarque</button></div>
+  return `<div class="panel flush"><div class="band">Démarque connue — ${esc(MOIS[m])} ${y}<span style="display:flex;gap:6px"><button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button><button class="pillbtn" data-act="focusDem">+ Démarque</button></span></div>
   <form id="demForm" class="row" style="padding:12px 14px;border-bottom:1px solid var(--line)">
     <input id="demDate" type="date" value="${def}" min="${dayISO(y,m,1)}" max="${dayISO(y,m,new Date(y,m+1,0).getDate())}" required aria-label="Date">
     <select id="demMotif" aria-label="Motif">${DEM_MOTIFS.map(x=>`<option>${x}</option>`).join("")}</select>
@@ -922,6 +922,35 @@ async function copyRecap(){
   const txt=`Bonjour,\n\nVoici les avoirs en attente de votre part :\n\n`+L.map(a=>`- ${frDate(a.date)} · ${a.produit}${a.code?" (code "+a.code+")":""}${a.facture?" · facture "+a.facture:""} · ${a.quantite||""} · ${a.motif} · ${a.montant?eur2.format(a.montant)+" TTC":"montant à confirmer"}`).join("\n")+`\n\nTotal : ${eur2.format(tot)} TTC.\nMerci de nous confirmer leur prise en compte.\n\nCordialement`;
   try{await navigator.clipboard.writeText(txt);toast(`Récap copié (${L.length} avoir${L.length>1?"s":""})`)}catch(e){toast("Copie impossible dans cette vue")}
 }
+/* v115 : import de la démarque exportée de Videor (Casses et Démarques → sélectionner tout → Export, fichier CSV « ; »).
+   Une ligne par article ; on garde un relevé par n° (NODOC) : date (DATE_DOC), total TTC (TOT_TTC, prix d'achat), magasin (RAISOC).
+   Chaque relevé devient une ligne de démarque connue du mois de sa date (motif « Videor », detail « Relevé n° … », champ videor = n°).
+   Un relevé déjà importé n'est jamais ajouté deux fois ; s'il a changé dans Videor (montant ou date), sa ligne est corrigée. */
+function demVideorChoisir(){const inp=document.createElement("input");inp.type="file";inp.accept=".csv,text/csv,.txt";
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;try{const buf=await f.arrayBuffer();let t;try{t=new TextDecoder("utf-8",{fatal:true}).decode(buf)}catch(_){t=new TextDecoder("windows-1252").decode(buf)}await demVideorImporter(t)}catch(e){console.error(e);toast("Lecture du fichier impossible")}};inp.click()}
+function demVideorLire(t){const L=String(t).replace(/^\ufeff/,"").split(/\r?\n/).filter(x=>x.trim());if(!L.length)return null;
+  const H=L[0].split(";").map(x=>x.trim().toUpperCase()),ix=n=>H.indexOf(n);
+  const iN=ix("NODOC"),iD=ix("DATE_DOC"),iT=ix("TOT_TTC"),iH=ix("TOT_HT"),iR=ix("RAISOC"),iTy=ix("TYPDOC");if(iN<0||iD<0||iT<0)return null;
+  const R={};for(const l of L.slice(1)){const c=l.split(";");const n=(c[iN]||"").trim();if(!n)continue;if(iTy>=0&&c[iTy]&&c[iTy].trim()&&c[iTy].trim()!=="Q")continue;
+    const m=(c[iD]||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(!m)continue;const ttc=parseFloat(String(c[iT]).replace(",","."));if(!isFinite(ttc))continue;
+    R[n]={n,date:m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"),ttc:Math.round(ttc*100)/100,ht:iH>=0?parseFloat(String(c[iH]).replace(",",".")):null,raisoc:iR>=0?(c[iR]||"").trim():""}}
+  return Object.values(R).sort((a,b)=>a.date.localeCompare(b.date)||a.n.localeCompare(b.n))}
+async function demVideorImporter(t){const R=demVideorLire(t);if(!R){toast("Ce fichier n'est pas un export « Casses et Démarques » de Videor (colonnes NODOC, DATE_DOC, TOT_TTC)");return}
+  if(!R.length){toast("Aucun relevé dans ce fichier");return}
+  const mags=[...new Set(R.map(r=>FAC.magasin(r.raisoc||"")).filter(Boolean))];
+  if(mags.length>1){toast("Ce fichier mélange plusieurs magasins : exportez-les séparément");return}
+  if(mags.length&&mags[0]!==S.store){const g=S.magasins.find(x=>x.id===mags[0]);toast("Ce fichier concerne "+(g?g.nom:mags[0])+" : changez de magasin (maison) puis réimportez");return}
+  // où est déjà chaque relevé (tous les mois du magasin)
+  const ou={};Object.entries(S.mois).forEach(([k,d])=>{(Array.isArray(d&&d.demarque)?d.demarque:[]).forEach((x,i)=>{if(x&&x.videor)ou[x.videor]={k,i,x}})});
+  const nouv=R.filter(r=>!ou[r.n]),modif=R.filter(r=>ou[r.n]&&(ou[r.n].x.date!==r.date||Math.abs((+ou[r.n].x.montant||0)-r.ttc)>0.004));
+  if(!nouv.length&&!modif.length){toast("Démarque Videor déjà à jour ("+R.length+" relevé(s) déjà importé(s))");return}
+  const tot=nouv.reduce((s,r)=>s+r.ttc,0),mois=[...new Set(nouv.concat(modif).map(r=>r.date.slice(0,7)))].sort().map(k=>MOIS[+k.slice(5)-1].toLowerCase()+" "+k.slice(0,4));
+  if(!await askConfirm("Importer la démarque Videor dans "+storeNom()+" ?\n\n"+nouv.length+" nouveau(x) relevé(s) : "+eur2.format(tot)+" TTC"+(modif.length?"\n"+modif.length+" relevé(s) modifié(s) dans Videor : corrigé(s)":"")+(R.length-nouv.length-modif.length?"\n"+(R.length-nouv.length-modif.length)+" déjà importé(s) : ignoré(s)":"")+"\n\nMois : "+mois.join(", ")))return;
+  const parMois={};const get=k=>parMois[k]||(parMois[k]=(Array.isArray(S.mois[k]&&S.mois[k].demarque)?S.mois[k].demarque:[]).slice());
+  for(const r of modif){const o=ou[r.n],a=get(o.k);const i=a.findIndex(x=>x&&x.videor===r.n);if(i>=0)a.splice(i,1)}
+  for(const r of nouv.concat(modif))get(r.date.slice(0,7)).push({date:r.date,motif:"Videor",detail:"Relevé n° "+String(+r.n||r.n),montant:r.ttc,videor:r.n});
+  try{HIST.lastT=Date.now();for(const[k,a]of Object.entries(parMois)){const ref=S.db.doc(P("mois/"+k));if(S.mois[k])await ref.update({demarque:a});else await ref.set({annee:+k.slice(0,4),mois:+k.slice(5,7),jours:{},demarque:a})}
+    toast("Démarque Videor : "+nouv.length+" relevé(s) ajouté(s)"+(modif.length?", "+modif.length+" corrigé(s)":""));render()}catch(e){fail(e)}}
 async function addDemarque(){
   const v=parseNum($("#demMontant").value);if(!(v>0)){toast("Montant illisible : par ex. 12,50");return}
   const date=$("#demDate").value;if(!date){toast("Choisissez une date");return}
@@ -1022,6 +1051,7 @@ document.addEventListener("click",async e=>{
   if(act==="addFourn"){addFournSaisie()}
   if(act==="focusAdd"){const i=$("#fAddNom");i&&i.focus()}
   if(act==="focusDem"){const i=$("#demMontant");i&&i.focus()}
+  if(act==="demVideor")demVideorChoisir();
   if(act==="focusInv"){const i=$("#invDate");i&&i.focus()}
   if(act==="recap")copyRecap();
   if(act==="showN1"){S.showN1=true;render()}
