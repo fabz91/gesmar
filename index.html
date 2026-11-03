@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="119">
+<meta name="gm-version" content="120">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -341,7 +341,7 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .cmpgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.cmpgrid{grid-template-columns:1fr}}
 .cmpl{display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--line);font-size:13px}.cmpl>span{color:var(--muted);min-width:110px}
 .facbtn{margin-left:auto;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 14px;font:800 13px var(--display);letter-spacing:.03em;cursor:pointer;display:flex;align-items:center;gap:6px}
-.facbtn.on{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.facbtn .cnt{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--red-2);color:var(--on-red);font-size:11px;text-align:center}
+.facbtn .cnt.blink{animation:updBlink 1s ease-in-out infinite}.facbtn.on{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.facbtn .cnt{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--red-2);color:var(--on-red);font-size:11px;text-align:center}
 .segm{display:inline-grid;grid-template-columns:1fr 1fr;width:max-content;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:-4px}.segm button{min-width:90px;padding:6px 14px;border:0;background:var(--surface);color:var(--muted,#777);font:600 13px var(--body);cursor:pointer}.segm button+button{border-left:1px solid var(--line)}.segm button[aria-pressed="true"]{background:var(--green);color:#fff;cursor:default}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
 .fcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:13px}
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=119;
+const APP_VERSION=120;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1402,7 +1402,6 @@ async function facScan(silent){
   catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
   finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
-  if(S.fac.etat==="ok")facPopDiff();
   if(S.fac.relire){S.fac.relire=false;setTimeout(()=>facScan(),200)}}
 // v97 : petite feuille dans la saisie : quelle facture (PDF) a rempli chaque case (jour + fournisseur)
 let FAC_DOCS=null,FAC_DOCS_SRC=null;
@@ -1416,7 +1415,7 @@ function facDocs(){const reg=S.facImp||{};if(FAC_DOCS&&FAC_DOCS_SRC===reg)return
   FAC_DOCS=M;FAC_DOCS_SRC=reg;return M}
 const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
 const facATraiter=()=>facAImporter().filter(r=>!facAutoOn()||!facPret(r)); // v91 : celles que GESMAR n'a pas pu écrire seul
-function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facATraiter().length;b.hidden=!n;b.textContent=n;const k=b.closest(".facbtn");if(k)k.classList.toggle("on",!!n)}
+function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facATraiter().length;b.hidden=!n;b.textContent=n;const k=b.closest(".facbtn");if(k)k.classList.toggle("on",!!n);b.classList.toggle("blink",facPopDiffL().length>0);if(k)k.title=facPopDiffL().length?"Une facture n'a pas le même montant que la saisie : à valider ou refuser":"Factures que GESMAR n'a pas pu lire seul"} // v120 : clignote tant qu'une facture au montant différent attend
 async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;facDossierMagSave(S.store);FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
 async function facSetDepart(v){if(!v){toast("Choisissez une date");return}
   try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});toast("Factures à partir du "+frDate(v)+" : lecture du dossier…");S.fac.liste=[];await facScan()}catch(e){fail(e)}}
@@ -1618,7 +1617,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
   if(!FAC_API())body=`<p>La lecture des factures marche dans le <b>programme GESMAR du PC</b>, installé avec le <b>nouveau kit</b> (version 86 ou plus).</p><p class="sub">Réinstallez GESMAR une fois avec le nouveau kit : vos données sont gardées.</p>`;
   else if(["nodir","absent","nodepart","erreur"].includes(F.etat))body=`<p>${F.etat==="erreur"?"⚠️ Lecture impossible : "+esc(F.err||""):F.etat==="absent"?"Le dossier des factures est introuvable sur ce PC.":"Le dossier des factures n'est pas encore réglé."}</p><p class="sub">Tout se règle dans Réglages ⚙ → Dossier des factures.</p>${regl}`;
   else if(F.etat==="lecture"&&!F.liste.length)body=`<p>${esc(F.prog||"Lecture des factures…")}</p>`;
-  else{const L=facATraiter();
+  else{const L=facATraiter().sort((a,b)=>(b.etatSaisie==="diff")-(a.etatSaisie==="diff")); // v120 : montants différents en premier
     const pb=r=>{const v=(r.verif||[]).slice();if(r.total==null&&!v.some(x=>/montant/i.test(x)))v.unshift("Montant introuvable");if(!r.date&&!v.some(x=>/date/i.test(x)))v.unshift("Date introuvable");if(r.avant)v.push("Datée d'avant le "+frDate(facDepart())+" (départ) : déjà saisie à la main ?");if(r.etatSaisie==="diff"&&r.deja&&r.deja.length)v.push("Déjà dans la saisie : "+r.deja.join(", "));else if(r.etatSaisie==="egal")v.push("Déjà dans la saisie avec ce montant");return [...new Set(v)]};
     const four=r=>FAC.nk(r.dossier)==="DIAPAR"?`<b>DIAPAR</b><select data-faccol="${esc(r.rel)}" aria-label="Rayon" style="margin-top:4px;display:block">${["epicerie","aa","frais"].map(c=>`<option value="${c}" ${(r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col)===c?"selected":""}>${FAC_COL[c]}</option>`).join("")}</select>`
       :`<select data-facf="${esc(r.rel)}" aria-label="Fournisseur">${facOpts(r)}</select>`;
@@ -1628,7 +1627,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
       <td class="l">${four(r)}</td>
       <td><input type="date" data-facdate="${esc(r.rel)}" value="${esc(r.dateSaisie||r.date||"")}" aria-label="Date de la facture"></td>
       <td><input class="facmt" data-facmt="${esc(r.rel)}" inputmode="decimal" value="${mt(r)!=null?n2.format(mt(r)):""}" placeholder="à remplir" aria-label="Montant TTC"><div class="hist">avoir : montant en moins (−)</div></td>
-      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${r.etatSaisie==="diff"?`<button class="btn small primary" data-facrep="${esc(r.rel)}" title="Le montant de la facture remplace celui de la saisie, le PDF s'accroche">Valider</button><button class="btn small" data-faccl="${esc(r.rel)}" title="Ajouter ce montant à ce qui est déjà saisi (deux factures le même jour)">Ajouter</button>`:`<button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button>`}<button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button></div></td></tr>`;
+      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${r.etatSaisie==="diff"?`<button class="btn small primary" data-facrep="${esc(r.rel)}" title="Le montant de la facture remplace celui de la saisie, le PDF s'accroche">Valider</button><button class="btn small" data-facign="${esc(r.rel)}" title="Le montant de la saisie est gardé ; la facture va dans « Factures ignorées »">Refuser</button>`:`<button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button><button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button>`}</div></td></tr>`;
     body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b>.</div>`:""}
       ${F.prog?`<p class="sub">${esc(F.prog)}</p>`:""}
       ${L.length?`<p class="sub" style="margin:0 0 10px">GESMAR n'a pas pu lire seul ${L.length>1?"ces factures":"cette facture"}. Ouvrez le PDF, choisissez le fournisseur, vérifiez la date et le montant TTC, puis cliquez sur <b>Classer</b> : le montant va dans la saisie.</p>
