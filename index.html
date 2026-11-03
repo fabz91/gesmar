@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="123">
+<meta name="gm-version" content="124">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=123;
+const APP_VERSION=124;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -535,7 +535,8 @@ function monthStats(y,m){
     if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */ if(j.caN1)r.caN1+=j.caN1;
     for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
   /* v51 : plus de HT : le CA HT du mois et le HT par jour ne sont plus utilisés */
-  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m))&&!a.avoirAuto)r.avoirs+=a.montant*TVA_AVOIRS} /* v86 : un avoir lié à un avoir lu sur facture est déjà dans les achats */ // v70 : avoirs saisis HT, passés en TTC (5,5 %) pour la marge TTC
+  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m))&&!a.avoirAuto)r.avoirs+=a.montant*TVA_AVOIRS}
+  for(const x of (S.avoirsAuto||[])){if(!x.dansFacture&&x.total&&x.date&&String(x.date).startsWith(mkey(y,m)))r.avoirs+=Math.abs(+x.total)} /* v124 : avoirs séparés lus sur facture (TTC) : comptés ici, plus dans la saisie ; ceux dans une facture DIAPAR sont déjà déduits des achats */ /* v86 : un avoir lié à un avoir lu sur facture est déjà dans les achats */ // v70 : avoirs saisis HT, passés en TTC (5,5 %) pour la marge TTC
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
   r.marge=r.ca-r.achats;r.taux=r.ca?r.marge/r.ca:null;r.tauxCorr=r.ca?(r.marge+r.avoirs)/r.ca:null;r.tauxHD=r.ca?(r.marge+r.demarque)/r.ca:null;return r}
 const dayISO=(y,m,d)=>y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
@@ -1384,7 +1385,7 @@ async function facScan(silent){
       // v95 : facture regroupée (Saint Prim, CDPO…) : découpée jour par jour, elle remplace ce qui a été tapé à la main, sans question
       // v122 : avoir séparé (hors DIAPAR, dont les avoirs sont déjà dans la facture) : s'il y a déjà un achat ce jour-là pour ce fournisseur,
       // l'avoir est retiré de ce montant (achat − avoir dans la même case), sans passer par « Factures à traiter ».
-      if(r.type==="avoir"&&!r.decoupe&&r.etatSaisie==="diff")r.etatSaisie="ajout";
+      if(r.type==="avoir"){r.etatSaisie="avoir";r.anom=null} // v124 : un avoir séparé n'est plus écrit dans la saisie (onglet Avoir sur facture + pastille « Après avoirs »)
       // v121 : facture regroupée (Saint Prim, CDPO) : même règle que les autres. Mêmes montants → rien n'est remplacé ; montant différent,
       // ou montant tapé un autre jour de la période → « Factures à traiter » (Valider = écrit jour par jour à la place de ce qui est tapé).
       if(r.decoupe){r.remplacer=true;if(r.etatSaisie==="vide"){const pt=facPeriodeTapee(r,(r.lignes||[]).map(l=>({date:l.date,col:l.col||r.fid})));
@@ -1414,6 +1415,7 @@ async function facScan(silent){
     S.fac.liste=liste;S.fac.ecartes=ecartes;S.fac.etat="ok";S.fac.dernier=Date.now()}
   catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
   finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
+  if(S.fac.etat==="ok")await facAvMigrer();
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
   if(S.fac.relire){S.fac.relire=false;setTimeout(()=>facScan(),200)}}
 // v97 : petite feuille dans la saisie : quelle facture (PDF) a rempli chaque case (jour + fournisseur)
@@ -1477,6 +1479,16 @@ async function facSyncFourn(files){if(!S.store||facDossierMag()!==S.store||!S.fo
     if(S.fourn.some(x=>x.id!==fid&&!isRayon(x)&&nkx(x.nom)===nkx(want)))continue; // un autre fournisseur porte déjà ce nom : on ne touche à rien
     await fUpdate(fid,{nom:want});f.nom=want}
   if(chg){const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({liens});else await ref.set({depart:dep,liens});S.facReg=Object.assign({},S.facReg||{},{liens})}}
+// v124 : une seule fois par avoir : les avoirs séparés déjà écrits en négatif dans la saisie (v86 à v123) en sont retirés
+let FAC_AVMIG=false;
+async function facAvMigrer(){if(FAC_AVMIG||!S.db||!S.store||!S.avoirsAuto||!S.facImp)return;FAC_AVMIG=true;let n=0;
+  try{try{if(typeof SYNC!=="undefined"&&SYNC.poll)await SYNC.poll()}catch(_){}
+    const sep=new Set((S.avoirsAuto||[]).filter(x=>!x.dansFacture).map(x=>x.id));
+    for(const[k,x]of Object.entries(S.facImp||{})){if(!x||x.s!=="i"||x.av||!sep.has(k)||!(x.m<0)||!Array.isArray(x.j)||x.j.length!==1)continue;
+      const[d,col]=x.j[0].split("|"),doc=S.mois[d.slice(0,7)],j=doc&&doc.jours&&doc.jours[d.slice(8,10)],cur=(j&&j.achats&&j.achats[col])||0;
+      if(cur){const v=Math.round((cur-x.m)*100)/100;await facEcrire([Math.abs(v)<0.005?{date:d,col,montant:0,efface:true}:{date:d,col,montant:v}],true)}
+      await S.db.doc(P("factures/"+k)).set(Object.assign({},x,{av:1,j:[]}));n++}
+    if(n)toast(n+" avoir(s) retiré(s) de la saisie : ils comptent maintenant dans « Après avoirs »")}catch(e){console.error(e);FAC_AVMIG=false}}
 async function facImporter(auto,only){
   if(S.fac.imp)return;
   let L;
@@ -1501,9 +1513,9 @@ async function facImporter(auto,only){
       const dejaSaisie=r.etatSaisie==="egal"&&r.saisi==null&&!only; // v92 : déjà dans la saisie : rien à écrire
       // v98 : facture regroupée : on efface d'abord ce qui a été tapé à la main pour ce fournisseur sur toute la période (le jour tapé n'est pas toujours celui du bon de livraison)
       const efface=r.decoupe&&r.saisi==null&&!dejaSaisie?facPeriodeTapee(r,lignes):[];
-      if(dejaSaisie){nDeja++;if(efface.length)await facEcrire(efface,true)}else await facEcrire(lignes.concat(efface),!!r.remplacer||efface.length>0);
+      if(r.type==="avoir"){/* v124 : avoir séparé : rien dans la saisie */}else if(dejaSaisie){nDeja++;if(efface.length)await facEcrire(efface,true)}else await facEcrire(lignes.concat(efface),!!r.remplacer||efface.length>0);
       const total=lignes.reduce((s,l)=>s+l.montant,0);
-      await S.db.doc(P("factures/"+r.key)).set({dj:dejaSaisie?1:0,s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,r:r.rel,j:[...new Set(lignes.map(l=>l.date+"|"+l.col))],le:todayISO()});
+      await S.db.doc(P("factures/"+r.key)).set({dj:dejaSaisie?1:0,s:"i",av:r.type==="avoir"?2:0,id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,r:r.rel,j:r.type==="avoir"?[]:[...new Set(lignes.map(l=>l.date+"|"+l.col))],le:todayISO()});
       // avoirs lus : document d'avoir, ou partie « avoirs » d'une facture DIAPAR (déjà déduite du total)
       const avf=fid==="epicerie"||fid==="aa"||fid==="frais"?"diapar":fid;
       if(r.type==="avoir"||(r.avoirs&&r.avoirs.length)){
@@ -1808,7 +1820,7 @@ function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fou
   <div class="panel flush"><div class="band">Avoir sur facture</div><div class="scroll"><table>
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Document</th><th class="l">Produits</th><th>Montant TTC</th><th class="l">Déclaration</th><th></th></tr></thead>
     <tbody>${L.length?L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(fn(x.fournisseur))}</td>
-      <td class="l" style="white-space:normal;min-width:150px">${x.dansFacture?`Facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Avoir déjà déduit</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté en moins dans la saisie</div>`}${x.factureOrigine?`<div class="hist">Concerne la facture ${esc(x.factureOrigine)}</div>`:""}</td>
+      <td class="l" style="white-space:normal;min-width:150px">${x.dansFacture?`Facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Avoir déjà déduit</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté dans « Après avoirs »</div>`}${x.factureOrigine?`<div class="hist">Concerne la facture ${esc(x.factureOrigine)}</div>`:""}</td>
       <td class="l" style="white-space:normal;min-width:200px">${prod(x)}</td><td>${eur2.format(x.total||0)}</td>
       <td class="l" style="white-space:normal;min-width:230px">${rap(x)}</td>
       <td>${FAC_API()&&x.fichier?`<button class="btn small" data-facpdf="${esc(x.fichier)}">PDF</button>`:""}</td></tr>`).join("")
