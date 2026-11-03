@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="122">
+<meta name="gm-version" content="123">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=122;
+const APP_VERSION=123;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1374,8 +1374,13 @@ async function facScan(silent){
       r.saisi=old&&old.saisi!=null?old.saisi:null;
       // case déjà remplie dans la saisie : le montant s'ajoutera (ex. facture déjà tapée à la main)
       // v92 : état des cases de la saisie : vides, déjà égales au montant (déjà tapée à la main), ou remplies avec autre chose
-      {const cs=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],j=doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)];return {cur:(col&&j&&j.achats&&j.achats[col])||0,m:l.montant}});
-        r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(c=>Math.abs(c.cur-c.m)<=0.05||(r.decoupe&&Math.abs(c.cur-c.m)<=Math.max(1,Math.abs(c.m)*0.01)))?"egal":"diff"}
+      {const cs=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],j=doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)];return {d:l.date,cur:(col&&j&&j.achats&&j.achats[col])||0,m:l.montant}});
+        const okc=c=>Math.abs(c.cur-c.m)<=0.05||(r.decoupe&&Math.abs(c.cur-c.m)<=Math.max(1,Math.abs(c.m)*0.01));
+        r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(okc)?"egal":"diff";
+        // v123 : anomalie ciblée : seulement les jours en écart, facture / saisie / écart
+        const e=v=>(v>0?"+":"")+n2.format(v)+" €";
+        r.anom=cs.filter(c=>!okc(c)).map(c=>frDate(c.d)+" : facture "+n2.format(c.m)+" € · saisie "+(c.cur?n2.format(c.cur)+" €":"vide")+" → écart "+e(Math.round((c.m-c.cur)*100)/100));
+        if(r.decoupe&&cs.length>1&&r.anom.length){const tf=cs.reduce((t,c)=>t+c.m,0),ts=cs.reduce((t,c)=>t+c.cur,0);r.anom.push("Total : facture "+n2.format(tf)+" € · saisie "+n2.format(ts)+" € → écart "+e(Math.round((tf-ts)*100)/100))}}
       // v95 : facture regroupée (Saint Prim, CDPO…) : découpée jour par jour, elle remplace ce qui a été tapé à la main, sans question
       // v122 : avoir séparé (hors DIAPAR, dont les avoirs sont déjà dans la facture) : s'il y a déjà un achat ce jour-là pour ce fournisseur,
       // l'avoir est retiré de ce montant (achat − avoir dans la même case), sans passer par « Factures à traiter ».
@@ -1383,7 +1388,8 @@ async function facScan(silent){
       // v121 : facture regroupée (Saint Prim, CDPO) : même règle que les autres. Mêmes montants → rien n'est remplacé ; montant différent,
       // ou montant tapé un autre jour de la période → « Factures à traiter » (Valider = écrit jour par jour à la place de ce qui est tapé).
       if(r.decoupe){r.remplacer=true;if(r.etatSaisie==="vide"){const pt=facPeriodeTapee(r,(r.lignes||[]).map(l=>({date:l.date,col:l.col||r.fid})));
-        if(pt.length){r.etatSaisie="diff";r.dejaAutre=pt.map(x=>{const v=S.mois[x.date.slice(0,7)].jours[x.date.slice(8,10)].achats[x.col];return frDate(x.date)+" : "+n2.format(v)+" €"})}}}
+        if(pt.length){r.etatSaisie="diff";r.dejaAutre=pt.map(x=>{const v=S.mois[x.date.slice(0,7)].jours[x.date.slice(8,10)].achats[x.col];return frDate(x.date)+" : "+n2.format(v)+" €"});
+          r.anom=pt.map(x=>{const v=S.mois[x.date.slice(0,7)].jours[x.date.slice(8,10)].achats[x.col];return frDate(x.date)+" : "+n2.format(v)+" € saisi un jour sans livraison sur la facture"})}}}
       if(!old&&r.etatSaisie==="diff")r.ok=false;
       r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" €":null}).filter(Boolean);
       if(r.dejaAutre)r.deja=(r.deja||[]).concat(r.dejaAutre);
@@ -1625,7 +1631,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
   else if(["nodir","absent","nodepart","erreur"].includes(F.etat))body=`<p>${F.etat==="erreur"?"⚠️ Lecture impossible : "+esc(F.err||""):F.etat==="absent"?"Le dossier des factures est introuvable sur ce PC.":"Le dossier des factures n'est pas encore réglé."}</p><p class="sub">Tout se règle dans Réglages ⚙ → Dossier des factures.</p>${regl}`;
   else if(F.etat==="lecture"&&!F.liste.length)body=`<p>${esc(F.prog||"Lecture des factures…")}</p>`;
   else{const L=facATraiter().sort((a,b)=>(b.etatSaisie==="diff")-(a.etatSaisie==="diff")); // v120 : montants différents en premier
-    const pb=r=>{const v=(r.verif||[]).slice();if(r.total==null&&!v.some(x=>/montant/i.test(x)))v.unshift("Montant introuvable");if(!r.date&&!v.some(x=>/date/i.test(x)))v.unshift("Date introuvable");if(r.avant)v.push("Datée d'avant le "+frDate(facDepart())+" (départ) : déjà saisie à la main ?");if(r.etatSaisie==="diff"&&r.deja&&r.deja.length)v.push("Déjà dans la saisie : "+r.deja.join(", "));else if(r.etatSaisie==="egal")v.push("Déjà dans la saisie avec ce montant");return [...new Set(v)]};
+    const pb=r=>{const v=(r.verif||[]).slice();if(r.total==null&&!v.some(x=>/montant/i.test(x)))v.unshift("Montant introuvable");if(!r.date&&!v.some(x=>/date/i.test(x)))v.unshift("Date introuvable");if(r.avant)v.push("Datée d'avant le "+frDate(facDepart())+" (départ) : déjà saisie à la main ?");if(r.etatSaisie==="diff"&&r.anom&&r.anom.length)v.push(...r.anom);else if(r.etatSaisie==="diff"&&r.deja&&r.deja.length)v.push("Déjà dans la saisie : "+r.deja.join(", "));else if(r.etatSaisie==="egal")v.push("Déjà dans la saisie avec ce montant");return [...new Set(v)]};
     const four=r=>FAC.nk(r.dossier)==="DIAPAR"?`<b>DIAPAR</b><select data-faccol="${esc(r.rel)}" aria-label="Rayon" style="margin-top:4px;display:block">${["epicerie","aa","frais"].map(c=>`<option value="${c}" ${(r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col)===c?"selected":""}>${FAC_COL[c]}</option>`).join("")}</select>`
       :`<select data-facf="${esc(r.rel)}" aria-label="Fournisseur">${facOpts(r)}</select>`;
     const mt=r=>r.saisi!=null?r.saisi:r.total;
