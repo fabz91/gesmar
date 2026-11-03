@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="118">
+<meta name="gm-version" content="119">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=118;
+const APP_VERSION=119;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1245,7 +1245,7 @@ const facDepart=()=>(S.facReg&&S.facReg.depart)||null;
 // Mode manuel de la v86 (liste à valider) : réglage reglages/factures.auto = false (bouton dans la fenêtre Factures).
 const facAutoOn=()=>!(S.facReg&&S.facReg.auto===false);
 // v105 : import automatique réglé pour ce magasin → tableau de saisie bloqué (Manuel le débloque)
-const saisieBloquee=()=>!!(S.facReg&&S.facReg.depart&&S.facReg.auto!==false);
+const saisieBloquee=()=>false; // v119 : la saisie n'est plus jamais bloquée (demande du gérant le 03/11) : on peut toujours taper à la main, l'import automatique continue
 // v92 : une facture prête = bon magasin, date et montant lus, pas datée d'avant le départ, et cases de la saisie vides
 // (ou déjà remplies avec exactement ce montant : facture déjà tapée à la main, on ne la rajoute pas)
 const facPret=r=>!r.doublonBL&&r.mag===S.store&&r.total!=null&&!!r.date&&!r.avant&&r.lignes&&r.lignes.length>0&&r.etatSaisie!=="diff";
@@ -1402,6 +1402,7 @@ async function facScan(silent){
   catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
   finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
+  if(S.fac.etat==="ok")facPopDiff();
   if(S.fac.relire){S.fac.relire=false;setTimeout(()=>facScan(),200)}}
 // v97 : petite feuille dans la saisie : quelle facture (PDF) a rempli chaque case (jour + fournisseur)
 let FAC_DOCS=null,FAC_DOCS_SRC=null;
@@ -1507,7 +1508,7 @@ async function facImporter(auto,only){
   catch(e){fail(e)}
   finally{S.fac.imp=false}}
 async function facSetAuto(on){try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({auto:on});else await ref.set({depart:todayISO(),liens:{},auto:on});
-  S.facReg=Object.assign({},S.facReg||{},{auto:on});S.fac.force=true;facRender();if(typeof render==="function")render();toast(on?"Import automatique : saisie bloquée":"Import manuel : saisie débloquée, factures plus lues automatiquement");if(on)facScan()}catch(e){fail(e)}}
+  S.facReg=Object.assign({},S.facReg||{},{auto:on});S.fac.force=true;facRender();if(typeof render==="function")render();toast(on?"Import automatique : les factures s'écrivent seules":"Import manuel : factures plus écrites automatiquement");if(on)facScan()}catch(e){fail(e)}}
 // v106 : boutons des cartes Fournisseurs
 document.addEventListener("click",e=>{const b=e.target.closest("[data-fsaisie],[data-fav],[data-fmodele],[data-poppdf2]");if(!b)return;
   if(b.dataset.poppdf2){window.api.facOuvrir(b.dataset.poppdf2).catch(()=>toast("Ouverture du PDF impossible"));return}
@@ -1525,6 +1526,34 @@ async function facClasser(rel,remplacer){const r=S.fac.liste.find(x=>x.rel===rel
   if(r.choix==="__new__"&&!r.dossier){toast("Choisissez le fournisseur");return}
   const c=Object.assign(r,{remplacer:!!remplacer,date:d,saisi:v,avant:false,type:v<0?"avoir":r.type==="avoir"?"facture":r.type});
   await facImporter(false,[c]);S.fac.force=true;facRender()}
+// v119 : facture lue avec un montant différent de celui tapé dans la saisie : petite fenêtre (une fois par facture et par PC).
+// Valider = le montant de la facture remplace celui de la saisie et le PDF s'accroche ; Ne pas valider = facture ignorée (reprise possible dans « Factures ignorées »).
+// Plus tard = elle reste dans « Factures à traiter ». Même montant : rien n'est écrit, le PDF s'accroche (v92/v97).
+const facPopDiffL=()=>facAImporter().filter(r=>r.etatSaisie==="diff"&&!r.decoupe&&!r.doublonBL&&r.total!=null&&r.date&&!r.avant&&r.choix!=="__new__");
+function facPopDiff(){if(!facAutoOn()||document.getElementById("facPop")||document.getElementById("facRoot"))return;
+  let vus=[];try{vus=JSON.parse(localStorage.getItem("gm-facpop")||"[]")}catch(_){}const V=new Set(vus);
+  const L=facPopDiffL().filter(r=>!V.has(r.key));if(!L.length)return;
+  try{localStorage.setItem("gm-facpop",JSON.stringify(vus.concat(L.map(r=>r.key)).slice(-1000)))}catch(_){}
+  const nomF=r=>FAC.nk(r.dossier)==="DIAPAR"?"DIAPAR "+(FAC_COL[(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col]||""):fName(r.choix||r.fid)||r.dossier;
+  const o=document.createElement("div");o.id="facPop";o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:grid;place-items:center;padding:16px";
+  o.innerHTML=`<div style="background:var(--surface,#fff);color:var(--fg,#18231b);border-radius:12px;max-width:620px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+    <div style="font-weight:800;font-size:16px;margin-bottom:4px">${L.length>1?L.length+" factures ne correspondent pas":"Une facture ne correspond pas"} à la saisie</div>
+    <div class="sub" style="margin-bottom:10px">Valider : le montant de la facture remplace celui de la saisie et le PDF s'accroche à la case.</div>
+    <div style="max-height:55vh;overflow:auto">${L.map(r=>`<div class="fprow" data-fprow="${esc(r.rel)}" style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line,#e2e2dc)">
+      <div style="min-width:0"><b>${esc(nomF(r))}</b> · ${frDate(r.date)}<br>Facture : <b>${n2.format(r.total)} €</b><div class="hist">Dans la saisie : ${esc((r.deja||[]).join(", "))}</div></div>
+      <div style="display:flex;gap:6px;flex-shrink:0"><button class="btn small" data-facpdf="${esc(r.rel)}">📄 PDF</button><button class="btn small primary" data-fpok="${esc(r.rel)}">Valider</button><button class="btn small" data-fpno="${esc(r.rel)}">Ne pas valider</button></div></div>`).join("")}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px"><span class="hist">« Plus tard » : elles restent dans 🧾 Factures à traiter.</span><button class="btn" data-fpx="1">Plus tard</button></div></div>`;
+  document.body.appendChild(o)}
+function facPopRetire(rel){const o=document.getElementById("facPop");if(!o)return;const x=o.querySelector(`[data-fprow="${CSS.escape(rel)}"]`);if(x)x.remove();if(!o.querySelector("[data-fprow]"))o.remove()}
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-fpok],[data-fpno],[data-fpx]");const o=document.getElementById("facPop");
+  if(!b){if(o&&e.target===o)o.remove();return}
+  if(b.dataset.fpx){if(o)o.remove();return}
+  const rel=b.dataset.fpok||b.dataset.fpno,r=S.fac.liste.find(x=>x.rel===rel);if(!r){facPopRetire(rel);return}
+  if(b.dataset.fpno){await facIgnorer(rel);facPopRetire(rel);return}
+  b.disabled=true;const v=r.saisi!=null?r.saisi:r.total;
+  Object.assign(r,{remplacer:true,saisi:v,avant:false,type:v<0?"avoir":r.type==="avoir"?"facture":r.type});
+  try{await facImporter(false,[r]);toast("Montant remplacé, PDF accroché")}catch(err){fail(err)}
+  facPopRetire(rel);facRender();facBadge()});
 async function facIgnorer(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;
   try{await S.db.doc(P("factures/"+r.key)).set({s:"x",n:r.nom,le:todayISO()});S.fac.liste=S.fac.liste.filter(x=>x!==r);toast("Document ignoré : il ne sera plus proposé");facRender();facBadge()}catch(e){fail(e)}}
 
@@ -1599,7 +1628,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
       <td class="l">${four(r)}</td>
       <td><input type="date" data-facdate="${esc(r.rel)}" value="${esc(r.dateSaisie||r.date||"")}" aria-label="Date de la facture"></td>
       <td><input class="facmt" data-facmt="${esc(r.rel)}" inputmode="decimal" value="${mt(r)!=null?n2.format(mt(r)):""}" placeholder="à remplir" aria-label="Montant TTC"><div class="hist">avoir : montant en moins (−)</div></td>
-      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${r.etatSaisie==="diff"?`<button class="btn small primary" data-faccl="${esc(r.rel)}" title="Ajouter ce montant à ce qui est déjà saisi">Ajouter</button><button class="btn small primary" data-facrep="${esc(r.rel)}" title="Mettre ce montant à la place de ce qui est saisi (correction)">Remplacer</button>`:`<button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button>`}<button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button></div></td></tr>`;
+      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${r.etatSaisie==="diff"?`<button class="btn small primary" data-facrep="${esc(r.rel)}" title="Le montant de la facture remplace celui de la saisie, le PDF s'accroche">Valider</button><button class="btn small" data-faccl="${esc(r.rel)}" title="Ajouter ce montant à ce qui est déjà saisi (deux factures le même jour)">Ajouter</button>`:`<button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button>`}<button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button></div></td></tr>`;
     body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b>.</div>`:""}
       ${F.prog?`<p class="sub">${esc(F.prog)}</p>`:""}
       ${L.length?`<p class="sub" style="margin:0 0 10px">GESMAR n'a pas pu lire seul ${L.length>1?"ces factures":"cette facture"}. Ouvrez le PDF, choisissez le fournisseur, vérifiez la date et le montant TTC, puis cliquez sur <b>Classer</b> : le montant va dans la saisie.</p>
