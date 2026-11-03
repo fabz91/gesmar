@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="121">
+<meta name="gm-version" content="122">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=121;
+const APP_VERSION=122;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1377,6 +1377,9 @@ async function facScan(silent){
       {const cs=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],j=doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)];return {cur:(col&&j&&j.achats&&j.achats[col])||0,m:l.montant}});
         r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(c=>Math.abs(c.cur-c.m)<=0.05||(r.decoupe&&Math.abs(c.cur-c.m)<=Math.max(1,Math.abs(c.m)*0.01)))?"egal":"diff"}
       // v95 : facture regroupée (Saint Prim, CDPO…) : découpée jour par jour, elle remplace ce qui a été tapé à la main, sans question
+      // v122 : avoir séparé (hors DIAPAR, dont les avoirs sont déjà dans la facture) : s'il y a déjà un achat ce jour-là pour ce fournisseur,
+      // l'avoir est retiré de ce montant (achat − avoir dans la même case), sans passer par « Factures à traiter ».
+      if(r.type==="avoir"&&!r.decoupe&&r.etatSaisie==="diff")r.etatSaisie="ajout";
       // v121 : facture regroupée (Saint Prim, CDPO) : même règle que les autres. Mêmes montants → rien n'est remplacé ; montant différent,
       // ou montant tapé un autre jour de la période → « Factures à traiter » (Valider = écrit jour par jour à la place de ce qui est tapé).
       if(r.decoupe){r.remplacer=true;if(r.etatSaisie==="vide"){const pt=facPeriodeTapee(r,(r.lignes||[]).map(l=>({date:l.date,col:l.col||r.fid})));
