@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="120">
+<meta name="gm-version" content="121">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=120;
+const APP_VERSION=121;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1377,9 +1377,13 @@ async function facScan(silent){
       {const cs=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],j=doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)];return {cur:(col&&j&&j.achats&&j.achats[col])||0,m:l.montant}});
         r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(c=>Math.abs(c.cur-c.m)<=0.05||(r.decoupe&&Math.abs(c.cur-c.m)<=Math.max(1,Math.abs(c.m)*0.01)))?"egal":"diff"}
       // v95 : facture regroupée (Saint Prim, CDPO…) : découpée jour par jour, elle remplace ce qui a été tapé à la main, sans question
-      if(r.decoupe&&r.etatSaisie==="diff")r.etatSaisie="remp";if(r.decoupe)r.remplacer=true;
+      // v121 : facture regroupée (Saint Prim, CDPO) : même règle que les autres. Mêmes montants → rien n'est remplacé ; montant différent,
+      // ou montant tapé un autre jour de la période → « Factures à traiter » (Valider = écrit jour par jour à la place de ce qui est tapé).
+      if(r.decoupe){r.remplacer=true;if(r.etatSaisie==="vide"){const pt=facPeriodeTapee(r,(r.lignes||[]).map(l=>({date:l.date,col:l.col||r.fid})));
+        if(pt.length){r.etatSaisie="diff";r.dejaAutre=pt.map(x=>{const v=S.mois[x.date.slice(0,7)].jours[x.date.slice(8,10)].achats[x.col];return frDate(x.date)+" : "+n2.format(v)+" €"})}}}
       if(!old&&r.etatSaisie==="diff")r.ok=false;
       r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" €":null}).filter(Boolean);
+      if(r.dejaAutre)r.deja=(r.deja||[]).concat(r.dejaAutre);
       liste.push(r)}
     // v109 : jamais de doublon entre bons de livraison (chiffrés) et factures d'un même fournisseur
     {const isBL=nom=>{const N=FAC.nk(nom);return /^(BONDE|BL\d|BLC|001BLC)/.test(N)||/BONDELIVRAISON/.test(N)};
@@ -1487,7 +1491,7 @@ async function facImporter(auto,only){
       if(r.saisi!=null&&r.date)lignes=[{date:r.date,col:r.colChoix||(r.lignes&&r.lignes[0]&&r.lignes[0].col)||r.col||fid,montant:r.type==="avoir"?-Math.abs(r.saisi):r.saisi}];
       const dejaSaisie=r.etatSaisie==="egal"&&r.saisi==null&&!only; // v92 : déjà dans la saisie : rien à écrire
       // v98 : facture regroupée : on efface d'abord ce qui a été tapé à la main pour ce fournisseur sur toute la période (le jour tapé n'est pas toujours celui du bon de livraison)
-      const efface=r.decoupe&&r.saisi==null?facPeriodeTapee(r,lignes):[];
+      const efface=r.decoupe&&r.saisi==null&&!dejaSaisie?facPeriodeTapee(r,lignes):[];
       if(dejaSaisie){nDeja++;if(efface.length)await facEcrire(efface,true)}else await facEcrire(lignes.concat(efface),!!r.remplacer||efface.length>0);
       const total=lignes.reduce((s,l)=>s+l.montant,0);
       await S.db.doc(P("factures/"+r.key)).set({dj:dejaSaisie?1:0,s:"i",id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,r:r.rel,j:[...new Set(lignes.map(l=>l.date+"|"+l.col))],le:todayISO()});
@@ -1528,7 +1532,7 @@ async function facClasser(rel,remplacer){const r=S.fac.liste.find(x=>x.rel===rel
 // v119 : facture lue avec un montant différent de celui tapé dans la saisie : petite fenêtre (une fois par facture et par PC).
 // Valider = le montant de la facture remplace celui de la saisie et le PDF s'accroche ; Ne pas valider = facture ignorée (reprise possible dans « Factures ignorées »).
 // Plus tard = elle reste dans « Factures à traiter ». Même montant : rien n'est écrit, le PDF s'accroche (v92/v97).
-const facPopDiffL=()=>facAImporter().filter(r=>r.etatSaisie==="diff"&&!r.decoupe&&!r.doublonBL&&r.total!=null&&r.date&&!r.avant&&r.choix!=="__new__");
+const facPopDiffL=()=>facAImporter().filter(r=>r.etatSaisie==="diff"&&!r.doublonBL&&r.total!=null&&r.date&&!r.avant&&r.choix!=="__new__");
 function facPopDiff(){if(!facAutoOn()||document.getElementById("facPop")||document.getElementById("facRoot"))return;
   let vus=[];try{vus=JSON.parse(localStorage.getItem("gm-facpop")||"[]")}catch(_){}const V=new Set(vus);
   const L=facPopDiffL().filter(r=>!V.has(r.key));if(!L.length)return;
@@ -1630,7 +1634,7 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
       <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${r.etatSaisie==="diff"?`<button class="btn small primary" data-facrep="${esc(r.rel)}" title="Le montant de la facture remplace celui de la saisie, le PDF s'accroche">Valider</button><button class="btn small" data-facign="${esc(r.rel)}" title="Le montant de la saisie est gardé ; la facture va dans « Factures ignorées »">Refuser</button>`:`<button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button><button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button>`}</div></td></tr>`;
     body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b>.</div>`:""}
       ${F.prog?`<p class="sub">${esc(F.prog)}</p>`:""}
-      ${L.length?`<p class="sub" style="margin:0 0 10px">GESMAR n'a pas pu lire seul ${L.length>1?"ces factures":"cette facture"}. Ouvrez le PDF, choisissez le fournisseur, vérifiez la date et le montant TTC, puis cliquez sur <b>Classer</b> : le montant va dans la saisie.</p>
+      ${L.length?`<p class="sub" style="margin:0 0 10px">GESMAR n'a pas pu lire seul ${L.length>1?"ces factures":"cette facture"}. Ouvrez le PDF, choisissez le fournisseur, vérifiez la date et le montant TTC, puis cliquez sur <b>Classer</b> : le montant va dans la saisie.${L.some(r=>r.etatSaisie==="diff")?`<br>Montant différent de la saisie : <b>Valider</b> (le montant de la facture remplace celui de la saisie, le PDF s'accroche) ou <b>Refuser</b> (le montant de la saisie est gardé).`:""}</p>
         <div class="scroll" style="max-height:62vh"><table class="factab"><thead><tr><th></th><th class="l">Facture</th><th class="l">Fournisseur</th><th>Date</th><th>Montant TTC</th><th></th></tr></thead><tbody>${L.map(row).join("")}</tbody></table></div>`
         :`<div class="empty-state">✓ Aucune facture à traiter : toutes les factures ont été lues et classées.</div>`}`}
   o.innerHTML=`<div class="facbox"><div class="band">Factures à traiter — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`}
@@ -1688,7 +1692,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-facund],[d
   if(b.dataset.facdoc){b.dataset.facdoc.split("\n").forEach(rel=>window.api.facOuvrir(rel).catch(()=>toast("Ouverture du PDF impossible")));return}
   if(b.dataset.facauto){facSetAuto(b.dataset.facauto==="1");return}
   if(b.dataset.faccl){facClasser(b.dataset.faccl);return}
-  if(b.dataset.facrep){facClasser(b.dataset.facrep,true);return}
+  if(b.dataset.facrep){const r=S.fac.liste.find(x=>x.rel===b.dataset.facrep);if(r&&r.decoupe&&r.saisi==null){r.remplacer=true;facImporter(false,[r]).then(()=>{S.fac.force=true;facRender();facBadge()});return}facClasser(b.dataset.facrep,true);return}
   if(b.dataset.act==="facReglages"){facFermer();S.modal=true;S.modalPanel="factures";render();return}
   if(b.dataset.facx)facFermer();else if(b.dataset.facdir)facChoisirDossier();else if(b.dataset.facscan){const v=($("#facDep")||{}).value;if(v&&v!==facDepart()){facSetDepart(v);return}S.fac.liste=[];facScan()}
   else if(b.dataset.facdep)facSetDepart(($("#facDep")||{}).value);else if(b.dataset.facimp)facImporter(false);
