@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="137">
+<meta name="gm-version" content="138">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=137;
+const APP_VERSION=138;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -875,11 +875,12 @@ function vFourn(){
   const carteIna=f=>`<div class="fcard ina"><div class="fc-top"><input id="fn-${esc(f.id)}" class="fc-nom" data-fnom="${esc(f.id)}" value="${esc(f.nom)}" readonly tabindex="-1" aria-label="Nom du fournisseur"></div><div class="fc-bas"><span class="fc-vide">Inactif</span><span class="row" style="gap:6px;margin:0"><button class="btn small" data-fback="${esc(f.id)}">Remettre</button><button class="btn small" data-fdel="${esc(f.id)}">Supprimer</button></span></div></div>`;
   return `
   <div class="row" style="margin:4px 0 12px;justify-content:space-between;align-items:center">
-    <h2 style="margin:0">Fournisseurs — ${esc(storeNom())}</h2>
+    <h2 style="margin:0">Fournisseurs actifs</h2>
     <span class="hist">Les nouveaux fournisseurs arrivent tout seuls avec les dossiers de la comptable.</span>
   </div>
   <div class="fgrid">${act.map(carte).join("")||`<div class="empty-state">Aucun fournisseur.</div>`}</div>
-  ${ina.length?`<details class="fina"><summary>Fournisseurs inactifs (${ina.length})</summary><div class="fgrid">${ina.map(carteIna).join("")}</div></details>`:""}`;
+  <h2 style="margin:22px 0 12px">Fournisseurs inactifs</h2>
+  <div class="fgrid">${ina.map(carteIna).join("")||`<div class="empty-state">Aucun fournisseur inactif.</div>`}</div>`;
 }
 
 /* ---------- actions ---------- */
