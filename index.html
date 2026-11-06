@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="128">
+<meta name="gm-version" content="129">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=128;
+const APP_VERSION=129;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1389,7 +1389,11 @@ async function facScan(silent){
         r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(okc)?"egal":"diff";
         // v127 : deux factures (ou plus) du même fournisseur à la même date : si la case ne contient que les factures déjà importées ce jour-là, la nouvelle s'y AJOUTE (cumul), sans passer par « Factures à traiter »
         if(r.etatSaisie==="diff"&&!r.decoupe&&r.type!=="avoir"){const imp=(d,col)=>{let t=0,n=0;for(const x of Object.values(reg)){if(x&&x.s==="i"&&!x.av&&Array.isArray(x.j)&&x.j.length===1&&x.j[0]===d+"|"+col&&x.m>0){t+=x.m;n++}}return n?t:null};
-          const cc=cs.map((c,i)=>{const l=r.lignes[i],col=l.col||r.fid,t=c.cur&&col?imp(String(l.date),col):null;return {c,ok:!c.cur||(t!=null&&Math.abs(c.cur-t)<=0.05)}});
+          // v129 : factures lues au même passage pour la même case : la case peut contenir l'une d'elles (tapée à la main) ; celle-là sera « déjà dans la saisie », celle-ci s'ajoute
+          const fidOf=x=>FAC.nk(x.dossier)==="DIAPAR"?"diapar":facFid(x.dossier);
+          const autres=(d,col)=>res.filter(x=>x!==r&&x.type!=="avoir"&&!x.decoupe&&x.total!=null&&(x.lignes||[]).length===1&&String(x.lignes[0].date)===d&&(x.lignes[0].col||fidOf(x))===col).map(x=>x.lignes[0].montant);
+          const cc=cs.map((c,i)=>{const l=r.lignes[i],col=l.col||r.fid;if(!c.cur)return {c,ok:true};if(!col)return {c,ok:false};const t=imp(String(l.date),col)||0;
+            return {c,ok:(t>0&&Math.abs(c.cur-t)<=0.05)||autres(String(l.date),col).some(m=>Math.abs(c.cur-t-m)<=0.05)}});
           if(cc.every(z=>z.ok)){r.etatSaisie="ajout";r.cumul=cs.filter(c=>c.cur).map(c=>frDate(c.d)+" : "+n2.format(c.cur)+" € déjà importé(s) + "+n2.format(c.m)+" € = "+n2.format(Math.round((c.cur+c.m)*100)/100)+" €")}}
         // v123 : anomalie ciblée : seulement les jours en écart, facture / saisie / écart
         const e=v=>(v>0?"+":"")+n2.format(v)+" €";
