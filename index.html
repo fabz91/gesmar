@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="129">
+<meta name="gm-version" content="130">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=129;
+const APP_VERSION=130;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -532,6 +532,9 @@ const grp=k=>{const f=S.fourn.find(x=>x.id===k);return f&&f.groupe?f.groupe:null
 const coef=()=>{const c=S.reglages&&+S.reglages.coefHT;return c>0.5&&c<=1?c:DEFAULT_COEF};
 let AVP={a:null,b:null,s:null};
 function avPendants(){if(AVP.a!==S.avoirs||AVP.b!==S.avoirsAuto){AVP={a:S.avoirs,b:S.avoirsAuto,s:new Set(Object.keys(typeof facPourDecl==="function"?facPourDecl():{}))}}return AVP.s}
+/* v130 (règle du gérant) : une déclaration DIAPAR (DIAPAR ou ses rayons), même Acceptée ou Déduite, ne compte JAMAIS dans « Après avoirs » : DIAPAR la déduit sur une facture (déjà dans les achats).
+   Seul un avoir DIAPAR à part (facture DIAPAR négative, lue dans « Avoir sur facture », sans dansFacture) compte. Les avoirs lus dans une facture DIAPAR (dansFacture) ne comptent jamais et ne sont jamais retirés de la saisie. */
+const avDiapar=id=>id==="diapar"||grp(id)==="diapar";
 function monthStats(y,m){
   const doc=S.mois[mkey(y,m)];const r={ca:0,caTTC:0,caN1:0,achats:0,par:{},jours:0,estimes:0,avoirs:0};
   if(doc&&doc.jours){for(const j of Object.values(doc.jours)){if(!j)continue;
@@ -539,7 +542,7 @@ function monthStats(y,m){
     for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
   /* v51 : plus de HT : le CA HT du mois et le HT par jour ne sont plus utilisés */
   const PEND=avPendants(); /* v125 : déclaration avec une correspondance à valider : hors pastille (c'est l'avoir lu qui compte), pour ne jamais compter deux fois */
-  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m))&&!a.avoirAuto&&!PEND.has(a.id))r.avoirs+=a.montant*TVA_AVOIRS}
+  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m))&&!a.avoirAuto&&!PEND.has(a.id)&&!avDiapar(a.fournisseur))r.avoirs+=a.montant*TVA_AVOIRS}
   for(const x of (S.avoirsAuto||[])){const dm=x.manuel&&(S.avoirs.find(z=>z.id===x.manuel)||{}).date,dt=dm||x.date; /* v125 : relié à une déclaration → mois du problème (date de la déclaration) */
     if(!x.dansFacture&&x.total&&dt&&String(dt).startsWith(mkey(y,m)))r.avoirs+=Math.abs(+x.total)} /* v124 : avoirs séparés lus sur facture (TTC) : comptés ici, plus dans la saisie ; ceux dans une facture DIAPAR sont déjà déduits des achats */ /* v86 : un avoir lié à un avoir lu sur facture est déjà dans les achats */ // v70 : avoirs saisis HT, passés en TTC (5,5 %) pour la marge TTC
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
