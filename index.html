@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="127">
+<meta name="gm-version" content="128">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -331,6 +331,7 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .poptab td{padding:8px;border-bottom:1px solid var(--line,#eee);vertical-align:middle}.poptab td.fic{white-space:normal;word-break:break-word}.poptab tr:hover td{background:rgba(127,127,127,.06)}
 .facov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:grid;place-items:center;padding:16px}
 .facbox{background:var(--surface);color:var(--fg);border-radius:12px;max-width:1180px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.facmpw{display:flex;gap:12px;align-items:stretch}.facmp{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column}.facmph{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line)}.facmph .hist{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.facmpb{height:68vh;overflow:auto;padding:8px;background:#e9e9e6}
 .facbox>.band{border-radius:12px 12px 0 0;position:sticky;top:0;z-index:2}
 .factab td{vertical-align:top}.factab select{max-width:200px}
 .facmt{width:110px;text-align:right}
@@ -427,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=127;
+const APP_VERSION=128;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -729,7 +730,7 @@ function vSaisie(){
   const hidAmt=retirees.map(f=>[f,st.par[f.id]||0]);
   const totCells=runs.map(r=>r.mem.map(f=>`<td${r.groupe?"":' class="fc"'}>${tf(f)}</td>`).join("")).join("");
   return `
-  ${periode("mois",`<button class="facbtn" data-act="factures" title="Factures que GESMAR n'a pas pu lire seul">🧾 Factures à traiter<span class="cnt" id="facCnt" hidden></span></button>`)}
+  ${periode("mois",`<button class="facbtn" data-act="factures" title="Factures que GESMAR n'a pas pu lire seul">🧾 Anomalies<span class="cnt" id="facCnt" hidden></span></button>`)}
   <div class="grid kpis kpis-s" style="margin-bottom:10px">
     <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">CA N-1 : ${n1ca?eur.format(n1ca):"—"}</span></div>
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">Achats N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
@@ -1444,7 +1445,7 @@ function facDocs(){const reg=S.facImp||{};if(FAC_DOCS&&FAC_DOCS_SRC===reg)return
   FAC_DOCS=M;FAC_DOCS_SRC=reg;return M}
 const facAImporter=()=>S.fac.liste.filter(r=>r.mag===S.store);
 const facATraiter=()=>facAImporter().filter(r=>!facAutoOn()||!facPret(r)); // v91 : celles que GESMAR n'a pas pu écrire seul
-function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facATraiter().length;b.hidden=!n;b.textContent=n;const k=b.closest(".facbtn");if(k)k.classList.toggle("on",!!n);b.classList.toggle("blink",facPopDiffL().length>0);if(k)k.title=facPopDiffL().length?"Une facture n'a pas le même montant que la saisie : à valider ou refuser":"Factures que GESMAR n'a pas pu lire seul"} // v120 : clignote tant qu'une facture au montant différent attend
+function facBadge(){const b=document.getElementById("facCnt");if(!b)return;const n=facATraiter().length;b.hidden=!n;b.textContent=n;const k=b.closest(".facbtn");if(k)k.classList.toggle("on",!!n);b.classList.toggle("blink",facPopDiffL().length>0);if(k)k.title=facPopDiffL().length?"Une facture n'a pas le même montant que la saisie : à valider ou refuser":"Factures que GESMAR n'a pas pu lire seul ou qui ne correspondent pas à la saisie"} // v120 : clignote tant qu'une facture au montant différent attend
 async function facChoisirDossier(){try{const d=await window.api.facChoisir();if(d){S.fac.root=d;facDossierMagSave(S.store);FAC_CACHE={};facCacheSave();await facScan()}}catch(e){toast("Choix du dossier impossible")}}
 async function facSetDepart(v){if(!v){toast("Choisissez une date");return}
   try{const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({depart:v});else await ref.set({depart:v,liens:{}});S.facReg=Object.assign({},S.facReg||{},{depart:v});toast("Factures à partir du "+frDate(v)+" : lecture du dossier…");S.fac.liste=[];await facScan()}catch(e){fail(e)}}
@@ -1582,7 +1583,7 @@ function facPopDiff(){if(!facAutoOn()||document.getElementById("facPop")||docume
     <div style="max-height:55vh;overflow:auto">${L.map(r=>`<div class="fprow" data-fprow="${esc(r.rel)}" style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line,#e2e2dc)">
       <div style="min-width:0"><b>${esc(nomF(r))}</b> · ${frDate(r.date)}<br>Facture : <b>${n2.format(r.total)} €</b><div class="hist">Dans la saisie : ${esc((r.deja||[]).join(", "))}</div></div>
       <div style="display:flex;gap:6px;flex-shrink:0"><button class="btn small" data-facpdf="${esc(r.rel)}">📄 PDF</button><button class="btn small primary" data-fpok="${esc(r.rel)}">Valider</button><button class="btn small" data-fpno="${esc(r.rel)}">Ne pas valider</button></div></div>`).join("")}</div>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px"><span class="hist">« Plus tard » : elles restent dans 🧾 Factures à traiter.</span><button class="btn" data-fpx="1">Plus tard</button></div></div>`;
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px"><span class="hist">« Plus tard » : elles restent dans 🧾 Anomalies.</span><button class="btn" data-fpx="1">Plus tard</button></div></div>`;
   document.body.appendChild(o)}
 function facPopRetire(rel){const o=document.getElementById("facPop");if(!o)return;const x=o.querySelector(`[data-fprow="${CSS.escape(rel)}"]`);if(x)x.remove();if(!o.querySelector("[data-fprow]"))o.remove()}
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-fpok],[data-fpno],[data-fpx]");const o=document.getElementById("facPop");
@@ -1670,13 +1671,47 @@ function facRender(){if(S.modal&&S.modalPanel==="factures"&&typeof renderModal==
       <td class="l">${four(r)}</td>
       <td><input type="date" data-facdate="${esc(r.rel)}" value="${esc(r.dateSaisie||r.date||"")}" aria-label="Date de la facture"></td>
       <td><input class="facmt" data-facmt="${esc(r.rel)}" inputmode="decimal" value="${mt(r)!=null?n2.format(mt(r)):""}" placeholder="à remplir" aria-label="Montant TTC"><div class="hist">avoir : montant en moins (−)</div></td>
-      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${r.etatSaisie==="diff"?`<button class="btn small primary" data-facrep="${esc(r.rel)}" title="Le montant de la facture remplace celui de la saisie, le PDF s'accroche">Valider</button><button class="btn small" data-facign="${esc(r.rel)}" title="Le montant de la saisie est gardé ; la facture va dans « Factures ignorées »">Refuser</button>`:`<button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button><button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button>`}</div></td></tr>`;
+      <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${r.etatSaisie==="diff"?`<button class="btn small" data-faccmp2="${esc(r.rel)}" title="Voir côte à côte cette facture et ce qui est déjà dans la saisie">🔍 Comparer</button><button class="btn small primary" data-facrep="${esc(r.rel)}" title="Le montant de la facture remplace celui de la saisie, le PDF s'accroche">Valider</button><button class="btn small" data-facign="${esc(r.rel)}" title="Le montant de la saisie est gardé ; la facture va dans « Factures ignorées »">Refuser</button>`:`<button class="btn small primary" data-faccl="${esc(r.rel)}">Classer</button><button class="btn small" data-facign="${esc(r.rel)}" title="Ce n'est pas une facture : ne plus la proposer">Ignorer</button>`}</div></td></tr>`;
     body=`${F.sansAnnee?`<div class="facwarn" style="margin-bottom:10px">Pas encore de dossier <b>${F.sansAnnee}</b> : dans OneDrive (Paramètres → Compte → Choisir des dossiers), cochez <b>${F.sansAnnee} → FOURNISSEURS</b> et <b>${F.sansAnnee} → DIAPAR</b>.</div>`:""}
       ${F.prog?`<p class="sub">${esc(F.prog)}</p>`:""}
       ${L.length?`<p class="sub" style="margin:0 0 10px">GESMAR n'a pas pu lire seul ${L.length>1?"ces factures":"cette facture"}. Ouvrez le PDF, choisissez le fournisseur, vérifiez la date et le montant TTC, puis cliquez sur <b>Classer</b> : le montant va dans la saisie.${L.some(r=>r.etatSaisie==="diff")?`<br>Montant différent de la saisie : <b>Valider</b> (le montant de la facture remplace celui de la saisie, le PDF s'accroche) ou <b>Refuser</b> (le montant de la saisie est gardé).`:""}</p>
         <div class="scroll" style="max-height:62vh"><table class="factab"><thead><tr><th></th><th class="l">Facture</th><th class="l">Fournisseur</th><th>Date</th><th>Montant TTC</th><th></th></tr></thead><tbody>${L.map(row).join("")}</tbody></table></div>`
-        :`<div class="empty-state">✓ Aucune facture à traiter : toutes les factures ont été lues et classées.</div>`}`}
-  o.innerHTML=`<div class="facbox"><div class="band">Factures à traiter — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`}
+        :`<div class="empty-state">✓ Aucune anomalie : toutes les factures ont été lues et classées.</div>`}`}
+  o.innerHTML=`<div class="facbox"><div class="band">Anomalies — ${esc(storeNom())}<button class="pillbtn" data-facx="1">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`}
+// v128 : anomalie « montant différent » : cette facture et les PDF déjà accrochés aux mêmes cases, côte à côte, dans une fenêtre
+function facCmpCases(r){const fid=r.choix&&r.choix!=="__new__"?r.choix:r.fid,D=facDocs(),cells=[],seen=new Set(),docs=[];
+  for(const l of (r.lignes||[])){const col=r.colChoix||l.col||fid;if(!col||!l.date)continue;const c=l.date+"|"+col;if(seen.has(c))continue;seen.add(c);
+    const doc=S.mois[l.date.slice(0,7)],j=doc&&doc.jours&&doc.jours[l.date.slice(8,10)],v=(j&&j.achats&&j.achats[col])||0;cells.push({d:l.date,col,v,m:l.montant});
+    for(const rel of (D[c]||[]))if(rel!==r.rel&&!docs.includes(rel))docs.push(rel)}
+  return {cells,docs}}
+async function facPdfDans(rel,el){el.innerHTML=`<div class="hist" style="padding:10px">Chargement du PDF…</div>`;
+  try{const lib=await facPdf(),data=await window.api.facLire(rel);const task=lib.getDocument({data:data instanceof Uint8Array?data:new Uint8Array(data),isEvalSupported:false,verbosity:0});
+    try{const doc=await task.promise;el.innerHTML="";const w=Math.max(200,el.clientWidth-8),dpr=window.devicePixelRatio||1;
+      for(let i=1;i<=Math.min(doc.numPages,6);i++){const pg=await doc.getPage(i),v1=pg.getViewport({scale:1}),sc=w/v1.width,vp=pg.getViewport({scale:sc*dpr});
+        const cv=document.createElement("canvas");cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);cv.style.width=w+"px";cv.style.display="block";cv.style.margin="0 auto 8px";cv.style.background="#fff";cv.style.boxShadow="0 1px 4px rgba(0,0,0,.25)";el.appendChild(cv);
+        await pg.render({canvas:cv,canvasContext:cv.getContext("2d"),viewport:vp}).promise}
+      if(doc.numPages>6)el.insertAdjacentHTML("beforeend",`<div class="hist">+ ${doc.numPages-6} page(s) : bouton « Ouvrir »</div>`)}
+    finally{try{await task.destroy()}catch(_){}}}
+  catch(e){console.error(e);el.innerHTML=`<div class="facwarn" style="padding:10px">PDF introuvable ou illisible (déplacé, renommé ou supprimé ?).</div>`}}
+function facComparer2(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)return;const {cells,docs}=facCmpCases(r);
+  const old=document.getElementById("facCmp");if(old)old.remove();const o=document.createElement("div");o.className="facov";o.id="facCmp";o.style.zIndex=9100;
+  const nomDe=x=>x.split("/").pop(),colNom=c=>FAC_COL[c]||fName(c);
+  const resume=cells.map(c=>`${frDate(c.d)} · ${esc(colNom(c.col))} : facture <b>${n2.format(c.m)} €</b> · saisie <b>${c.v?n2.format(c.v)+" €":"vide"}</b>`).join("<br>");
+  const colonne=(titre,rl,id)=>`<div class="facmp"><div class="facmph"><b>${titre}</b>${rl?`<div class="hist">${esc(nomDe(rl))}</div><button class="btn small" data-cmpopen="${esc(rl)}">Ouvrir</button>`:""}</div><div class="facmpb" id="${id}"></div></div>`;
+  const droite=docs.length?docs.map((d,i)=>colonne(docs.length>1?"Déjà dans la saisie ("+(i+1)+")":"Déjà dans la saisie",d,"fcmp"+(i+1))).join("")
+    :`<div class="facmp"><div class="facmph"><b>Déjà dans la saisie</b></div><div class="facmpb"><div class="facwarn" style="padding:12px">Aucun PDF : ${cells.some(c=>c.v)?"montant tapé à la main.":"case vide."}</div></div></div>`;
+  o.innerHTML=`<div class="facbox" style="max-width:1400px"><div class="band">Comparer — ${esc(r.nom)}<button class="pillbtn" data-cmpx="1">Fermer</button></div>
+    <div style="padding:12px 16px"><div class="sub" style="margin-bottom:10px">${resume}</div>
+    <div class="facmpw">${colonne("Cette facture",r.rel,"fcmp0")}${droite}</div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn primary" data-cmpval="${esc(r.rel)}">Valider</button><button class="btn" data-cmpref="${esc(r.rel)}">Refuser</button><button class="btn" data-cmpx="1">Fermer</button></div></div></div>`;
+  document.body.appendChild(o);
+  facPdfDans(r.rel,document.getElementById("fcmp0"));docs.forEach((d,i)=>facPdfDans(d,document.getElementById("fcmp"+(i+1))))}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-faccmp2],[data-cmpx],[data-cmpopen],[data-cmpval],[data-cmpref]");if(!t)return;
+  if(t.dataset.faccmp2){facComparer2(t.dataset.faccmp2);return}
+  const o=document.getElementById("facCmp");
+  if(t.dataset.cmpopen){facOuvrirPdf(t.dataset.cmpopen).catch(()=>toast("Ouverture du PDF impossible"));return}
+  if(o)o.remove();
+  const b=t.dataset.cmpval?document.querySelector(`[data-facrep="${CSS.escape(t.dataset.cmpval)}"]`):t.dataset.cmpref?document.querySelector(`#facRoot [data-facign="${CSS.escape(t.dataset.cmpref)}"]`):null;if(b)b.click()});
 // v91 : réglages du dossier des factures (Réglages ⚙ → Dossier des factures)
 function facReglagesHtml(){return facReglagesFac()}
 function facReglagesFac(){const F=S.fac,dep=facDepart();
@@ -1748,7 +1783,7 @@ document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closes
   if(t.dataset.faccol){const r=R(t.dataset.faccol);if(r)r.colChoix=t.value}
   if(t.dataset.facdate){const r=R(t.dataset.facdate);if(r)r.dateSaisie=t.value}
   if(t.dataset.facmt){const r=R(t.dataset.facmt),v=parseNum(t.value);if(!r)return;if(Number.isNaN(v)){toast("Montant illisible : par ex. 845,07");return}r.saisi=v;if(v!=null&&r.date)r.ok=true}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.fac.ouvert&&!document.querySelector(".facov#facProp")){facFermer()}});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;const c=document.getElementById("facCmp");if(c){c.remove();return}if(S.fac.ouvert&&!document.querySelector(".facov#facProp")){facFermer()}});
 // Recherche automatique : au démarrage, puis toutes les 15 minutes et au retour sur la fenêtre (au plus toutes les 5 minutes)
 /* ================= v99 : CA TTC du jour lu dans les fichiers de la caisse (Videor) =================
    Chaque nuit, Videor dépose la journée de la caisse Casio dans C:\transfert\reception\001\VENT.TOT.AAAAMMJJ.
