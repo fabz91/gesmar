@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="138">
+<meta name="gm-version" content="139">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=138;
+const APP_VERSION=139;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1197,8 +1197,14 @@ const FAC=(()=>{
       if(n.length)return num(n[0])}
     return null}
   // Factures regroupées : un montant HT par bon de livraison, avec sa date de livraison
-  function parBL(L){const bl=[];let cur=null;
+  function parBL(L){const bl=[],avs=[];let cur=null,cav=null;
     for(const l of L){const t=l.t;
+      // v139 : SAINT PRIM, avoirs dans la facture de décade (« Avoir No … du … / B.L Ref No … du … », « Total Avoir N° … ») : déduits du total de la décade seulement, pas des bons de livraison
+      let a=t.match(/Avoir\s+No\s*(\d+)\s+du\s+(\d\d)\/(\d\d)\/(\d\d)/i);
+      if(a){const b=t.match(/B\.?\s*L\.?\s*Ref\.?\s*No\s*(\d+)\s+du\s+(\d\d)\/(\d\d)\/(\d\d)/i);cav={n:a[1],date:iso(a[2],a[3],a[4]),bl:b?b[1]:"",blDate:b?b[2]+"/"+b[3]+"/"+b[4]:"",ht:null,code:"",lib:""};avs.push(cav);cur=null;continue}
+      a=t.match(/Total\s+Avoir\s*N\S*\s*(\d+)\s+(-?[\d \u00a0]+,\d\d)/i);
+      if(a){const x=avs.find(z=>z.n===a[1]);if(x)x.ht=Math.abs(num(a[2]));cav=null;continue}
+      if(cav){if(!cav.code&&!/Livraison/i.test(t)){const p=t.trim().match(/^([0-9][0-9A-Z]{3,11})\s+(.+)$/i);if(p){cav.code=p[1];cav.lib=p[2].replace(/\s+(FRANCE|ESPAGNE|ITALIE|MAROC|BELGIQUE|PAYS[- ]?BAS|PORTUGAL|ALLEMAGNE)\b.*$/i,"").replace(/\s{2,}.*$/,"").trim().slice(0,60)}}continue}
       let m=t.match(/BL\s*n\S*\s*([\d-]+)\s*-\s*Livraison\s+le\s+(\d\d)\/(\d\d)\/(\d\d)/i); // CDPO
       if(m){cur={n:m[1],date:iso(m[2],m[3],m[4]),ht:0,lig:0};bl.push(cur);continue}
       m=t.match(/B\.?\s*L\.?\s*No\s*(\d+)\s+du\s+(\d\d)\/(\d\d)\/(\d\d)/i); // SAINT PRIM
@@ -1209,10 +1215,11 @@ const FAC=(()=>{
       if(cur&&!cur.sp){m=t.match(/\s(-?\d+,\d\d)\s+\d+(?:,\d+)?\s*%\s*$/);if(m){cur.ht=r2(cur.ht+num(m[1]));cur.lig++}}}
     // un même BL peut apparaître sur deux pages : on regroupe par numéro
     const by={};for(const b of bl){if(b.ht==null)continue;const k=b.n+"|"+b.date;if(!by[k])by[k]={date:b.date,ht:0};by[k].ht=r2(by[k].ht+b.ht)}
-    return Object.values(by).filter(b=>b.date&&b.ht)}
-  function repartir(bls,total){const ht=bls.reduce((s,b)=>s+b.ht,0);if(!ht||total==null)return null;const k=total/ht;
+    return Object.assign(Object.values(by).filter(b=>b.date&&b.ht),{av:avs.filter(x=>x.ht)})}
+  // v139 : avHt = HT des avoirs de la décade : les jours reçoivent le montant de leur bon de livraison (sans les avoirs) ; total des jours = total de la facture + avoirs (TTC)
+  function repartir(bls,total,avHt){const ht=bls.reduce((s,b)=>s+b.ht,0);avHt=avHt||0;if(!ht||total==null||ht-avHt<=0)return null;const k=total/(ht-avHt),cible=r2(total+r2(avHt*k));
     const par={};bls.forEach(b=>par[b.date]=r2((par[b.date]||0)+b.ht*k));
-    const ds=Object.keys(par).sort(),som=r2(ds.reduce((s,d)=>s+par[d],0));if(ds.length)par[ds[ds.length-1]]=r2(par[ds[ds.length-1]]+total-som);
+    const ds=Object.keys(par).sort(),som=r2(ds.reduce((s,d)=>s+par[d],0));if(ds.length)par[ds[ds.length-1]]=r2(par[ds[ds.length-1]]+cible-som);
     return ds.map(d=>({date:d,montant:par[d]}))}
   function analyser(rel,pages,mod){
     const segs=String(rel).split(/[\\/]/),nom=segs[segs.length-1],L=lignes(pages),T=L.map(l=>l.t).join("\n");
@@ -1235,7 +1242,11 @@ const FAC=(()=>{
     if(!r.date)r.verif.push("Date introuvable : à remplir");
     else if(base.annee&&Math.abs(+r.date.slice(0,4)-base.annee)>1){r.verif.push("Date "+r.date.slice(8,10)+"/"+r.date.slice(5,7)+"/"+r.date.slice(0,4)+" : pas l'année du dossier");}
     const bls=base.texte&&r.type==="facture"?parBL(L):[];
-    let lig=null;if(bls.length>1||(bls.length===1&&bls[0].date!==r.date)){lig=repartir(bls,r.total);if(lig)r.decoupe=true}
+    const avs=(bls.av||[]),avHt=r2(avs.reduce((s,a)=>s+a.ht,0));
+    let lig=null;if(bls.length>1||(bls.length===1&&bls[0].date!==r.date)||(bls.length&&avs.length)){lig=repartir(bls,r.total,avHt);if(lig)r.decoupe=true}
+    if(lig&&avs.length){const ht=bls.reduce((s,b)=>s+b.ht,0),k=r.total/(ht-avHt);r.avHorsTotal=true;
+      r.avoirs=avs.map(a=>({code:a.code,libelle:(a.lib?a.lib+" · ":"")+"avoir n° "+a.n+" du "+a.date.slice(8,10)+"/"+a.date.slice(5,7)+"/"+a.date.slice(2,4)+(a.bl?" (BL "+a.bl+" du "+a.blDate+")":""),ht:a.ht,ttc:r2(a.ht*k)}));
+      r.verif.push(avs.length+" avoir(s) dans la facture ("+r2(r.avoirs.reduce((s,a)=>s+a.ttc,0)).toFixed(2).replace(".",",")+" € TTC) : bons de livraison entiers dans la saisie, avoirs dans « Avoir sur facture »")}
     r.lignes=lig?lig.map(x=>({date:x.date,col:null,montant:x.montant})):(r.total!=null&&r.date?[{date:r.date,col:null,montant:r.total}]:[]);
     if(r.type==="avoir")r.avoirs=[{code:"",libelle:"",ht:null,ttc:Math.abs(r.total||0),codes:base.texte?[...new Set((T.match(/\b\d{6,13}\b/g)||[]))].slice(0,30):[]}];
     return r}
@@ -1550,7 +1561,7 @@ async function facImporter(auto,only){
         const lig=(r.avoirs||[]).map(a=>({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc}));
         const tt=r.type==="avoir"?Math.abs(r.saisi!=null?r.saisi:r.total||0):Math.round(lig.reduce((s,a)=>s+(a.ttc||0),0)*100)/100;
         await S.db.doc(P("avoirsAuto/"+r.key)).set({fournisseur:avf,date:r.date||"",numero:r.numero||"",total:tt,lignes:lig.filter(a=>a.code||a.ht!=null),
-          codes:(r.avoirs&&r.avoirs[0]&&r.avoirs[0].codes)||[],dansFacture:r.type!=="avoir",factureOrigine:r.factureOrigine||"",fichier:r.rel,nom:r.nom,manuel:null,refus:[],creeLe:todayISO()});nAv++}
+          codes:(r.avoirs&&r.avoirs[0]&&r.avoirs[0].codes)||[],dansFacture:r.type!=="avoir"&&!r.avHorsTotal,factureOrigine:r.factureOrigine||"",fichier:r.rel,nom:r.nom,manuel:null,refus:[],creeLe:todayISO()});nAv++}
       nOk++}
     const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({liens});else await ref.set({depart:facDepart()||todayISO(),liens});
     const done=new Set(L.map(r=>r.rel));S.fac.liste=S.fac.liste.filter(r=>!done.has(r.rel));
