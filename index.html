@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="139">
+<meta name="gm-version" content="140">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=139;
+const APP_VERSION=140;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1250,7 +1250,7 @@ const FAC=(()=>{
     r.lignes=lig?lig.map(x=>({date:x.date,col:null,montant:x.montant})):(r.total!=null&&r.date?[{date:r.date,col:null,montant:r.total}]:[]);
     if(r.type==="avoir")r.avoirs=[{code:"",libelle:"",ht:null,ttc:Math.abs(r.total||0),codes:base.texte?[...new Set((T.match(/\b\d{6,13}\b/g)||[]))].slice(0,30):[]}];
     return r}
-  return{avoirsDiapar,nk,num,lignes,nomInfo,ignorer,copieDe,dossier,annee,magasin,analyser,contient,triple,eurs,parBL}
+  return{avoirsDiapar,nk,num,lignes,nomInfo,ignorer,copieDe,dossier,annee,magasin,analyser,contient,triple,eurs,parBL,repartir}
 })();
 
 /* ---------- v86 : bouton « Factures » (lecture des PDF du dossier OneDrive) ----------
@@ -1450,6 +1450,7 @@ async function facScan(silent){
   catch(e){console.error(e);S.fac.etat="erreur";S.fac.err=e&&e.message||String(e)}
   finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
   if(S.fac.etat==="ok")await facAvMigrer();
+  if(S.fac.etat==="ok")await facSpRelire();
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
   if(S.fac.relire){S.fac.relire=false;setTimeout(()=>facScan(),200)}}
 // v97 : petite feuille dans la saisie : quelle facture (PDF) a rempli chaque case (jour + fournisseur)
@@ -1528,6 +1529,26 @@ async function facAvMigrer(){if(FAC_AVMIG||!S.db||!S.store||!S.avoirsAuto||!S.fa
       if(cur){const v=Math.round((cur-x.m)*100)/100;await facEcrire([Math.abs(v)<0.005?{date:d,col,montant:0,efface:true}:{date:d,col,montant:v}],true)}
       await S.db.doc(P("factures/"+k)).set(Object.assign({},x,{av:1,j:[]}));n++}
     if(n)toast(n+" avoir(s) retiré(s) de la saisie : ils comptent maintenant dans « Avoirs »")}catch(e){console.error(e);FAC_AVMIG=false}}
+// v140 : relecture, une seule fois par facture (fiche factures/<clé> : sp), des décades SAINT PRIM déjà importées avant la v139 :
+// les jours reprennent le bon de livraison entier (case = case − ancien montant du jour + nouveau), et les avoirs de la décade vont dans « Avoir sur facture » (comptés dans Avoirs).
+let FAC_SPREL=false;
+async function facSpRelire(){if(FAC_SPREL||!S.db||!S.store||!S.facImp||!FAC_API())return;FAC_SPREL=true;let n=0,nav=0;
+  try{const rels=(S.fac&&S.fac.rels)||{},C=facCache();
+    for(const[k,x]of Object.entries(S.facImp)){if(!x||x.s!=="i"||x.sp||x.av||!x.f||FAC.nk(fName(x.f))!=="SAINTPRIM")continue;
+      const rel=x.r&&Object.values(rels).includes(x.r)?x.r:rels[k];if(!rel)continue;
+      let r,pg;try{pg=await facItems(rel);r=FAC.analyser(rel,pg,null)}catch(e){console.error(e);continue}
+      const fiche=S.db.doc(P("factures/"+k));
+      if(!r.avHorsTotal||!r.decoupe||r.total==null||Math.abs(r.total-x.m)>0.05){await fiche.update({sp:1});continue}
+      const bls=FAC.parBL(FAC.lignes(pg)),old=FAC.repartir(bls,r.total)||[],nv=r.lignes,ch=[],dates=[...new Set(old.map(l=>l.date).concat(nv.map(l=>l.date)))].sort();
+      for(const d of dates){const o=(old.find(l=>l.date===d)||{}).montant||0,m=(nv.find(l=>l.date===d)||{}).montant||0;if(Math.abs(m-o)<0.005)continue;
+        const doc=S.mois[d.slice(0,7)],j=doc&&doc.jours&&doc.jours[d.slice(8,10)],cur=(j&&j.achats&&j.achats[x.f])||0,v=Math.round((cur-o+m)*100)/100;
+        ch.push(Math.abs(v)<0.005?{date:d,col:x.f,montant:0,efface:true}:{date:d,col:x.f,montant:v})}
+      if(ch.length)await facEcrire(ch,true);
+      if(!(S.avoirsAuto||[]).some(z=>z.id===k)){const lig=r.avoirs.map(a=>({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc}));
+        await S.db.doc(P("avoirsAuto/"+k)).set({fournisseur:x.f,date:r.date||x.d||"",numero:r.numero||"",total:Math.round(lig.reduce((t,a)=>t+(a.ttc||0),0)*100)/100,lignes:lig,codes:[],dansFacture:false,factureOrigine:"",fichier:rel,nom:x.n||r.nom,manuel:null,refus:[],creeLe:todayISO()});nav+=lig.length}
+      await fiche.update({sp:1,m:Math.round(nv.reduce((t,l)=>t+l.montant,0)*100)/100});n++}
+    if(n)toast(n+" décade(s) Saint Prim relue(s) : bons de livraison entiers, "+nav+" avoir(s) ajouté(s) dans « Avoir sur facture »")}
+  catch(e){console.error(e)}finally{FAC_SPREL=false}}
 async function facImporter(auto,only){
   if(S.fac.imp)return;
   let L;
