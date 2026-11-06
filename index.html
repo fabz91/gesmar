@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="135">
+<meta name="gm-version" content="136">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=135;
+const APP_VERSION=136;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -620,9 +620,9 @@ function vBord(){
   <div class="grid kpis">
     <div class="kpi"><span class="lbl">CA TTC cumulé</span><span class="v">${eur.format(T.caTTC)}</span><span class="d">${T.jours} jour${T.jours>1?"s":""} saisi${T.jours>1?"s":""}</span></div>
     <div class="kpi"><span class="lbl">Achats cumulés</span><span class="v">${eur.format(T.achats)}</span><span class="d">${parL.length} fournisseurs</span></div>
-    <div class="kpi ${T.dem?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(T.dem)}</span><span class="d">${T.ca?pct(T.dem/T.ca)+" du CA · marge hors démarque "+pct((T.ca-T.achats+T.dem)/T.ca):"&nbsp;"}</span></div>
-    <div class="kpi hl"><span class="lbl">Marge brute</span><span class="v">${eur.format(T.ca-T.achats)}</span><span class="d">Taux ${pct(taux)}${T.dem?` · démarque connue ${eur.format(T.dem)}`:""}</span></div>
-    <div class="kpi hl"><span class="lbl">Taux après avoirs</span><span class="v">${pct(tauxC)}</span><span class="d">+ ${eur.format(T.avoirs)} TTC d'avoirs obtenus</span></div>
+    <div class="kpi ${T.dem?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(T.dem)}</span><span class="d">${T.ca?pct(T.dem/T.ca)+" du CA":"&nbsp;"}</span></div>
+    <div class="kpi"><span class="lbl">Avoirs</span><span class="v">${eur.format(T.avoirs)}</span><span class="d">TTC obtenus</span></div>
+    <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(tauxC)}</span><span class="d">Marge ${eur.format(T.ca-T.achats+T.avoirs)} · avoirs compris</span></div>
     <div class="kpi ${evo==null?"":evo>=0?"hl":"alert"}"><span class="lbl">CA vs ${y-1}</span><span class="v">${evo==null?"—":(evo>=0?"+":"")+pct(evo)}</span><span class="d">${comp.length?`${compLbl}, mois comparables · marge ${pct(tN)} contre ${pct(tP)} (${pts(tN,tP)})`:`Pas de mois complet en ${y-1} à comparer`}</span></div>
   </div>
   <div class="gap"></div>
