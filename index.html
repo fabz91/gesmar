@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="126">
+<meta name="gm-version" content="127">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -427,7 +427,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=126;
+const APP_VERSION=127;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -1386,9 +1386,13 @@ async function facScan(silent){
       {const cs=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],j=doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)];return {d:l.date,cur:(col&&j&&j.achats&&j.achats[col])||0,m:l.montant}});
         const okc=c=>Math.abs(c.cur-c.m)<=0.05||(r.decoupe&&Math.abs(c.cur-c.m)<=Math.max(1,Math.abs(c.m)*0.01));
         r.etatSaisie=!cs.length||cs.every(c=>!c.cur)?"vide":cs.every(okc)?"egal":"diff";
+        // v127 : deux factures (ou plus) du même fournisseur à la même date : si la case ne contient que les factures déjà importées ce jour-là, la nouvelle s'y AJOUTE (cumul), sans passer par « Factures à traiter »
+        if(r.etatSaisie==="diff"&&!r.decoupe&&r.type!=="avoir"){const imp=(d,col)=>{let t=0,n=0;for(const x of Object.values(reg)){if(x&&x.s==="i"&&!x.av&&Array.isArray(x.j)&&x.j.length===1&&x.j[0]===d+"|"+col&&x.m>0){t+=x.m;n++}}return n?t:null};
+          const cc=cs.map((c,i)=>{const l=r.lignes[i],col=l.col||r.fid,t=c.cur&&col?imp(String(l.date),col):null;return {c,ok:!c.cur||(t!=null&&Math.abs(c.cur-t)<=0.05)}});
+          if(cc.every(z=>z.ok)){r.etatSaisie="ajout";r.cumul=cs.filter(c=>c.cur).map(c=>frDate(c.d)+" : "+n2.format(c.cur)+" € déjà importé(s) + "+n2.format(c.m)+" € = "+n2.format(Math.round((c.cur+c.m)*100)/100)+" €")}}
         // v123 : anomalie ciblée : seulement les jours en écart, facture / saisie / écart
         const e=v=>(v>0?"+":"")+n2.format(v)+" €";
-        r.anom=cs.filter(c=>!okc(c)).map(c=>frDate(c.d)+" : facture "+n2.format(c.m)+" € · saisie "+(c.cur?n2.format(c.cur)+" €":"vide")+" → écart "+e(Math.round((c.m-c.cur)*100)/100));
+        r.anom=r.etatSaisie==="ajout"?[]:cs.filter(c=>!okc(c)).map(c=>frDate(c.d)+" : facture "+n2.format(c.m)+" € · saisie "+(c.cur?n2.format(c.cur)+" €":"vide")+" → écart "+e(Math.round((c.m-c.cur)*100)/100));
         if(r.decoupe&&cs.length>1&&r.anom.length){const tf=cs.reduce((t,c)=>t+c.m,0),ts=cs.reduce((t,c)=>t+c.cur,0);r.anom.push("Total : facture "+n2.format(tf)+" € · saisie "+n2.format(ts)+" € → écart "+e(Math.round((tf-ts)*100)/100))}}
       // v95 : facture regroupée (Saint Prim, CDPO…) : découpée jour par jour, elle remplace ce qui a été tapé à la main, sans question
       // v122 : avoir séparé (hors DIAPAR, dont les avoirs sont déjà dans la facture) : s'il y a déjà un achat ce jour-là pour ce fournisseur,
@@ -1460,6 +1464,7 @@ async function facEcrire(lignes,remplacer){const parMois={};for(const l of ligne
     const ref=S.db.doc(P("mois/"+key));
     if(doc)await ref.update({jours:patch});else await ref.set({annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch});
     if(!S.mois[key])S.mois[key]={annee:+key.slice(0,4),mois:+key.slice(5,7),jours:patch};
+    else{const JJ=S.mois[key].jours=S.mois[key].jours||{};for(const[d,v]of Object.entries(patch)){const t=JJ[d]=JJ[d]||{};t.achats=Object.assign({},t.achats||{},v.achats)}} /* v127 : deux factures du même jour lues ensemble : la 2e s'ajoute à la 1re (avant, la base locale n'était pas encore relue et la 2e écrasait la 1re) */
     const mc=monthCols(key),add=[...new Set(L.map(l=>l.col))].filter(c=>!mc.includes(c));
     if(add.length){const ids=mc.concat(add);await setMonthCols(key,ids);
       // copie locale tout de suite (les mises à jour de la base arrivent un peu après) pour les mois suivants du même import
