@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="136">
+<meta name="gm-version" content="137">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=136;
+const APP_VERSION=137;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -876,7 +876,7 @@ function vFourn(){
   return `
   <div class="row" style="margin:4px 0 12px;justify-content:space-between;align-items:center">
     <h2 style="margin:0">Fournisseurs — ${esc(storeNom())}</h2>
-    <form id="fAdd" class="row" style="margin:0"><input id="fAddNom" list="fSupList" autocomplete="off" placeholder="Nom du nouveau fournisseur" required style="width:240px"><datalist id="fSupList">${[...new Set(sup.map(f=>f.nom))].sort().map(n=>`<option value="${esc(n)}">`).join("")}</datalist><button class="btn primary" type="submit">Ajouter</button></form>
+    <span class="hist">Les nouveaux fournisseurs arrivent tout seuls avec les dossiers de la comptable.</span>
   </div>
   <div class="fgrid">${act.map(carte).join("")||`<div class="empty-state">Aucun fournisseur.</div>`}</div>
   ${ina.length?`<details class="fina"><summary>Fournisseurs inactifs (${ina.length})</summary><div class="fgrid">${ina.map(carteIna).join("")}</div></details>`:""}`;
@@ -1344,7 +1344,7 @@ async function facScan(silent){
     if(L.err==="nodir"){S.fac.etat="nodir";return}
     if(L.err){S.fac.etat="absent";S.fac.root=L.root;return}
     S.fac.root=L.root;S.fac.rels={};L.files.forEach(f=>{S.fac.rels[facKey(f.rel)]=f.rel});FAC_DOCS=null;const dep=facDepart();if(!dep){S.fac.etat="nodepart";return}
-    try{await facSyncFourn(L.files)}catch(e){console.error(e)}
+    try{await facSyncFourn(L.files,L.dirs)}catch(e){console.error(e)}
     const reg=S.facImp||{},C=facCache(),files=L.files,noms=new Set(files.map(f=>f.rel.toLowerCase()));
     const an=new Date().getFullYear();S.fac.annees=[...new Set(files.map(f=>FAC.annee(f.rel)).filter(Boolean))].sort();
     S.fac.sansAnnee=new Date().getMonth()<=1&&S.fac.annees.length&&!S.fac.annees.includes(an)?an:null;
@@ -1485,12 +1485,16 @@ async function facCreerFourn(nom){const nm=String(nom).trim().toUpperCase()||"NO
    Chaque nouveau dossier crée un fournisseur actif du même nom (en majuscules) ; un fournisseur rattaché à un dossier prend le nom du dossier
    (s'il est rattaché à plusieurs dossiers : celui qui a reçu le fichier le plus récent). Les montants et l'historique ne changent pas (même fiche).
    Seulement pour le magasin du dossier, à partir de l'année de « Factures à partir du ». DIAPAR et ses rayons ne bougent pas. */
-async function facSyncFourn(files){if(!S.store||facDossierMag()!==S.store||!S.fourn.length)return;const dep=facDepart();if(!dep)return;const an=+dep.slice(0,4);
+async function facSyncFourn(files,dirs){if(!S.store||facDossierMag()!==S.store||!S.fourn.length)return;const dep=facDepart();if(!dep)return;const an=+dep.slice(0,4);
   const dos={};
   for(const f of files){const segs=String(f.rel).split(/[\\/]/),i=segs.findIndex(x=>FAC.nk(x)==="FOURNISSEURS");if(i<0||segs.length<i+3)continue;
     const a=FAC.annee(f.rel);if(a&&a<an)continue;if(!/\.pdf$/i.test(f.rel))continue;
     const d=segs[i+1].trim(),k=FAC.nk(d);if(!k||k==="DIAPAR"||k==="FOURNISSEURS"||/^20\d\d$/.test(d))continue;
     const o=dos[k]||(dos[k]={nom:d,t:0});if(f.mtime>o.t){o.t=f.mtime;o.nom=d}}
+  // v137 : dossier fournisseur encore vide (programme PC 1.3.0, qui liste aussi les dossiers) : le fournisseur est créé quand même, actif
+  for(const g of (dirs||[])){const segs=String(g.rel).split(/[\\/]/),i=segs.findIndex(x=>FAC.nk(x)==="FOURNISSEURS");if(i<0||segs.length!==i+2)continue;
+    const a=FAC.annee(g.rel);if(a&&a<an)continue;const d=segs[i+1].trim(),k=FAC.nk(d);if(!k||k==="DIAPAR"||k==="FOURNISSEURS"||/^20\d\d$/.test(d))continue;
+    if(!dos[k])dos[k]={nom:d,t:g.mtime||0}}
   const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{});let chg=false;const parF={};
   for(const[k,o]of Object.entries(dos)){let fid=facFid(o.nom);
     if(!fid){fid=await facCreerFourn(o.nom);toast("Nouveau fournisseur : "+o.nom.toUpperCase())}

@@ -88,18 +88,18 @@ ipcMain.handle('gm:facChoisir', async () => {
 ipcMain.handle('gm:facLister', async () => {
   const root = facCfg().dossier; if (!root) return { err: 'nodir' };
   if (!fs.existsSync(root)) return { err: 'absent', root };
-  const files = [];
+  const files = [], dirs = [];
   const walk = async (dir, rel, depth) => {
     if (depth > 8 || files.length > 30000) return;
     let ents = []; try { ents = await fs.promises.readdir(dir, { withFileTypes: true }); } catch (e) { return; }
     for (const e of ents) {
       const p = path.join(dir, e.name), r = rel ? rel + '/' + e.name : e.name;
-      if (e.isDirectory()) await walk(p, r, depth + 1);
+      if (e.isDirectory()) { try { const st = await fs.promises.stat(p); dirs.push({ rel: r, mtime: Math.round(st.mtimeMs) }); } catch (_) {} await walk(p, r, depth + 1); }
       else if (e.isFile()) { try { const st = await fs.promises.stat(p); files.push({ rel: r, size: st.size, mtime: Math.round(st.mtimeMs) }); } catch (_) {} }
     }
   };
   await walk(root, '', 0);
-  return { root, files };
+  return { root, files, dirs }; // 1.3.0 : dossiers aussi (fournisseur créé même si son dossier est vide)
 });
 ipcMain.handle('gm:facLire', async (e, rel) => { const b = await fs.promises.readFile(facSafe(rel)); return new Uint8Array(b.buffer, b.byteOffset, b.length); });
 ipcMain.handle('gm:facOuvrir', async (e, rel) => shell.openPath(facSafe(rel)));
