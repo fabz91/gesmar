@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="140">
+<meta name="gm-version" content="141">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=140;
+const APP_VERSION=141;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -535,22 +535,27 @@ function avPendants(){if(AVP.a!==S.avoirs||AVP.b!==S.avoirsAuto){AVP={a:S.avoirs
 /* v130 (règle du gérant) : une déclaration DIAPAR (DIAPAR ou ses rayons), même Acceptée ou Déduite, ne compte JAMAIS dans « Après avoirs » : DIAPAR la déduit sur une facture (déjà dans les achats).
    Seul un avoir DIAPAR à part (facture DIAPAR négative, lue dans « Avoir sur facture », sans dansFacture) compte. Les avoirs lus dans une facture DIAPAR (dansFacture) ne comptent jamais et ne sont jamais retirés de la saisie. */
 const avDiapar=id=>id==="diapar"||grp(id)==="diapar";
+/* v141 : avoirs obtenus (mêmes règles que la pastille) avec leur date de comptage : {d, v TTC} */
+let AVO={a:null,b:null,c:null,L:null};
+function avoirsObtenus(){const PEND=avPendants();if(AVO.L&&AVO.a===S.avoirs&&AVO.b===S.avoirsAuto&&AVO.c===PEND)return AVO.L;const L=[];
+  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&!a.avoirAuto&&!PEND.has(a.id)&&!avDiapar(a.fournisseur))L.push({d:a.date,v:a.montant*TVA_AVOIRS})}
+  for(const x of (S.avoirsAuto||[])){const dm=x.manuel&&(S.avoirs.find(z=>z.id===x.manuel)||{}).date,dt=dm||x.date;if(!x.dansFacture&&x.total&&dt)L.push({d:String(dt),v:Math.abs(+x.total)})}
+  AVO={a:S.avoirs,b:S.avoirsAuto,c:PEND,L};return L}
 function monthStats(y,m){
   const doc=S.mois[mkey(y,m)];const r={ca:0,caTTC:0,caN1:0,achats:0,par:{},jours:0,estimes:0,avoirs:0};
   if(doc&&doc.jours){for(const j of Object.values(doc.jours)){if(!j)continue;
     if(j.ca){r.jours++;r.caTTC+=j.ca;r.ca+=j.ca} /* v51 : tout en TTC (CA, achats, avoirs) */ if(j.caN1)r.caN1+=j.caN1;
     for(const [k,v] of Object.entries(j.achats||{})){if(v){r.achats+=v;r.par[k]=(r.par[k]||0)+v}}}}
   /* v51 : plus de HT : le CA HT du mois et le HT par jour ne sont plus utilisés */
-  const PEND=avPendants(); /* v125 : déclaration avec une correspondance à valider : hors pastille (c'est l'avoir lu qui compte), pour ne jamais compter deux fois */
-  for(const a of S.avoirs){if(OBTENU.includes(a.statut)&&a.montant&&a.date&&a.date.startsWith(mkey(y,m))&&!a.avoirAuto&&!PEND.has(a.id)&&!avDiapar(a.fournisseur))r.avoirs+=a.montant*TVA_AVOIRS}
-  for(const x of (S.avoirsAuto||[])){const dm=x.manuel&&(S.avoirs.find(z=>z.id===x.manuel)||{}).date,dt=dm||x.date; /* v125 : relié à une déclaration → mois du problème (date de la déclaration) */
-    if(!x.dansFacture&&x.total&&dt&&String(dt).startsWith(mkey(y,m)))r.avoirs+=Math.abs(+x.total)} /* v124 : avoirs séparés lus sur facture (TTC) : comptés ici, plus dans la saisie ; ceux dans une facture DIAPAR sont déjà déduits des achats */ /* v86 : un avoir lié à un avoir lu sur facture est déjà dans les achats */ // v70 : avoirs saisis HT, passés en TTC (5,5 %) pour la marge TTC
+  {const k=mkey(y,m);for(const a of avoirsObtenus())if(a.d.startsWith(k))r.avoirs+=a.v} /* v124-v130 : règles dans avoirsObtenus() */
   r.demarque=(doc&&Array.isArray(doc.demarque))?doc.demarque.reduce((t,x)=>t+(+x.montant||0),0):0;
-  r.marge=r.ca-r.achats;r.taux=r.ca?r.marge/r.ca:null;r.tauxCorr=r.ca?(r.marge+r.avoirs)/r.ca:null;r.tauxHD=r.ca?(r.marge+r.demarque)/r.ca:null;return r}
+  /* v141 : marge et taux = avoirs compris partout (pastilles, graphique, récapitulatif, N-1, inventaires) */
+  r.margeBrute=r.ca-r.achats;r.marge=r.margeBrute+r.avoirs;r.taux=r.ca?r.marge/r.ca:null;r.tauxCorr=r.taux;r.tauxHD=r.ca?(r.marge+r.demarque)/r.ca:null;return r}
 const dayISO=(y,m,d)=>y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
 /* Totaux entre deux inventaires : jours strictement après d1, jusqu'à d2 inclus (stock compté le soir de l'inventaire). */
 function periodStats(d1,d2){
-  const r={ca:0,caTTC:0,achats:0,demarque:0,jours:0,estimes:0};
+  const r={ca:0,caTTC:0,achats:0,demarque:0,jours:0,estimes:0,avoirs:0};
+  for(const a of avoirsObtenus())if(a.d>d1&&a.d<=d2)r.avoirs+=a.v; /* v141 : avoirs obtenus de la période */
   let y=+d1.slice(0,4),m=+d1.slice(5,7)-1;const ye=+d2.slice(0,4),me=+d2.slice(5,7)-1;
   while(y<ye||(y===ye&&m<=me)){
     const first=dayISO(y,m,1),last=dayISO(y,m,new Date(y,m+1,0).getDate());const doc=S.mois[mkey(y,m)];
@@ -593,13 +598,13 @@ function vBord(){
   const pv=MOIS.map((_,m)=>monthStats(y-1,m));
   ms.forEach((s,m)=>{const p=pv[m];s.n1=p.caTTC||s.caN1||0;s.n1Taux=p.ca&&p.jours>=20?p.taux:null;s.n1Inc=p.caTTC>0&&p.jours<20});
   const comp=ms.map((s,m)=>[s,pv[m],m]).filter(([s,p])=>s.jours>=20&&p.jours>=20);
-  const C=comp.reduce((a,[s,p])=>({n:a.n+s.caTTC,p:a.p+p.caTTC,nHT:a.nHT+s.ca,pHT:a.pHT+p.ca,nA:a.nA+s.achats,pA:a.pA+p.achats}),{n:0,p:0,nHT:0,pHT:0,nA:0,pA:0});
+  const C=comp.reduce((a,[s,p])=>({n:a.n+s.caTTC,p:a.p+p.caTTC,nHT:a.nHT+s.ca,pHT:a.pHT+p.ca,nA:a.nA+s.achats-s.avoirs,pA:a.pA+p.achats-p.avoirs}),{n:0,p:0,nHT:0,pHT:0,nA:0,pA:0});
   const evo=C.p?C.n/C.p-1:null, tN=C.nHT?(C.nHT-C.nA)/C.nHT:null, tP=C.pHT?(C.pHT-C.pA)/C.pHT:null;
   const compLbl=comp.length?(comp.length===1?MOIS[comp[0][2]]:`${MC[comp[0][2]]}–${MC[comp[comp.length-1][2]]}`):"";
-  const pAct=pv.filter(p=>p.ca>0&&p.jours>=20);const PT=pAct.reduce((a,p)=>({ca:a.ca+p.ca,ac:a.ac+p.achats}),{ca:0,ac:0});const tauxPrev=PT.ca?(PT.ca-PT.ac)/PT.ca:null;
+  const pAct=pv.filter(p=>p.ca>0&&p.jours>=20);const PT=pAct.reduce((a,p)=>({ca:a.ca+p.ca,ac:a.ac+p.achats-p.avoirs}),{ca:0,ac:0});const tauxPrev=PT.ca?(PT.ca-PT.ac)/PT.ca:null;
   const pts=(a,b)=>a==null||b==null?"—":((a-b)*100>=0?"+":"−")+Math.abs((a-b)*100).toFixed(1).replace(".",",")+" pt";
   const T=act.reduce((a,s)=>({ca:a.ca+s.ca,caTTC:a.caTTC+s.caTTC,achats:a.achats+s.achats,avoirs:a.avoirs+s.avoirs,caN1:a.caN1+s.caN1,jours:a.jours+s.jours,estimes:a.estimes+s.estimes,n1:a.n1+s.n1,dem:a.dem+s.demarque}),{ca:0,caTTC:0,achats:0,avoirs:0,caN1:0,jours:0,estimes:0,n1:0,dem:0});
-  const taux=T.ca?(T.ca-T.achats)/T.ca:null, tauxC=T.ca?(T.ca-T.achats+T.avoirs)/T.ca:null;
+  const taux=T.ca?(T.ca-T.achats+T.avoirs)/T.ca:null, tauxC=taux; /* v141 : avoirs compris */
   const enc=S.avoirs.filter(a=>EN_COURS.includes(a.statut));const encM=enc.reduce((s,a)=>s+(a.montant||0),0);
   const late=S.avoirs.filter(isLate);const sansMontant=enc.filter(a=>!a.montant).length;
   const best=act.length?act.reduce((a,b)=>a.taux>b.taux?a:b):null, worst=act.length?act.reduce((a,b)=>a.taux<b.taux?a:b):null;
@@ -635,11 +640,11 @@ function vBord(){
   </div>
   <div class="gap"></div>
   <div class="panel"><div class="band">Récapitulatif mensuel</div><div class="scroll"><table>
-    <thead><tr><th class="l">Mois</th><th>Jours</th><th>CA TTC</th><th>CA ${y-1}</th><th>Évol.</th><th>Achats</th><th>Marge</th><th>Taux</th><th>Taux ${y-1}</th><th>Écart</th><th>Avoirs obtenus</th><th>Taux après avoirs</th></tr></thead>
+    <thead><tr><th class="l">Mois</th><th>Jours</th><th>CA TTC</th><th>CA ${y-1}</th><th>Évol.</th><th>Achats</th><th>Marge</th><th>Taux</th><th>Taux ${y-1}</th><th>Écart</th><th>Avoirs obtenus</th></tr></thead>
     <tbody>${ms.map((s,m)=>{const ev=s.n1&&s.caTTC&&s.jours>=20&&!s.n1Inc?(s.caTTC/s.n1-1):null;const n=(S.mois[mkey(y,m)]||{}).note;
       return `<tr class="${s.ca?"":"muted"}"><td class="l"><a href="#" data-goto="${m}" style="color:inherit">${MOIS[m]}</a>${n?` <span title="${esc(n)}" class="pill s-a_reclamer">note</span>`:""}</td><td>${s.jours||"—"}</td><td>${s.caTTC?eur.format(s.caTTC):"—"}</td><td>${s.n1?eur.format(s.n1)+(s.n1Inc?`<span class="hist" title="Mois ${y-1} incomplet"> ⚠</span>`:""):"—"}</td>
-      <td class="${ev>0?"pos":ev<0?"neg":""}">${ev==null?"—":(ev>0?"+":"")+pct(ev)}</td><td>${s.achats?eur.format(s.achats):"—"}</td><td>${s.ca?eur.format(s.marge):"—"}</td><td><b>${pct(s.taux)}</b></td><td>${pct(s.n1Taux)}</td><td class="${s.taux!=null&&s.n1Taux!=null&&s.jours>=20?(s.taux>=s.n1Taux?"pos":"neg"):""}">${s.ca&&s.jours>=20?pts(s.taux,s.n1Taux):"—"}</td><td>${s.avoirs?eur.format(s.avoirs):"—"}</td><td>${pct(s.tauxCorr)}</td></tr>`}).join("")}
-    <tr class="tot"><td class="l">Total</td><td></td><td>${eur.format(T.caTTC)}</td><td>${T.n1?eur.format(T.n1):"—"}</td><td></td><td>${eur.format(T.achats)}</td><td>${eur.format(T.ca-T.achats)}</td><td>${pct(taux)}</td><td>${pct(tauxPrev)}</td><td></td><td>${eur.format(T.avoirs)}</td><td>${pct(tauxC)}</td></tr>
+      <td class="${ev>0?"pos":ev<0?"neg":""}">${ev==null?"—":(ev>0?"+":"")+pct(ev)}</td><td>${s.achats?eur.format(s.achats):"—"}</td><td>${s.ca?eur.format(s.marge):"—"}</td><td><b>${pct(s.taux)}</b></td><td>${pct(s.n1Taux)}</td><td class="${s.taux!=null&&s.n1Taux!=null&&s.jours>=20?(s.taux>=s.n1Taux?"pos":"neg"):""}">${s.ca&&s.jours>=20?pts(s.taux,s.n1Taux):"—"}</td><td>${s.avoirs?eur.format(s.avoirs):"—"}</td></tr>`}).join("")}
+    <tr class="tot"><td class="l">Total</td><td></td><td>${eur.format(T.caTTC)}</td><td>${T.n1?eur.format(T.n1):"—"}</td><td></td><td>${eur.format(T.achats)}</td><td>${eur.format(T.ca-T.achats+T.avoirs)}</td><td>${pct(taux)}</td><td>${pct(tauxPrev)}</td><td></td><td>${eur.format(T.avoirs)}</td></tr>
     </tbody></table></div></div>
   <div class="gap"></div>
   ${vInventaires(y)}
@@ -666,12 +671,12 @@ function chart(ms,pv,yr){
 function vInventaires(y){
   const inv=(S.inv||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
   const per=[];for(let i=1;i<inv.length;i++){const a=inv[i-1],b=inv[i];const p=periodStats(a.date,b.date);
-    const marge=p.ca-p.achats, reelle=p.ca-(p.achats+(+a.valeur||0)-(+b.valeur||0));
+    const marge=p.ca-p.achats+p.avoirs, reelle=p.ca-(p.achats+(+a.valeur||0)-(+b.valeur||0))+p.avoirs; /* v141 : avoirs compris */
     per.push({a,b,p,marge,reelle,tA:p.ca?marge/p.ca:null,tR:p.ca?reelle/p.ca:null,tHD:p.ca?(reelle+p.demarque)/p.ca:null})}
   // période en cours depuis le dernier inventaire (marge sur achats seulement)
   const lastInv=inv[inv.length-1];const today=todayISO();
   const cur=lastInv&&lastInv.date<today?periodStats(lastInv.date,today):null;
-  const curT=cur&&cur.ca?(cur.ca-cur.achats)/cur.ca:null;
+  const curT=cur&&cur.ca?(cur.ca-cur.achats+cur.avoirs)/cur.ca:null;
   return `<div class="panel flush"><div class="band">Inventaires et marge réelle<button class="pillbtn" data-act="focusInv">+ Inventaire</button></div>
   <div style="padding:14px 16px 4px">
     <form id="invForm" class="row" style="margin-bottom:12px">
@@ -739,7 +744,7 @@ function vSaisie(){
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">Achats N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
     <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">${st.ca?pct(st.demarque/st.ca)+" du CA":"&nbsp;"}</span></div>
     <div class="kpi"><span class="lbl">Avoirs</span><span class="v">${eur.format(st.avoirs)}</span><span class="d">TTC obtenus ce mois</span></div>
-    <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">Marge ${eur.format(st.marge+st.avoirs)} · avoirs compris</span></div>
+    <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">Marge ${eur.format(st.marge)} · avoirs compris</span></div>
   </div>
   <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<span style="display:flex;gap:8px;align-items:center">${LOCK?`<span class="lockmsg" title="Pour taper à la main : Réglages ⚙ → Dossier des factures → Manuel">🔒 Import auto : saisie bloquée</span>`:""}<button class="pillbtn" data-act="addFourn">+ Fournisseur</button></span></div><div class="scroll sheet-scroll"><table class="sheet${LOCK?" locked":""}">
     <thead>${head1}${head2}</thead>
