@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="143">
+<meta name="gm-version" content="144">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -104,6 +104,8 @@ h2{font-family:var(--display);font-weight:800;font-size:22px;margin:0 0 4px;text
 .kpi.alert .v{color:var(--red)}
 .kpi .d{font-size:12px;color:var(--muted)}
 .two{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.three{grid-template-columns:repeat(3,minmax(0,1fr))}@media (max-width:1100px){.three{grid-template-columns:minmax(0,1fr)}} /* v144 : 3 graphiques du tableau de bord */
+svg.chm .vl{font-size:9.5px}
 @media (max-width:860px){.two{grid-template-columns:minmax(0,1fr)}}
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
@@ -300,7 +302,7 @@ nav.tabs button{line-height:1.4}
 }
 
 /* v58 : saisie compacte, tout le mois tient sur un écran */
-.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
+.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpi .v .vm{font-size:15px;font-weight:600;opacity:.8;white-space:nowrap}.kpi .v:has(.vm){white-space:nowrap}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
 .sheet td{height:20px}
 .sheet td input{padding:1px 4px;font-size:12px}
 .sheet td.hasfac input{padding-right:17px}
@@ -428,7 +430,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=143;
+const APP_VERSION=144;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -609,7 +611,11 @@ function vBord(){
   const P1=ms.reduce((a,s,m)=>s.ca>0?{ca:a.ca+pv[m].ca,achats:a.achats+pv[m].achats,avoirs:a.avoirs+pv[m].avoirs,dem:a.dem+pv[m].demarque}:a,{ca:0,achats:0,avoirs:0,dem:0});
   const enc=S.avoirs.filter(a=>EN_COURS.includes(a.statut));const encM=enc.reduce((s,a)=>s+(a.montant||0),0);
   const late=S.avoirs.filter(isLate);const sansMontant=enc.filter(a=>!a.montant).length;
-  const best=act.length?act.reduce((a,b)=>a.taux>b.taux?a:b):null, worst=act.length?act.reduce((a,b)=>a.taux<b.taux?a:b):null;
+  const actF=act.filter(s=>s.jours>=20); /* v144 : meilleur / plus faible mois parmi les mois d'au moins 20 jours */
+  const best=actF.length?actF.reduce((a,b)=>a.taux>b.taux?a:b):null, worst=actF.length?actF.reduce((a,b)=>a.taux<b.taux?a:b):null;
+  /* v144 : meilleur / plus faible mois du CA et des achats (mois d'au moins 20 jours) */
+  const full=act.filter(s=>s.jours>=20);const bestCA=full.length?full.reduce((a,b)=>a.caTTC>b.caTTC?a:b):null,worstCA=full.length?full.reduce((a,b)=>a.caTTC<b.caTTC?a:b):null;
+  const fullA=full.filter(s=>s.achats);const bestAc=fullA.length?fullA.reduce((a,b)=>a.achats>b.achats?a:b):null,worstAc=fullA.length?fullA.reduce((a,b)=>a.achats<b.achats?a:b):null;
   // achats par fournisseur
   const par={};act.forEach(s=>{for(const[k,v]of Object.entries(s.par))par[k]=(par[k]||0)+v});
   // v73 : plus aucun regroupement par nom (SAINT PRIM, ISLA, MARIANO, MONTPERAL : chaque fournisseur sur sa ligne) ;
@@ -624,21 +630,13 @@ function vBord(){
   return `
   ${periode("annee")}
   <h2>Tableau de bord ${y} — ${esc(storeNom())}</h2>
-  <div class="grid kpis kpis-s">
+  <div class="grid kpis">
     <div class="kpi"><span class="lbl">CA TTC cumulé</span><span class="v">${eur.format(T.caTTC)}</span><span class="d">CA N-1 : ${T.n1?eur.format(T.n1):"—"}</span></div>
     <div class="kpi"><span class="lbl">Achats cumulés</span><span class="v">${eur.format(T.achats)}</span><span class="d">Achats N-1 : ${P1.achats?eur.format(P1.achats):"—"}</span></div>
     <div class="kpi ${T.dem?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(T.dem)}</span><span class="d">Démarque N-1 : ${P1.dem?eur.format(P1.dem):"—"}</span></div>
     <div class="kpi"><span class="lbl">Avoirs</span><span class="v">${eur.format(T.avoirs)}</span><span class="d">TTC obtenus</span></div>
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(tauxC)} <span class="vm">(${eur.format(T.ca-T.achats+T.avoirs)})</span></span><span class="d">Taux N-1 : ${P1.ca?pct((P1.ca-P1.achats+P1.avoirs)/P1.ca):"—"}</span></div>
     <div class="kpi ${evo==null?"":evo>=0?"hl":"alert"}"><span class="lbl">CA vs ${y-1}</span><span class="v">${evo==null?"—":(evo>=0?"+":"")+pct(evo)}</span><span class="d" ${comp.length?`title="Marge ${pct(tN)} contre ${pct(tP)} (${pts(tN,tP)}) sur les mêmes mois"`:""}>${comp.length?`${compLbl}, mois comparables`:`Pas de mois complet en ${y-1}`}</span></div>
-  </div>
-  <div class="gap"></div>
-  <div class="grid two">
-    <div class="panel"><div class="band">Taux de marge par mois</div>${chart(ms,pv,y)}
-      ${best?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(best)]} (${pct(best.taux)}). Plus faible : ${MOIS[ms.indexOf(worst)]} (${pct(worst.taux)}).</p>`:""}</div>
-    <div class="panel"><div class="band">Achats ${y} par fournisseur</div>
-      ${parL.length?`<div class="hb">${parL.map(([k,g])=>hbRow(k,g.tot,false)+g.sub.sort((a,b)=>b[1]-a[1]).map(([s,v])=>hbRow(s,v,true)).join("")).join("")}</div>`:`<p class="sub">Aucun achat saisi.</p>`}
-    </div>
   </div>
   <div class="gap"></div>
   <div class="panel"><div class="band">Récapitulatif mensuel</div><div class="scroll"><table>
@@ -649,8 +647,40 @@ function vBord(){
     <tr class="tot"><td class="l">Total</td><td></td><td>${eur.format(T.caTTC)}</td><td>${T.n1?eur.format(T.n1):"—"}</td><td></td><td>${eur.format(T.achats)}</td><td>${eur.format(T.ca-T.achats+T.avoirs)}</td><td>${pct(taux)}</td><td>${pct(tauxPrev)}</td><td></td><td>${eur.format(T.avoirs)}</td></tr>
     </tbody></table></div></div>
   <div class="gap"></div>
+  <div class="grid three">
+    <div class="panel"><div class="band">Chiffre d'affaires par mois</div>${chartM(ms.map(s=>s.caTTC||null),pv.map(p=>p.caTTC||null),ms.map(s=>s.ca>0&&s.jours<20),y,"eur","Chiffre d'affaires TTC par mois")}
+      ${bestCA?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(bestCA)]} (${eur.format(bestCA.caTTC)}). Plus faible : ${MOIS[ms.indexOf(worstCA)]} (${eur.format(worstCA.caTTC)}).</p>`:""}</div>
+    <div class="panel"><div class="band">Taux de marge par mois</div>${chartM(ms.map(s=>s.taux),pv.map(p=>p.ca&&p.jours>=20?p.taux:null),ms.map(s=>s.ca>0&&s.jours<20),y,"pct","Taux de marge par mois")}
+      ${best?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(best)]} (${pct(best.taux)}). Plus faible : ${MOIS[ms.indexOf(worst)]} (${pct(worst.taux)}).</p>`:""}</div>
+    <div class="panel"><div class="band">Achats fournisseurs par mois</div>${chartM(ms.map(s=>s.achats||null),pv.map(p=>p.achats||null),ms.map(s=>s.ca>0&&s.jours<20),y,"eur","Achats fournisseurs TTC par mois")}
+      ${bestAc?`<p class="hist" style="margin:8px 0 0">Mois le plus élevé : ${MOIS[ms.indexOf(bestAc)]} (${eur.format(bestAc.achats)}). Plus bas : ${MOIS[ms.indexOf(worstAc)]} (${eur.format(worstAc.achats)}).</p>`:""}</div>
+  </div>
+  <div class="gap"></div>
   ${vInventaires(y)}
   ${late.length||sansMontant?`<div class="gap"></div><div class="note">${late.length?`<b>${late.length} avoir${late.length>1?"s":""} sans nouvelle depuis plus de ${RELANCE_JOURS} jours.</b> `:""}${sansMontant?`${sansMontant} avoir${sansMontant>1?"s":""} en cours sans montant. `:""}<a href="#" data-tab-go="avoirs" style="color:inherit">Voir les avoirs</a></div>`:""}`;
+}
+
+/* v144 : graphique mensuel générique (année en vert, N-1 en rose), même présentation que l'ancien « Taux de marge par mois » */
+function chartM(cur,prev,inc,yr,kind,title){
+  const W=460,H=250,pl=40,pr=6,pt=30,pb=24;
+  const vals=[...cur,...prev].filter(v=>v!=null&&isFinite(v));
+  let step,mx;
+  if(kind==="pct"){mx=Math.max(0.4,...vals.map(v=>Math.ceil(v*10)/10));step=0.1}
+  else{const m=Math.max(1,...vals);const raw=m/4,p10=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p10;step=(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p10;mx=Math.ceil(m/step)*step}
+  const ax=v=>kind==="pct"?Math.round(v*100)+"%":(v>=1000?Math.round(v/1000)+"k":Math.round(v));
+  const lab=v=>kind==="pct"?(v*100).toFixed(0):(v>=1000?Math.round(v/1000):Math.round(v));
+  const full=v=>kind==="pct"?pct(v):eur.format(v);
+  const bw=(W-pl-pr)/12;const y=v=>pt+(H-pt-pb)*(1-v/mx);
+  let g="";for(let t=0;t<=mx+1e-9;t+=step){g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-6}" y="${y(t)+4}" text-anchor="end">${ax(t)}</text>`}
+  const hasP=prev.some(v=>v!=null);
+  const bars=cur.map((c,i)=>{const cx=pl+i*bw+bw/2;const lb=`<text x="${cx}" y="${H-6}" text-anchor="middle">${MC[i]}</text>`;
+    const w=hasP?bw*0.38:bw*0.64;const xN=hasP?cx+1:cx-w/2,xP=cx-w-1;let out="";const pv=prev[i];
+    if(hasP&&pv!=null){const v=Math.max(0,pv);out+=`<rect x="${xP}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--n1)"><title>${MOIS[i]} ${yr-1} : ${full(pv)}</title></rect>`}
+    if(c==null)return out+`<rect x="${xN}" y="${y(0)-3}" width="${w}" height="3" fill="var(--bar-empty)"/>`+lb;
+    const v=Math.max(0,c);return out+`<rect x="${xN}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--accent)" opacity="${inc[i]?0.45:1}"><title>${MOIS[i]} ${yr} : ${full(c)}${inc[i]?" (mois incomplet)":""}</title></rect><text class="vl" x="${xN+w/2}" y="${y(v)-5}" text-anchor="middle">${lab(c)}</text>`+lb}).join("");
+  const leg=hasP?`<rect x="${W-pr-118}" y="6" width="10" height="10" rx="2" fill="var(--n1)"/><text x="${W-pr-104}" y="15">${yr-1}</text><rect x="${W-pr-62}" y="6" width="10" height="10" rx="2" fill="var(--accent)"/><text x="${W-pr-48}" y="15">${yr}</text>`:"";
+  const unit=kind==="pct"?"":`<text x="4" y="15">en k€</text>`;
+  return `<div class="scroll"><svg class="chm" viewBox="0 0 ${W} ${H}" width="100%" style="min-width:300px;display:block" role="img" aria-label="${esc(title)}, ${yr} comparé à ${yr-1}">${g}${bars}${leg}${unit}</svg></div>`;
 }
 
 function chart(ms,pv,yr){
