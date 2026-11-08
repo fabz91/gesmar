@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="154">
+<meta name="gm-version" content="155">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -487,7 +487,6 @@ body.ph .chips{gap:6px}body.ph .chips .chip{padding:5px 10px;font-size:13px}
     <button role="tab" data-tab="avoirs">Avoirs<span class="cnt" id="avCnt" hidden></span><span class="avlate" id="avLate" hidden><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span></button>
     <button role="tab" data-tab="bord">Tableau de bord</button>
     <button role="tab" data-tab="fourn">Fournisseurs</button>
-    <button role="tab" data-tab="vente">Vente</button>
 </nav>
 <div class="menu" id="storeMenu" role="menu" hidden></div>
 
@@ -509,7 +508,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=154;
+const APP_VERSION=155;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -517,7 +516,7 @@ const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (26
 
 const S={db:null,store:null,magasins:[],config:{},assets:null,modal:false,fourn:[],mois:{},avoirs:[],year:2026,tab:"saisie",month:new Date().getMonth(),
   fStat:"en_cours",fFourn:"",fText:"",edit:null,confirmDel:null,loaded:{f:false,m:false,a:false}};
-try{S.avVue=localStorage.getItem("gesmar.avvue")||"man";S.tab=localStorage.getItem("gesmar.tab")||"saisie";if(!["bord","saisie","avoirs","fourn","vente"].includes(S.tab))S.tab="bord";S.store=localStorage.getItem("gesmar.store")}catch(e){}
+try{S.avVue=localStorage.getItem("gesmar.avvue")||"man";S.tab=localStorage.getItem("gesmar.tab")||"saisie";if(!["bord","saisie","avoirs","fourn"].includes(S.tab))S.tab="bord"; /* v155 : onglet VENTE retiré (remplacé par GESTAT) */S.store=localStorage.getItem("gesmar.store")}catch(e){}
 const P=x=>"magasins/"+S.store+"/"+x;
 const slug=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"");
 const storeNom=()=>(S.magasins.find(m=>m.id===S.store)||{}).nom||"—";
@@ -788,7 +787,7 @@ function render(){
   const active=document.activeElement&&document.activeElement.id;
   const ph=phApply();
   app.classList.toggle("wide",S.tab==="saisie"&&!ph);
-  app.innerHTML=(ph?{bord:vBord,saisie:vSaisiePh,avoirs:vAvoirsPh}:{bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn,vente:vVente})[S.tab]?.()??vBord();
+  app.innerHTML=(ph?{bord:vBord,saisie:vSaisiePh,avoirs:vAvoirsPh}:{bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn})[S.tab]?.()??vBord();
   if(ph&&S.tab==="avoirs"&&S.edit&&!S._phEd){S._phEd=1;const f=$("#avForm");if(f)f.scrollIntoView({block:"start"})}if(!S.edit)S._phEd=0; // v77 : onglet Fournisseurs (simple) revenu
   if(active){const el=document.getElementById(active);if(el&&el.tagName!=="BUTTON"&&!el.closest("#modalRoot"))el.focus()}
   facBadge();if(S.fac&&S.fac.ouvert)facRender();
