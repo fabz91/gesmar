@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="145">
+<meta name="gm-version" content="146">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -105,7 +105,7 @@ h2{font-family:var(--display);font-weight:800;font-size:22px;margin:0 0 4px;text
 .kpi .d{font-size:12px;color:var(--muted)}
 .two{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 .three{grid-template-columns:minmax(0,1fr)} /* v144 : 3 graphiques du tableau de bord */
-svg.chm .vl{font-size:12px}
+svg.chm .vl{font-size:12px}svg.chm .vl1{font-size:11px;fill:var(--muted);font-weight:600}
 @media (max-width:860px){.two{grid-template-columns:minmax(0,1fr)}}
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
@@ -175,6 +175,7 @@ svg text{fill:var(--muted);font:11px var(--body)}
 svg .vl{fill:var(--fg);font-weight:700}
 /* bars list */
 .hb{display:grid;grid-template-columns:120px minmax(0,1fr) 90px;gap:4px 8px;align-items:center;font-size:13px}
+.hb.hbw{grid-template-columns:200px minmax(0,1fr) 110px;gap:7px 14px;font-size:14px}.hb.hbw .tr{height:14px} /* v146 : achats par fournisseur sur toute la largeur */
 .hb .tr{height:10px;background:var(--sunk);border-radius:2px;overflow:hidden}
 .hb .tr i{display:block;height:100%;background:var(--green)}
 .hb .n{text-align:right;font-variant-numeric:tabular-nums}
@@ -430,7 +431,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=145;
+const APP_VERSION=146;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -652,8 +653,9 @@ function vBord(){
       ${bestCA?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(bestCA)]} (${eur.format(bestCA.caTTC)}). Plus faible : ${MOIS[ms.indexOf(worstCA)]} (${eur.format(worstCA.caTTC)}).</p>`:""}</div>
     <div class="panel"><div class="band">Taux de marge par mois</div>${chartM(ms.map(s=>s.taux),pv.map(p=>p.ca&&p.jours>=20?p.taux:null),ms.map(s=>s.ca>0&&s.jours<20),y,"pct","Taux de marge par mois")}
       ${best?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(best)]} (${pct(best.taux)}). Plus faible : ${MOIS[ms.indexOf(worst)]} (${pct(worst.taux)}).</p>`:""}</div>
-    <div class="panel"><div class="band">Achats fournisseurs par mois</div>${chartM(ms.map(s=>s.achats||null),pv.map(p=>p.achats||null),ms.map(s=>s.ca>0&&s.jours<20),y,"eur","Achats fournisseurs TTC par mois")}
-      ${bestAc?`<p class="hist" style="margin:8px 0 0">Mois le plus élevé : ${MOIS[ms.indexOf(bestAc)]} (${eur.format(bestAc.achats)}). Plus bas : ${MOIS[ms.indexOf(worstAc)]} (${eur.format(worstAc.achats)}).</p>`:""}</div>
+    <div class="panel"><div class="band">Achats ${y} par fournisseur</div>
+      ${parL.length?`<div class="hb hbw">${parL.map(([k,g])=>hbRow(k,g.tot,false)+g.sub.sort((a,b)=>b[1]-a[1]).map(([s,v])=>hbRow(s,v,true)).join("")).join("")}</div>`:`<p class="sub">Aucun achat saisi.</p>`}
+    </div>
   </div>
   <div class="gap"></div>
   ${vInventaires(y)}
@@ -675,7 +677,7 @@ function chartM(cur,prev,inc,yr,kind,title){
   const hasP=prev.some(v=>v!=null);
   const bars=cur.map((c,i)=>{const cx=pl+i*bw+bw/2;const lb=`<text x="${cx}" y="${H-6}" text-anchor="middle">${MC[i]}</text>`;
     const w=hasP?bw*0.3:bw*0.5;const xN=hasP?cx+2:cx-w/2,xP=cx-w-2;let out="";const pv=prev[i];
-    if(hasP&&pv!=null){const v=Math.max(0,pv);out+=`<rect x="${xP}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--n1)"><title>${MOIS[i]} ${yr-1} : ${full(pv)}</title></rect>`}
+    if(hasP&&pv!=null){const v=Math.max(0,pv);out+=`<rect x="${xP}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--n1)"><title>${MOIS[i]} ${yr-1} : ${full(pv)}</title></rect><text class="vl1" x="${xP+w/2}" y="${y(v)-5}" text-anchor="middle">${lab(pv)}</text>`} /* v146 : valeur N-1 aussi */
     if(c==null)return out+`<rect x="${xN}" y="${y(0)-3}" width="${w}" height="3" fill="var(--bar-empty)"/>`+lb;
     const v=Math.max(0,c);return out+`<rect x="${xN}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--accent)" opacity="${inc[i]?0.45:1}"><title>${MOIS[i]} ${yr} : ${full(c)}${inc[i]?" (mois incomplet)":""}</title></rect><text class="vl" x="${xN+w/2}" y="${y(v)-5}" text-anchor="middle">${lab(c)}</text>`+lb}).join("");
   const leg=hasP?`<rect x="${W-pr-118}" y="6" width="10" height="10" rx="2" fill="var(--n1)"/><text x="${W-pr-104}" y="15">${yr-1}</text><rect x="${W-pr-62}" y="6" width="10" height="10" rx="2" fill="var(--accent)"/><text x="${W-pr-48}" y="15">${yr}</text>`:"";
