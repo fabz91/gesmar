@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="150">
+<meta name="gm-version" content="151">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -459,7 +459,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=150;
+const APP_VERSION=151;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -2058,7 +2058,7 @@ function vVente(){const v=S.vt,[a,b]=vtRange(),key=S.store+"|"+a+"|"+b;
   return top+`<div id="vtMain">${body(A)}</div>`}
 function vtKpis(A){const pm=A.cli?A.ca/A.cli:0,nref=vtLst(A.art).length;
   return `<div class="grid kpis vtk">${vtK("CA TTC",vtE(A.ca),A.n>1?A.n+" jours · "+vtE0(A.ca/A.n)+" / jour":"")}${vtK("Clients",vtQ(A.cli),A.n>1?Math.round(A.cli/A.n)+" / jour":"")}${vtK("Panier moyen",vtE(pm),A.cli?vtQ(Math.round(A.nart/A.cli*10)/10)+" articles par client":"")}
-  ${vtK("Articles vendus",vtQ(A.nart),nref?nref+" références différentes":"")}${vtK("Prix moyen d'un article",vtE(A.nart?A.ca/A.nart:0),"")}${vtK("Remises",vtE(A.rem),A.ca?vtP(A.rem/A.ca)+" du CA":"")}</div>`}
+  ${vtK("Articles vendus",vtQ(A.nart),nref?nref+" références différentes":"")}${(()=>{const H=vtLst(A.h).filter(h=>h.ca>0);if(!H.length)return vtK("Heure de pointe","—","");const p=H.reduce((x,y)=>y.ca>x.ca?y:x);return vtK("Heure de pointe",esc((vtHH(p.k)+"–"+vtHH(p.x,1)).replace(/h00/g,"h")),vtE0(p.ca)+" · "+vtQ(p.q)+" clients"+(A.n>1?" (total "+A.n+" jours)":""))})()}${vtK("Remises",vtE(A.rem),A.ca?vtP(A.rem/A.ca)+" du CA":"")}</div>`}
 function vtTopArt(A,by,n){return vtLst(A.art).sort((u,w)=>w[by]-u[by]).slice(0,n)}
 const vtArtRow=(e,A,rk)=>`<tr class="vtclk" data-vt="fiche" data-v="${esc(e.k)}"><td class="l">${rk!=null?`<span class="vtrk">${rk}</span>`:""}${esc(e.nm)}</td><td>${vtQ(e.q)}</td><td>${vtE(e.ca)}</td><td>${vtP(A.ca?e.ca/A.ca:0)}</td></tr>`;
 function vtSynth(A){const R=vtLst(A.ray).sort((u,w)=>w.ca-u.ca),H=vtLst(A.h).filter(h=>h.ca||h.q).sort((u,w)=>u.k<w.k?-1:1),hm=Math.max(...H.map(h=>h.ca),1);
