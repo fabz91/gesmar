@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="146">
+<meta name="gm-version" content="147">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -175,6 +175,8 @@ svg text{fill:var(--muted);font:11px var(--body)}
 svg .vl{fill:var(--fg);font-weight:700}
 /* bars list */
 .hb{display:grid;grid-template-columns:120px minmax(0,1fr) 90px;gap:4px 8px;align-items:center;font-size:13px}
+.aft td{padding-block:9px}.aft tr.afsub td{color:var(--muted);font-size:13px;padding-block:5px}.aft tr.afsub td.l{padding-left:30px}
+.afbar{display:inline-block;vertical-align:middle;width:calc(100% - 64px);height:12px;background:var(--sunk);border-radius:6px;overflow:hidden}.afbar i{display:block;height:100%;background:var(--green);border-radius:6px}.afsub .afbar i{background:var(--n1)}.afp{display:inline-block;width:56px;text-align:right;font-variant-numeric:tabular-nums;margin-left:8px}
 .hb.hbw{grid-template-columns:200px minmax(0,1fr) 110px;gap:7px 14px;font-size:14px}.hb.hbw .tr{height:14px} /* v146 : achats par fournisseur sur toute la largeur */
 .hb .tr{height:10px;background:var(--sunk);border-radius:2px;overflow:hidden}
 .hb .tr i{display:block;height:100%;background:var(--green)}
@@ -431,7 +433,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=146;
+const APP_VERSION=147;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -627,6 +629,12 @@ function vBord(){
   const G={};for(const[k,v]of Object.entries(par)){const g=grp(k)||k;G[g]=G[g]||{tot:0,sub:{}};G[g].tot+=v;if(grp(k))G[g].sub[k]=(G[g].sub[k]||0)+v}
   Object.values(G).forEach(g=>g.sub=Object.entries(g.sub).filter(x=>Math.abs(x[1])>=0.005));
   const parL=Object.entries(G).filter(x=>Math.abs(x[1].tot)>=0.005).sort((a,b)=>b[1].tot-a[1].tot);const maxP=parL.length?Math.max(...parL.map(x=>x[1].tot)):1;
+  /* v147 : tableau « Achats par fournisseur » : montant, part (barre + %), même période N-1, évolution */
+  const par1={};ms.forEach((s,m)=>{if(s.ca>0)for(const[k,v]of Object.entries(pv[m].par))par1[k]=(par1[k]||0)+v});
+  const P1f=k=>Object.entries(par1).filter(([j])=>j===k||grp(j)===k).reduce((t,[,v])=>t+v,0);
+  const evoF=e=>(e>=0?"+":"")+pct(e);
+  const afRow=(k,v,sub)=>{const n1=P1f(k),e=n1?v/n1-1:null,pa=T.achats?v/T.achats:0;
+    return `<tr class="${sub?"afsub":""}"><td class="l">${esc(fName(k))}</td><td>${eur.format(v)}</td><td class="l"><span class="afbar"><i style="width:${Math.max(0,pa*100).toFixed(1)}%"></i></span><span class="afp">${pct(pa)}</span></td><td>${n1?eur.format(n1):"—"}</td><td>${e==null?"—":evoF(e)}</td></tr>`};
   const hbRow=(k,v,sub)=>`<span class="${sub?"hsub hname":""}">${esc(fName(k))}</span><span class="tr ${sub?"hsub":""}"><i style="width:${(v/maxP*100).toFixed(1)}%"></i></span><span class="n ${sub?"hsub":""}">${eur.format(v)}</span>`;
   return `
   ${periode("annee")}
@@ -653,9 +661,11 @@ function vBord(){
       ${bestCA?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(bestCA)]} (${eur.format(bestCA.caTTC)}). Plus faible : ${MOIS[ms.indexOf(worstCA)]} (${eur.format(worstCA.caTTC)}).</p>`:""}</div>
     <div class="panel"><div class="band">Taux de marge par mois</div>${chartM(ms.map(s=>s.taux),pv.map(p=>p.ca&&p.jours>=20?p.taux:null),ms.map(s=>s.ca>0&&s.jours<20),y,"pct","Taux de marge par mois")}
       ${best?`<p class="hist" style="margin:8px 0 0">Meilleur mois : ${MOIS[ms.indexOf(best)]} (${pct(best.taux)}). Plus faible : ${MOIS[ms.indexOf(worst)]} (${pct(worst.taux)}).</p>`:""}</div>
-    <div class="panel"><div class="band">Achats ${y} par fournisseur</div>
-      ${parL.length?`<div class="hb hbw">${parL.map(([k,g])=>hbRow(k,g.tot,false)+g.sub.sort((a,b)=>b[1]-a[1]).map(([s,v])=>hbRow(s,v,true)).join("")).join("")}</div>`:`<p class="sub">Aucun achat saisi.</p>`}
-    </div>
+    <div class="panel flush"><div class="band">Achats ${y} par fournisseur</div><div class="scroll"><table class="aft">
+      <thead><tr><th class="l">Fournisseur</th><th>Achats ${y}</th><th class="l" style="width:34%">Part des achats</th><th>Achats ${y-1}</th><th>Évol.</th></tr></thead>
+      <tbody>${parL.length?parL.map(([k,g])=>afRow(k,g.tot,false)+g.sub.sort((a,b)=>b[1]-a[1]).map(([s,v])=>afRow(s,v,true)).join("")).join(""):`<tr><td class="l" colspan="5">Aucun achat saisi.</td></tr>`}
+      <tr class="tot"><td class="l">Total</td><td>${eur.format(T.achats)}</td><td></td><td>${P1.achats?eur.format(P1.achats):"—"}</td><td>${P1.achats?evoF(T.achats/P1.achats-1):"—"}</td></tr></tbody>
+    </table></div></div>
   </div>
   <div class="gap"></div>
   ${vInventaires(y)}
