@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('api', {
   // v99 : CA de la caisse (fichiers Videor)
   caLister: () => ipcRenderer.invoke('gm:caLister'),
   caLire: (nom) => ipcRenderer.invoke('gm:caLire', nom),
-  caChoisir: () => ipcRenderer.invoke('gm:caChoisir')
+  caChoisir: () => ipcRenderer.invoke('gm:caChoisir'),
+  venteLire: (nom) => ipcRenderer.invoke('gm:venteLire', nom)
 });
 contextBridge.exposeInMainWorld('SYNC', { updateUrl: cfg.updateUrl || '', url: cfg.supabaseUrl || '', key: cfg.supabaseKey || '' });

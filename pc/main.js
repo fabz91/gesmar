@@ -138,6 +138,11 @@ ipcMain.handle('gm:caLire', async (e, nom) => {
   const t = await fs.promises.readFile(path.join(caDir(), String(nom)), 'latin1');
   return t.split(/\r?\n/).filter(l => !/^(001|054|055)\|/.test(l)).join('\n');
 });
+// 1.5.0 : onglet VENTE : la journée de caisse complète (rayons, familles, articles, heures…). Lecture seule.
+ipcMain.handle('gm:venteLire', async (e, nom) => {
+  if (!CA_NOM.test(String(nom))) throw new Error('Nom refusé');
+  return fs.promises.readFile(path.join(caDir(), String(nom)), 'latin1');
+});
 ipcMain.handle('gm:caChoisir', async () => {
   const c = facCfg();
   const r = await dialog.showOpenDialog(win, { title: 'Dossier des journées de caisse (fichiers VENT.TOT)', defaultPath: caDir(), properties: ['openDirectory'] });
