@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
-<script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="153">
+<script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
+<meta name="gm-version" content="154">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -410,6 +412,54 @@ th.vton{color:var(--green)}
 .vtcl{display:inline-block;width:22px;border-radius:5px;font-weight:800;text-align:center;color:#fff}.vtclA{background:var(--green)}.vtclB{background:#c98a00}.vtclC{background:#8a8f99}
 .vtcnt{display:inline-block;min-width:22px;padding:0 7px;margin-left:6px;border-radius:10px;background:rgba(255,255,255,.22);font-size:12px}
 svg.vtch{width:100%;height:auto;display:block}
+
+/* ---- v154 : GESMAR Web sur téléphone (classe body.ph) : 3 onglets, saisie d'un jour à la fois, avoirs en cartes ---- */
+body.ph nav.tabs button[data-tab="fourn"],body.ph nav.tabs button[data-tab="vente"]{display:none}
+body.ph nav.tabs{flex-wrap:nowrap;gap:6px}
+body.ph nav.tabs button{width:auto;flex:1 1 0;min-width:0;padding:6px 4px;font-size:12px;white-space:normal;line-height:1.15;min-height:44px}
+body.ph .appico{position:relative;cursor:pointer}
+body.ph .appico .sw{position:absolute;left:-6px;bottom:-6px;width:18px;height:18px;border-radius:50%;background:#fff;border:1.5px solid var(--green);color:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+body.ph .appico .sw svg{width:12px;height:12px}
+body.ph #undoBtn,body.ph #redoBtn{display:none}
+body.ph .kpis,body.ph .kpis-s{grid-template-columns:1fr 1fr;gap:8px}body.ph .kpis .kpi{padding:9px 10px}body.ph .kpis .kpi .v{font-size:19px}
+body.ph .kpis-s .kpi{padding:9px 10px}body.ph .kpis-s .kpi .v{font-size:19px}body.ph .kpis-s .kpi .vm{font-size:13px}
+body.ph .kpis-s .kpi.hl{grid-column:1/-1}
+.phday .band{justify-content:space-between;padding:6px 8px}
+.phday .band button{width:40px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.16);color:var(--on-red);font-size:20px;line-height:1;cursor:pointer}
+.phday .band button:disabled{opacity:.35}
+.phday .band .dl{flex:1;text-align:center;white-space:nowrap}
+.phr{display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--line)}
+.phr:last-child{border-bottom:none}
+.phr .n{flex:1;min-width:0;font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phr .n small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
+.phr input{width:132px;font-size:17px;padding:8px 10px;text-align:right;font-variant-numeric:tabular-nums;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+.phr input[readonly]{background:var(--sunk)}
+.phr.ca{background:var(--green-soft)}.phr.ca .n{color:var(--green)}
+.phr.n1 .n,.phr.n1 input{color:var(--muted)}
+.phg{padding:6px 14px 4px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--sunk);border-bottom:1px solid var(--line)}
+.phr.tot{background:var(--sunk)}.phr.tot .v{font:800 17px var(--display);font-variant-numeric:tabular-nums}
+.phlist{list-style:none;margin:0;padding:0}
+.phlist li{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);cursor:pointer;font-variant-numeric:tabular-nums}
+.phlist li:last-child{border-bottom:none}
+.phlist li .j{width:62px;font-weight:700}.phlist li.we .j{color:var(--red)}
+.phlist li .c{flex:1;text-align:right}.phlist li .a{flex:1;text-align:right;color:var(--muted)}
+.phlist li.on{background:var(--green-soft);box-shadow:inset 4px 0 0 var(--green)}
+.phlist li.vide .c,.phlist li.vide .a{color:var(--muted);opacity:.6}
+.phlist .hd{cursor:default;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--sunk)}
+.phav{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.phav.late{border-color:var(--red);box-shadow:inset 4px 0 0 var(--red),var(--shadow)}
+.phav .t{display:flex;align-items:flex-start;gap:8px}.phav .t b{flex:1;font-size:16px}
+.phav .m{color:var(--muted);font-size:13px;margin-top:3px}
+.phav .mt{font:800 17px var(--display);color:var(--fg)}
+.phav .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.phav .acts .btn{flex:1 1 auto}
+body.ph .form{grid-template-columns:1fr}
+body.ph .chips{gap:6px}body.ph .chips .chip{padding:5px 10px;font-size:13px}
+.phnote{font-size:12px;color:var(--muted);text-align:center;margin:14px 0 4px}
+#lg{position:fixed;inset:0;background:var(--bg);z-index:99;display:flex;align-items:center;justify-content:center;padding:20px}
+.lgb{display:flex;flex-direction:column;gap:10px;width:min(340px,100%);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:var(--shadow)}
+.lgb h2{margin:0;font-size:20px}.lgb p{margin:0 0 4px;font-size:13px;color:var(--muted)}
+.lgb input{font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+.lgb #lgm{color:var(--muted);font-size:13px;min-height:1em}
 </style>
 </head>
 <body>
@@ -459,7 +509,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=153;
+const APP_VERSION=154;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -483,6 +533,127 @@ const frDate=iso=>iso?iso.slice(8,10)+"/"+iso.slice(5,7)+"/"+iso.slice(2,4):"—
 const daysSince=iso=>iso?Math.floor((Date.parse(todayISO())-Date.parse(iso))/864e5):null;
 const mkey=(y,m)=>y+"-"+String(m+1).padStart(2,"0");
 const $=s=>document.querySelector(s);
+
+/* ================= v154 : GESMAR Web sur téléphone =================
+   Même adresse que GESTIME Web (fabz91.github.io) : une seule icône « GES » sur l'iPhone ; on passe de GESMAR à GESTIME
+   en touchant l'icône du logiciel (en haut à gauche). Connexion G20 partagée avec GESTIME (même jeton, gardé sur le téléphone).
+   Sur le téléphone : 3 onglets (Tableau de bord, Saisie, Avoirs), saisie d'un jour à la fois, avoirs en cartes. */
+const WEBM=!window.api;
+const PHW=()=>WEBM&&Math.min(window.innerWidth||9999,(screen&&screen.width)||9999)<=640;
+const PH_TABS=["bord","saisie","avoirs"];
+function phApply(){const on=PHW();document.body.classList.toggle("ph",on);if(on&&!PH_TABS.includes(S.tab))S.tab="bord";if(on&&S.avVue==="auto")S.avVue="man";return on}
+let phW=window.innerWidth;window.addEventListener("resize",()=>{if(Math.abs(window.innerWidth-phW)<40)return;phW=window.innerWidth;const was=document.body.classList.contains("ph");if(phApply()!==was)render()});
+try{if(WEBM)localStorage.setItem("ges-app","gesmar")}catch(e){}
+// Toucher l'icône GESMAR : passe à GESTIME Web (même magasin)
+function phSwitch(){try{localStorage.setItem("ges-app","gestime");if(S.store)localStorage.setItem("gt-store",S.store)}catch(e){}location.href="../gestime/"}
+(function(){const ic=document.querySelector(".appico");if(!ic||!WEBM)return;
+  ic.removeAttribute("aria-hidden");ic.setAttribute("role","button");ic.setAttribute("tabindex","0");ic.setAttribute("aria-label","Passer à GESTIME");ic.title="Passer à GESTIME";
+  ic.insertAdjacentHTML("beforeend",'<span class="sw" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></span>');
+  ic.addEventListener("click",phSwitch);ic.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();phSwitch()}})})();
+
+/* --- connexion G20 (version web) : même session que GESTIME Web ---
+   horaires-auth = jeton de renouvellement (commun), horaires-auth-at = jeton d'accès en cours (commun, évite deux renouvellements). */
+const GA=(()=>{const SK="horaires-auth",ID_DOM="@hotmail.com";let tok=null,exp=0,pr=null;
+  const idMail=v=>{v=String(v||"").trim().toLowerCase();return !v?"":v.includes("@")?v:v+ID_DOM};
+  const has=()=>{try{return !!localStorage.getItem(SK)}catch(e){return false}};
+  function shared(){try{const o=JSON.parse(localStorage.getItem(SK+"-at")||"null");if(o&&o.t&&o.e>Date.now()+60000){tok=o.t;exp=o.e;return true}}catch(e){}return false}
+  async function grant(c,body,g){let r;try{r=await fetch(c.url+"/auth/v1/token?grant_type="+g,{method:"POST",headers:{apikey:c.key,"Content-Type":"application/json"},body:JSON.stringify(body)})}catch(e){throw new Error("OFFLINE")}
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){const t=String(j.error_description||j.msg||j.message||""),x=new Error(/invalid login|invalid_credentials|invalid_grant/i.test(t+" "+(j.error_code||j.code||j.error||""))&&g==="password"?"identifiant ou mot de passe incorrect":(t||"refusé"));x.st=r.status||400;throw x}
+    tok=j.access_token;exp=Date.now()+(j.expires_in||3600)*1000;
+    try{localStorage.setItem(SK,j.refresh_token);localStorage.setItem(SK+"-at",JSON.stringify({t:tok,e:exp}));if(j.user&&j.user.email)localStorage.setItem(SK+"-mail",j.user.email)}catch(e){}}
+  async function token(c){if(tok&&exp>Date.now()+60000)return tok;if(shared())return tok;
+    let rt=null;try{rt=localStorage.getItem(SK)}catch(e){}if(!rt){const x=new Error("AUTH");x.st=401;throw x}
+    if(!pr)pr=grant(c,{refresh_token:rt},"refresh_token").catch(e=>{if(e.message!=="OFFLINE"&&e.st>=400&&e.st<500)lost();throw e}).finally(()=>{pr=null});
+    await pr;return tok}
+  function drop(){tok=null;exp=0;try{localStorage.removeItem(SK+"-at")}catch(e){}}
+  function lost(){tok=null;exp=0;try{localStorage.removeItem(SK);localStorage.removeItem(SK+"-at")}catch(e){}}
+  const login=(c,id,pw)=>grant(c,{email:idMail(id),password:pw},"password");
+  const who=()=>{let m="";try{m=localStorage.getItem(SK+"-mail")||""}catch(e){}return m.toLowerCase().endsWith(ID_DOM)?m.slice(0,-ID_DOM.length).toUpperCase():m};
+  return{has,token,lost,drop,login,who}})();
+// Code d'accès GT1 (collé une fois dans GESTIME Web ou ici) : adresse + clé publishable de Supabase, gardés sur le téléphone, jamais dans le dépôt.
+function gtCfg(){try{const c=JSON.parse(localStorage.getItem("gt-cfg")||"null");if(c&&c.url&&c.key)return c}catch(e){}return null}
+function gtCode(t){const m=/^GT1-([A-Za-z0-9+/=_-]+)$/.exec(String(t||"").replace(/\s+/g,""));if(!m)return null;try{const p=atob(m[1].replace(/-/g,"+").replace(/_/g,"/")).split("|");if(/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(p[0])&&p[1])return{url:p[0],key:p[1]}}catch(e){}return null}
+function gmLogin(msg){if(!WEBM)return;let o=$("#lg");if(!o){o=document.createElement("div");o.id="lg";document.body.appendChild(o)}
+  const need=!SYNC.cfg();
+  o.innerHTML=`<div class="lgb"><h2>🔒 Connexion à GESMAR</h2><p>Une seule fois sur ce téléphone : ensuite GESMAR (et GESTIME) restent connectés.</p>${need?'<input id="lgc" type="text" placeholder="Code d’accès (GT1-…)" autocomplete="off" autocapitalize="off" spellcheck="false">':""}<input id="lge" type="text" placeholder="Identifiant" autocomplete="username" autocapitalize="off" spellcheck="false"><input id="lgp" type="password" placeholder="Mot de passe" autocomplete="current-password"><button class="btn primary" id="lgo" style="padding:11px;font-size:15px">Se connecter</button><div id="lgm">${esc(msg||"")}</div></div>`}
+async function gmDoLogin(){const m=$("#lgm"),ci=$("#lgc");let nc=null,c=SYNC.cfg();
+  if(!c){nc=gtCode(ci&&ci.value);if(!nc){m.textContent="Code d’accès incorrect : collez-le en entier (il commence par GT1-).";return}c=nc}
+  const id=$("#lge").value,pw=$("#lgp").value;if(!id.trim()||!pw){m.textContent="Tapez l’identifiant et le mot de passe.";return}
+  m.textContent="Connexion…";$("#lgo").disabled=true;
+  try{await GA.login(c,id,pw);if(nc)try{localStorage.setItem("gt-cfg",JSON.stringify(nc))}catch(e){}
+    $("#lg").remove();SYNC.start().catch(()=>{})}
+  catch(e){const b=$("#lgo");if(b)b.disabled=false;m.textContent=e.message==="OFFLINE"?"Pas de connexion internet : réessayez.":"Connexion refusée : "+e.message+"."}}
+document.addEventListener("click",e=>{if(e.target.id==="lgo"){gmDoLogin();return}const b=e.target.closest('[data-act="gmLogout"]');if(!b)return;
+  if(!S.gmOut){S.gmOut=1;renderModal();setTimeout(()=>{S.gmOut=0;if(S.modal)renderModal()},4000);return}
+  try{["horaires-auth","horaires-auth-at","horaires-auth-mail"].forEach(k=>localStorage.removeItem(k))}catch(_){}location.reload()});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="lgp")gmDoLogin()});
+
+/* --- Saisie sur téléphone : un jour à la fois --- */
+const WD=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"],WDL=["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+function phCols(y,key,J){const used=new Set();Object.values(J).forEach(j=>Object.keys((j&&j.achats)||{}).forEach(k=>used.add(k)));
+  const mc=monthCols(key),cols=S.fourn.filter(f=>(mc.includes(f.id)&&!isInactif(f))||used.has(f.id));
+  used.forEach(k=>{if(!cols.find(f=>f.id===k)&&!S.fourn.find(f=>f.id===k))cols.push({id:k,nom:k})});
+  return cols.sort((a,b)=>(a.ordre??99)-(b.ordre??99))}
+function phDayGo(dir){const nd=new Date(S.year,S.month+1,0).getDate();let d=(S.phDay||1)+dir;
+  if(d<1){S.month--;if(S.month<0){S.month=11;S.year--}d=new Date(S.year,S.month+1,0).getDate()}
+  else if(d>nd){S.month++;if(S.month>11){S.month=0;S.year++}d=1}
+  S.phDay=d;S.phDayKey=mkey(S.year,S.month);render()}
+function vSaisiePh(){
+  const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{jours:{}},J=doc.jours||{},nd=new Date(y,m+1,0).getDate(),now=new Date();
+  if(S.phDayKey!==key){S.phDayKey=key;S.phDay=now.getFullYear()===y&&now.getMonth()===m?now.getDate():1}
+  const d=Math.min(Math.max(S.phDay||1,1),nd),dd=String(d).padStart(2,"0"),j=J[dd]||{},a=j.achats||{},wd=new Date(y,m,d).getDay();
+  const cols=phCols(y,key,J),st=monthStats(y,m),n1st=monthStats(y-1,m),LOCK=saisieBloquee();
+  const n1Day=(dx,jx)=>{if(jx.caN1!=null&&jx.caN1!=="")return jx.caN1;const t=new Date(y,m,+dx-364),k=mkey(t.getFullYear(),t.getMonth()),J1=((S.mois[k]||{}).jours)||{},d1=String(t.getDate()).padStart(2,"0");return (J1[d1]&&J1[d1].ca)||null};
+  const inp=(field,val)=>`<input id="c-${dd}-${field}" data-d="${dd}" data-f="${field}" inputmode="decimal" enterkeyhint="done"${LOCK?' readonly tabindex="-1"':""} value="${val==null?"":n2.format(val)}" aria-label="${esc(field)}">`;
+  const row=(cls,nom,sub,field,val)=>`<div class="phr ${cls}"><span class="n">${esc(nom)}${sub?`<small>${esc(sub)}</small>`:""}</span>${inp(field,val)}</div>`;
+  // groupes (ex. DIAPAR : Épicerie, A/A, Frais) puis les autres fournisseurs
+  let body="",lastG=null;
+  for(const f of cols){const g=f.groupe||null;if(g&&g!==lastG){const gf=S.fourn.find(x=>x.id===g);body+=`<div class="phg">${esc(gf?gf.nom:g)}</div>`}
+    if(!g&&lastG)body+=`<div class="phg">Autres fournisseurs</div>`;lastG=g;body+=row("",f.nom,"","a:"+f.id,a[f.id])}
+  const tot=Object.values(a).reduce((s,v)=>s+(v||0),0);
+  let lst="";for(let x=1;x<=nd;x++){const xd=String(x).padStart(2,"0"),jx=J[xd]||{},ax=Object.values(jx.achats||{}).reduce((s,v)=>s+(v||0),0),w=new Date(y,m,x).getDay();
+    lst+=`<li data-phgo="${x}" class="${x===d?"on":""}${w===0?" we":""}${!jx.ca&&!ax?" vide":""}"><span class="j">${WD[w]} ${x}</span><span class="c">${jx.ca?eur.format(jx.ca):"—"}</span><span class="a">${ax?eur.format(ax):"—"}</span></li>`}
+  return `${periode("mois")}
+  <div class="grid kpis kpis-s" style="margin-bottom:12px">
+    <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">N-1 : ${n1st.caTTC?eur.format(n1st.caTTC):"—"}</span></div>
+    <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
+    <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.tauxCorr)} <span class="vm">(${eur.format(st.marge)})</span></span><span class="d">Taux N-1 : ${n1st.ca?pct(n1st.tauxCorr):"—"}</span></div>
+  </div>
+  <div class="panel flush phday"><div class="band"><button data-phd="-1" aria-label="Jour précédent">‹</button><span class="dl">${WDL[wd]} ${d} ${esc(MOIS[m].toLowerCase())}</span><button data-phd="1" aria-label="Jour suivant">›</button></div>
+    ${LOCK?`<div class="phg" style="text-transform:none;letter-spacing:0">🔒 Import automatique des factures : saisie faite par le PC</div>`:""}
+    ${row("ca","CA TTC","","ca",j.ca)}
+    ${row("n1","CA N-1","même jour l'an dernier","caN1",n1Day(dd,j))}
+    ${body}
+    <div class="phr tot"><span class="n">Total achats du jour</span><span class="v">${tot?eur2.format(tot):"—"}</span></div>
+  </div>
+  <div class="gap"></div>
+  <div class="panel flush"><div class="band">Jours de ${esc(MOIS[m].toLowerCase())}</div><ul class="phlist"><li class="hd"><span class="j">Jour</span><span class="c">CA TTC</span><span class="a">Achats</span></li>${lst}</ul></div>
+  <p class="phnote">Démarque, factures et colonnes : sur le PC.</p>`}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-phd],[data-phgo]");if(!b||!document.body.classList.contains("ph"))return;
+  if(b.dataset.phd){phDayGo(+b.dataset.phd);window.scrollTo({top:Math.max(0,($(".phday")||{}).offsetTop-70||0)});return}
+  S.phDay=+b.dataset.phgo;S.phDayKey=mkey(S.year,S.month);render();const p=$(".phday");if(p)p.scrollIntoView({block:"start"})});
+
+/* --- Avoirs sur téléphone : une carte par avoir --- */
+function vAvoirsPh(){
+  const all=S.avoirs;const cnt=k=>k==="en_cours"?all.filter(a=>EN_COURS.includes(a.statut)):k==="tous"?all:all.filter(a=>a.statut===k);
+  const sum=l=>l.reduce((s,a)=>s+(a.montant||0),0);
+  let list=cnt(S.fStat);if(S.fFourn)list=list.filter(a=>a.fournisseur===S.fFourn);
+  list=list.slice().sort((a,b)=>(isLate(b)-isLate(a))||String(b.date).localeCompare(String(a.date)));
+  const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
+  const card=a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a),enc=EN_COURS.includes(a.statut);
+    return `<div class="phav${late?" late":""}"><div class="t"><b>${esc(a.produit)}</b><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></div>
+      <div class="m">${esc(fName(a.fournisseur))} · ${frDate(a.date)}${a.quantite?" · "+esc(a.quantite):""} · ${esc(a.motif)}</div>
+      ${a.code||a.facture?`<div class="m">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}
+      ${a.infos?`<div class="m">${esc(a.infos)}</div>`:""}
+      <div class="m"><span class="mt">${a.montant?eur2.format(a.montant)+" HT":`<span class="pill s-a_reclamer">à chiffrer</span>`}</span> · ${late?"⚠️ ":""}dernière action ${frDate(la)}${ds!=null&&enc?` (${ds} j)`:""}${(a.relances||[]).length?` · ${a.relances.length} relance${a.relances.length>1?"s":""}`:""}</div>
+      <div class="acts">${enc?`<button class="btn small" data-relance="${a.id}">Relancer</button>${a.statut==="accepte"?`<button class="btn small" data-setst="deduit" data-id="${a.id}">Déduit</button>`:`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepté</button>`}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></div>`};
+  return `<div class="row" style="margin-bottom:10px;gap:8px"><select id="fFourn" aria-label="Fournisseur" style="flex:1;min-width:0"><option value="">Tous les fournisseurs</option>${avOptsMois(S.fFourn)}</select><button class="btn red" data-act="new">+ Nouveau</button></div>
+  <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
+  <div class="gap"></div>
+  ${S.edit?vForm():""}
+  ${list.length?list.map(card).join(""):`<div class="empty-state">Aucun avoir dans ce filtre. Touchez « + Nouveau » pour en créer un.</div>`}
+  <p class="phnote">En rouge : sans nouvelle depuis ${RELANCE_JOURS} jours.</p>`}
 
 /* ---------- affichage clair / sombre (comme GESTIME) ---------- */
 function getTheme(){try{return localStorage.getItem("gesmar.theme")}catch(e){return null}}
@@ -604,6 +775,7 @@ function isLate(a){return EN_COURS.includes(a.statut)&&daysSince(lastAction(a))>
 
 /* ---------- rendu ---------- */
 function render(){
+  phApply();
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
   $("#storeName").textContent=storeNom();
   renderModal();updHist();
@@ -614,8 +786,10 @@ function render(){
   if(!S.db){app.innerHTML=`<div class="empty-state">${S.noDb?"Les données ne sont pas disponibles dans cette vue. Ouvrez la page depuis Claude en étant connecté pour voir et saisir les chiffres.":"Chargement des données…<br><small>Les mois, les avoirs et les fournisseurs s'afficheront ici dès que la base répond.</small>"}</div>`;return}
   if(!S.magasins.length){app.innerHTML=S.magLoaded?`<div class="empty-state">Aucun magasin pour l'instant. Ouvrez les Réglages ⚙ pour créer le premier.</div>`:`<div class="empty-state">Chargement des magasins…</div>`;return}
   const active=document.activeElement&&document.activeElement.id;
-  app.classList.toggle("wide",S.tab==="saisie");
-  app.innerHTML=({bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn,vente:vVente}[S.tab]||vBord)(); // v77 : onglet Fournisseurs (simple) revenu
+  const ph=phApply();
+  app.classList.toggle("wide",S.tab==="saisie"&&!ph);
+  app.innerHTML=(ph?{bord:vBord,saisie:vSaisiePh,avoirs:vAvoirsPh}:{bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn,vente:vVente})[S.tab]?.()??vBord();
+  if(ph&&S.tab==="avoirs"&&S.edit&&!S._phEd){S._phEd=1;const f=$("#avForm");if(f)f.scrollIntoView({block:"start"})}if(!S.edit)S._phEd=0; // v77 : onglet Fournisseurs (simple) revenu
   if(active){const el=document.getElementById(active);if(el&&el.tagName!=="BUTTON"&&!el.closest("#modalRoot"))el.focus()}
   facBadge();if(S.fac&&S.fac.ouvert)facRender();
 }
@@ -2346,11 +2520,14 @@ const SYNC=(()=>{
   const st={state:"off",msg:"Synchronisation non réglée",busy:false,timer:null,pend:new Set(),poll:null,started:false};
   function cfg(){let c=window.SYNC&&window.SYNC.url&&window.SYNC.key?{url:window.SYNC.url,key:window.SYNC.key}:null;
     if(!c){try{const s=JSON.parse(rawLoad("gesmar-sync")||"null");if(s&&s.url&&s.key)c=s}catch(e){}}
+    if(!c&&WEBM)c=gtCfg(); // v154 : version web : code d'accès GT1 commun avec GESTIME Web
     if(c&&/VOTRE/.test(c.url+"|"+c.key))c=null;if(c)c={url:String(c.url).trim().replace(/\/+$/,""),key:String(c.key).trim()};return c}
   const ERR=/Erreur|Accès|Table/;
   function set(state,msg){const ch=st.state!==state||st.msg!==msg;st.state=state;st.msg=msg;if(ch&&typeof renderModal==="function"&&S.modal)renderModal()}
-  async function req(path,opt){const c=cfg();
-    const r=await fetch(c.url+"/rest/v1/"+path,Object.assign({},opt,{headers:Object.assign({apikey:c.key,"Content-Type":"application/json"},(c.key.split(".").length===3?{Authorization:"Bearer "+c.key}:{}),opt&&opt.headers)}));
+  async function req(path,opt,again){const c=cfg();
+    const auth=WEBM?{Authorization:"Bearer "+await GA.token(c)}:(c.key.split(".").length===3?{Authorization:"Bearer "+c.key}:{}); // v154 : web = connexion G20
+    const r=await fetch(c.url+"/rest/v1/"+path,Object.assign({},opt,{headers:Object.assign({apikey:c.key,"Content-Type":"application/json"},auth,opt&&opt.headers)}));
+    if(r.status===401&&WEBM&&!again){GA.drop();return req(path,opt,true)}
     if(!r.ok){let t="";try{t=(await r.json()).message||""}catch(e){}
       throw new Error(r.status===401||r.status===403?"Accès refusé par la base (vérifiez la clé et le script SQL)":r.status===404||/does not exist|schema cache/.test(t)?"Table « gesmar » absente : lancez le script SQL dans Supabase":"Erreur "+r.status+(t?" : "+t:""))}
     return r.status===204||r.status===201?null:r.json()}
@@ -2380,7 +2557,7 @@ const SYNC=(()=>{
     throw new Error("Erreur : trop de modifications en même temps, nouvel essai bientôt")}
   async function flush(){if(st.busy||!cfg()||!st.started)return;st.busy=true;const ids=[...st.pend];st.pend.clear();set("wait","Envoi…");
     try{for(const id of ids)await push(id);set("ok","Synchronisé avec les autres postes")}
-    catch(e){ids.forEach(i=>st.pend.add(i));set("ko",ERR.test(e.message)?e.message:"Hors ligne : modifications gardées sur cet appareil");setTimeout(flush,5000)}
+    catch(e){ids.forEach(i=>st.pend.add(i));if(WEBM&&!GA.has()){st.started=false;set("off","Pas connecté");gmLogin("Session terminée : reconnectez-vous.");return}set("ko",ERR.test(e.message)?e.message:"Hors ligne : modifications gardées sur cet appareil");setTimeout(flush,5000)}
     finally{st.busy=false;if(st.pend.size&&st.state!=="ko")setTimeout(flush,800)}}
   function schedule(id){if(!cfg()||!st.started)return;st.pend.add(id);clearTimeout(st.timer);st.timer=setTimeout(flush,800)}
   async function first(){ // au démarrage : on compare chaque magasin avec le serveur
@@ -2399,12 +2576,13 @@ const SYNC=(()=>{
     try{const all=await req("gesmar?select=id,rev");let ch=false;
       for(const x of all||[]){const m=meta(x.id);if(x.rev>m.rev){const r=await pull(x.id);if(r){adopt(x.id,r);ch=true;if(Object.keys(m.dirty).length)st.pend.add(x.id)}}}
       if(st.pend.size)flush();else set("ok",ch?"Mis à jour depuis un autre poste":"Synchronisé avec les autres postes")}
-    catch(e){set("ko",ERR.test(e.message)?e.message:"Hors ligne")}}
+    catch(e){if(WEBM&&!GA.has()){st.started=false;clearInterval(st.poll);set("off","Pas connecté");gmLogin("Session terminée : reconnectez-vous.");return}set("ko",ERR.test(e.message)?e.message:"Hors ligne")}}
   let visHook=false;
-  async function start(){if(st.started)return;if(!cfg()){set("off","Synchronisation non réglée");return}
+  async function start(){if(st.started)return;if(WEBM&&(!cfg()||!GA.has())){set("off","Pas connecté");gmLogin("");return}
+    if(!cfg()){set("off","Synchronisation non réglée");return}
     st.started=true;set("wait","Synchronisation…");
     try{await first();if(st.pend.size)await flush();else set("ok","Synchronisé avec les autres postes")}
-    catch(e){st.started=false;set("ko",ERR.test(e.message)?e.message:"Hors ligne : modifications gardées sur cet appareil");setTimeout(start,15000);return}
+    catch(e){st.started=false;if(WEBM&&!GA.has()){set("off","Pas connecté");gmLogin("Session terminée : reconnectez-vous.");return}set("ko",ERR.test(e.message)?e.message:"Hors ligne : modifications gardées sur cet appareil");setTimeout(start,15000);return}
     clearInterval(st.poll);st.poll=setInterval(poll,15000);
     if(!visHook){visHook=true;document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll()})}}
   function configure(url,key){rawSave("gesmar-sync",JSON.stringify({url:String(url).trim(),key:String(key).trim()}));st.started=false;return start()}
@@ -2570,16 +2748,17 @@ function renderModal(){
     ${P1==="import"&&S.importPending?`<div class="rinfo">Importer <b>${S.importPending.length} éléments</b> ? Les données portant le même nom seront remplacées.<div class="row" style="margin-top:8px"><button class="btn red small" data-act="importOk">Importer</button><button class="btn small" data-act="importNo">Annuler</button></div></div>`:""}
     <button class="rbtn" ${S.pc?'data-act="openFolder"':'data-panel="dossier"'}><span class="ic">📁</span>Dossier des données</button>
     ${P1==="dossier"?`<div class="rinfo">${infoDonnees()}</div>`:""}
-    <button class="rbtn" data-panel="factures"><span class="ic">🧾</span>Dossier des factures</button>
+    ${PHW()?"":`<button class="rbtn" data-panel="factures"><span class="ic">🧾</span>Dossier des factures</button>
     ${P1==="factures"?`<div class="rinfo">${facReglagesHtml()}</div>`:""}
     <button class="rbtn" data-panel="ca"><span class="ic">💶</span>Dossier du chiffre d'affaires</button>
     ${P1==="ca"?`<div class="rinfo">${caReglagesHtml()||"Le chiffre d'affaires se lit dans le programme GESMAR du PC (celui où est installé Videor)."}</div>`:""}
     <h4>Logiciel</h4>
     <button class="rbtn" ${S.pc&&window.api.updateCheck?'data-act="majPc"':'data-panel="maj"'} ${S.majBusy?"disabled":""}><span class="ic">🔄</span>Mettre à jour le logiciel${majBadge()?'<span class="pas" aria-label="1 nouvelle version">1</span>':""}</button>
     ${S.pc?`<div class="rmaj">${esc(S.majMsg||("Version installée : "+APP_VERSION))}</div>`:""}
-    ${P1==="maj"?`<div class="rinfo">${S.local?"Pour mettre à jour, remplacez ce fichier GESMAR.html par la nouvelle version et ouvrez-la dans le même navigateur : vos données sont reprises automatiquement. Exportez une sauvegarde avant, par précaution.":"La version en ligne se met à jour toute seule : vous avez la dernière version."}</div>`:""}
+    ${P1==="maj"?`<div class="rinfo">${S.local?"Pour mettre à jour, remplacez ce fichier GESMAR.html par la nouvelle version et ouvrez-la dans le même navigateur : vos données sont reprises automatiquement. Exportez une sauvegarde avant, par précaution.":"La version en ligne se met à jour toute seule : vous avez la dernière version."}</div>`:""}`}
     <h4>Affichage</h4>
     <div class="rtheme"><button data-theme="clair" aria-pressed="${!dark}">☀️ Clair</button><button data-theme="sombre" aria-pressed="${dark}">🌙 Sombre</button></div>
+    ${WEBM&&GA.has()?`<h4>Compte</h4><div class="rmaj">Connecté : ${esc(GA.who()||"oui")}</div><button class="rbtn" data-act="gmLogout"><span class="ic">🚪</span>${S.gmOut?"Confirmer la déconnexion ?":"Se déconnecter"}</button>`:""}
   </div>`;
 }
 document.addEventListener("click",e=>{if(e.target.dataset&&e.target.dataset.act==="closeModalBg"){S.modal=false;S.modalPanel=null;render()}});

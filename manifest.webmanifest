@@ -1,0 +1,12 @@
+{
+  "name": "GES",
+  "short_name": "GES",
+  "id": "/gestime/",
+  "start_url": "/gestime/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f5f1",
+  "theme_color": "#237a3b",
+  "lang": "fr",
+  "icons": [{ "src": "/gestime/ges-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}
