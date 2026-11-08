@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="141">
+<meta name="gm-version" content="142">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -300,7 +300,7 @@ nav.tabs button{line-height:1.4}
 }
 
 /* v58 : saisie compacte, tout le mois tient sur un écran */
-.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}
+.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
 .sheet td{height:20px}
 .sheet td input{padding:1px 4px;font-size:12px}
 .sheet td.hasfac input{padding-right:17px}
@@ -428,7 +428,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=141;
+const APP_VERSION=142;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -742,9 +742,9 @@ function vSaisie(){
   <div class="grid kpis kpis-s" style="margin-bottom:10px">
     <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">CA N-1 : ${n1ca?eur.format(n1ca):"—"}</span></div>
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">Achats N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
-    <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">${st.ca?pct(st.demarque/st.ca)+" du CA":"&nbsp;"}</span></div>
+    <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">Démarque N-1 : ${n1st.demarque?eur.format(n1st.demarque):"—"}</span></div>
     <div class="kpi"><span class="lbl">Avoirs</span><span class="v">${eur.format(st.avoirs)}</span><span class="d">TTC obtenus ce mois</span></div>
-    <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.tauxCorr)}</span><span class="d">Marge ${eur.format(st.marge)} · avoirs compris</span></div>
+    <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.tauxCorr)} <span class="vm">(${eur.format(st.marge)})</span></span><span class="d">Taux N-1 : ${n1st.ca?pct(n1st.tauxCorr):"—"}</span></div>
   </div>
   <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<span style="display:flex;gap:8px;align-items:center">${LOCK?`<span class="lockmsg" title="Pour taper à la main : Réglages ⚙ → Dossier des factures → Manuel">🔒 Import auto : saisie bloquée</span>`:""}<button class="pillbtn" data-act="addFourn">+ Fournisseur</button></span></div><div class="scroll sheet-scroll"><table class="sheet${LOCK?" locked":""}">
     <thead>${head1}${head2}</thead>
