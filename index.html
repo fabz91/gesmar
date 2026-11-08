@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="149">
+<meta name="gm-version" content="150">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -459,7 +459,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=149;
+const APP_VERSION=150;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -2000,8 +2000,8 @@ async function vtGet(a,b){const mag=S.store,want=vtDays(a,b).filter(d=>!(mag+"|"
   return vtDays(a,b).map(d=>VT.cache[mag+"|"+d]).filter(Boolean)}
 // ---- envoi en ligne depuis le PC de la caisse ----
 let VT_UP=null;function vtUpIdx(){if(!VT_UP){try{VT_UP=JSON.parse(rawLoad("gesmar-ventes-envoi")||"{}")||{}}catch(e){VT_UP={}}}return VT_UP}
-async function vtUpload(){if(VT.up.busy||!vtLocal()||!vtCfgSb()||!S.store)return;VT.up.busy=true;
-  try{const L=await vtListLocal(true),I=vtUpIdx(),mag=S.store,todo=(L.files||[]).filter(f=>{const k=mag+"|"+f.nom,x=I[k];return !x||x.s!==f.size||x.m!==f.mtime}).sort((u,v)=>u.nom<v.nom?1:-1);
+async function vtUpload(){if(VT.up.busy||!VT_API()||!vtCfgSb()||!S.store||typeof caCfg!=="function")return;const mag=caCfg().mag;if(!mag)return;VT.up.busy=true; // v150 : envoi même si un autre magasin est ouvert
+  try{const L=await vtListLocal(true),I=vtUpIdx(),todo=(L.files||[]).filter(f=>{const k=mag+"|"+f.nom,x=I[k];return !x||x.s!==f.size||x.m!==f.mtime}).sort((u,v)=>u.nom<v.nom?1:-1);
     VT.up.tot=todo.length;VT.up.n=0;
     for(let i=0;i<todo.length;i+=10){const part=todo.slice(i,i+10),rows=[];
       for(const f of part){const m=f.nom.match(/(\d{4})(\d\d)(\d\d)$/);if(!m)continue;const d=m[1]+"-"+m[2]+"-"+m[3];
