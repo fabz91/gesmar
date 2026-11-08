@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="151">
+<meta name="gm-version" content="152">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -387,7 +387,7 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .band .pillbtn .cnt{display:inline-block;min-width:16px;padding:0 4px;margin-left:5px;border-radius:8px;background:#fff;color:var(--red);font-size:11px}
 /* v149 : onglet VENTE */
 .vthead{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 10px}.vthead h2{margin:0;margin-right:auto}
-.vtseg{margin-top:0}.vtdate{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px}.vtdate input{font-weight:700}
+.vtseg{margin-top:0}.vtdate{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px}.vtdate input{font-weight:700}.vtwd{display:inline-block;width:82px;text-align:left}
 .vtnav{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:4px;background:var(--sunk);border:1px solid var(--line);border-radius:10px}
 .vtnav button{font:700 13px var(--body);border:0;background:transparent;color:var(--muted);border-radius:7px;padding:7px 13px;cursor:pointer}
 .vtnav button:hover{color:var(--fg)}.vtnav button.on{background:var(--green);color:#fff}
@@ -459,7 +459,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=151;
+const APP_VERSION=152;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -2043,7 +2043,7 @@ function vVente(){const v=S.vt,[a,b]=vtRange(),key=S.store+"|"+a+"|"+b;
   const VUES=[["synth","Synthèse"],["rayons","Rayons et familles"],["articles","Articles"],["heures","Heures"],["fiche","Fiche article"],["abc","Classement ABC"],["alertes","Alertes"]];
   const top=`<div class="vthead"><h2>Ventes — ${esc(storeNom())}</h2>
     <div class="segm vtseg"><button data-vt="mode" data-v="jour" aria-pressed="${v.mode==="jour"}">Jour</button><button data-vt="mode" data-v="per" aria-pressed="${v.mode==="per"}">Période</button></div>
-    ${v.mode==="jour"?`<div class="vtdate"><button class="btn small" data-vt="jour" data-n="-1" aria-label="Jour précédent">‹</button><input type="date" id="vtD" value="${v.d}" max="${todayISO()}"><button class="btn small" data-vt="jour" data-n="1" aria-label="Jour suivant">›</button><b>${esc(VT_JL[vtWd(v.d)])}</b></div>`
+    ${v.mode==="jour"?`<div class="vtdate"><button class="btn small" data-vt="jour" data-n="-1" aria-label="Jour précédent">‹</button><input type="date" id="vtD" value="${v.d}" max="${todayISO()}"><button class="btn small" data-vt="jour" data-n="1" aria-label="Jour suivant">›</button><b class="vtwd">${esc(VT_JL[vtWd(v.d)])}</b></div>`
     :`<div class="vtdate">du <input type="date" id="vtA" value="${v.a}"> au <input type="date" id="vtB" value="${v.b}" max="${todayISO()}"> ${[["7","7 j"],["30","30 j"],["m","Ce mois"],["mp","Mois dernier"],["an","Cette année"]].map(x=>`<button class="btn small" data-vt="vite" data-v="${x[0]}">${x[1]}</button>`).join("")}</div>`}
     </div><nav class="vtnav">${VUES.map(x=>`<button data-vt="vue" data-v="${x[0]}" class="${v.vue===x[0]?"on":""}">${x[1]}</button>`).join("")}</nav>
     <div id="vtUp" class="vtup">${esc(VT.up.msg||"")}</div>`;
