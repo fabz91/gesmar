@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="147">
+<meta name="gm-version" content="148">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -433,7 +433,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=147;
+const APP_VERSION=148;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -2150,6 +2150,11 @@ const LocalAssets={
     const r=new FileReader();r.onload=()=>{const id="logo"+Date.now();STORE["__assets/"+id]={src:r.result};try{persist("__assets/"+id);res({id,url:r.result})}catch(e){rej(e)}};r.onerror=()=>rej({code:"invalid_request"});r.readAsDataURL(file)}),
   delete:async id=>{const had=!!STORE["__assets/"+id];delete STORE["__assets/"+id];persist("__assets/"+id);return{deleted:had}}};
 function blobSrc(id){if(S.local){const a=STORE["__assets/"+id];return a?a.src:""}return "/_blob/"+id}
+// v148 : sauvegarde automatique chaque jour (programme PC 1.4.0) : un fichier GESMAR-AAAA-MM-JJ.json, tous les magasins,
+// au format de l'export (réimportable), dans « sauvegardes » du dossier des données ; 60 jours gardés. Refaite toutes les 2 h.
+async function gmAutoBk(){try{if(!S.local||!window.api||!window.api.autoBackup||!Object.keys(STORE).length)return;
+  await window.api.autoBackup(JSON.stringify({app:"GESMAR",version:APP_VERSION,exporte:new Date().toISOString(),auto:true,data:STORE},null,1))}catch(e){}}
+if(window.api&&window.api.autoBackup){setTimeout(gmAutoBk,90000);setInterval(gmAutoBk,2*3600e3)}
 async function exportData(){ // Nom du fichier : GESMAR-AAAA-MM-JJ.json (PC et navigateur : Windows propose l'emplacement)
   const j=JSON.stringify({app:"GESMAR",version:APP_VERSION,exporte:new Date().toISOString(),data:STORE},null,1);
   const blob=new Blob([j],{type:"application/json"});

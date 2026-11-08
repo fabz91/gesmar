@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
   save: (name, text) => ipcRenderer.sendSync('gm:save', name, text),
   exportData: (text, name) => ipcRenderer.invoke('gm:export', text, name),
   importData: () => ipcRenderer.invoke('gm:import'),
+  autoBackup: (text) => ipcRenderer.invoke('gm:autoBackup', text),
   openFolder: () => ipcRenderer.invoke('gm:folder'),
   print: () => ipcRenderer.invoke('gm:print'),
   updateInfo: () => ipcRenderer.invoke('gm:updateInfo'),

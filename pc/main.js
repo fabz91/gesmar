@@ -42,6 +42,25 @@ ipcMain.on('gm:save', (e, name, text) => {
   try { e.returnValue = core.save(name, text); }
   catch (err) { e.returnValue = false; dialog.showErrorBox('GESMAR', 'Enregistrement impossible dans ' + dataDir + '\n' + err.message); }
 });
+
+// ===== Sauvegarde automatique (règle GES du 08/11/2026) =====
+// Une fois par jour : UN fichier avec TOUS les magasins, au format de l'export (réimportable par Réglages → Importer).
+// Rangé dans le dossier « sauvegardes » des données ; on garde les 60 derniers jours. Les anciennes copies par magasin sont retirées.
+function autoBackupWrite(dir, appName, text) {
+  const t = String(text || '');
+  JSON.parse(t); if (t.length < 50) throw new Error('sauvegarde vide');
+  const d = path.join(dir, 'sauvegardes'); fs.mkdirSync(d, { recursive: true });
+  const n = new Date(), day = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+  const f = path.join(d, appName + '-' + day + '.json');
+  fs.writeFileSync(f + '.tmp', t, 'utf8'); fs.renameSync(f + '.tmp', f);
+  const re = new RegExp('^' + appName + '-\\d{4}-\\d{2}-\\d{2}\\.json$');
+  const all = fs.readdirSync(d);
+  for (const x of all) if (/\.json$/i.test(x) && !re.test(x)) { try { fs.unlinkSync(path.join(d, x)); } catch (e) {} }
+  const mine = all.filter(x => re.test(x)).sort();
+  while (mine.length > 60) { try { fs.unlinkSync(path.join(d, mine.shift())); } catch (e) {} }
+  return f;
+}
+ipcMain.handle('gm:autoBackup', (e, text) => { try { return autoBackupWrite(dataDir, 'GESMAR', text); } catch (err) { return false; } });
 ipcMain.handle('gm:export', async (e, text) => {
   const def = path.join(app.getPath('documents'), 'GESMAR-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json');
   const r = await dialog.showSaveDialog(win, { title: 'Exporter les données GESMAR', defaultPath: def, filters: [{ name: 'Sauvegarde GESMAR', extensions: ['json'] }] });

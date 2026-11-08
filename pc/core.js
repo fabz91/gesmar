@@ -42,18 +42,7 @@ function createCore({ bundledDir, userDir, dataDir, fetchFn }) {
 
   function save(name, text) {
     writeAtomic(dataFile(name), text);
-    // Une copie de sécurité par jour, on garde les 30 dernières (pas pour le cache des factures, v86).
-    if (/-cache$/.test(String(name))) return true;
-    try {
-      const day = new Date().toISOString().slice(0, 10);
-      const b = path.join(backupDir, name + '-' + day + '.json');
-      if (!fs.existsSync(b)) {
-        fs.mkdirSync(backupDir, { recursive: true });
-        fs.writeFileSync(b, text, 'utf8');
-        const old = fs.readdirSync(backupDir).filter(x => x.startsWith(name + '-') && x.endsWith('.json')).sort();
-        while (old.length > 30) fs.unlinkSync(path.join(backupDir, old.shift()));
-      }
-    } catch (e) { /* la sauvegarde du jour est facultative */ }
+    // 08/11/2026 : plus de copie par fichier ; la sauvegarde automatique commune (tous les magasins) est faite par main.js (autoBackup).
     return true;
   }
 
