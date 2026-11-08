@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GESMAR</title>
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. */if(!window.api)document.write('<script src="config.js"><\/script>')</script>
-<meta name="gm-version" content="144">
+<meta name="gm-version" content="145">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -104,8 +104,8 @@ h2{font-family:var(--display);font-weight:800;font-size:22px;margin:0 0 4px;text
 .kpi.alert .v{color:var(--red)}
 .kpi .d{font-size:12px;color:var(--muted)}
 .two{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
-.three{grid-template-columns:repeat(3,minmax(0,1fr))}@media (max-width:1100px){.three{grid-template-columns:minmax(0,1fr)}} /* v144 : 3 graphiques du tableau de bord */
-svg.chm .vl{font-size:9.5px}
+.three{grid-template-columns:minmax(0,1fr)} /* v144 : 3 graphiques du tableau de bord */
+svg.chm .vl{font-size:12px}
 @media (max-width:860px){.two{grid-template-columns:minmax(0,1fr)}}
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
@@ -430,7 +430,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=144;
+const APP_VERSION=145;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -662,7 +662,7 @@ function vBord(){
 
 /* v144 : graphique mensuel générique (année en vert, N-1 en rose), même présentation que l'ancien « Taux de marge par mois » */
 function chartM(cur,prev,inc,yr,kind,title){
-  const W=460,H=250,pl=40,pr=6,pt=30,pb=24;
+  const W=1180,H=270,pl=44,pr=8,pt=30,pb=24; /* v145 : graphiques sur toute la largeur */
   const vals=[...cur,...prev].filter(v=>v!=null&&isFinite(v));
   let step,mx;
   if(kind==="pct"){mx=Math.max(0.4,...vals.map(v=>Math.ceil(v*10)/10));step=0.1}
@@ -674,13 +674,13 @@ function chartM(cur,prev,inc,yr,kind,title){
   let g="";for(let t=0;t<=mx+1e-9;t+=step){g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-6}" y="${y(t)+4}" text-anchor="end">${ax(t)}</text>`}
   const hasP=prev.some(v=>v!=null);
   const bars=cur.map((c,i)=>{const cx=pl+i*bw+bw/2;const lb=`<text x="${cx}" y="${H-6}" text-anchor="middle">${MC[i]}</text>`;
-    const w=hasP?bw*0.38:bw*0.64;const xN=hasP?cx+1:cx-w/2,xP=cx-w-1;let out="";const pv=prev[i];
+    const w=hasP?bw*0.3:bw*0.5;const xN=hasP?cx+2:cx-w/2,xP=cx-w-2;let out="";const pv=prev[i];
     if(hasP&&pv!=null){const v=Math.max(0,pv);out+=`<rect x="${xP}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--n1)"><title>${MOIS[i]} ${yr-1} : ${full(pv)}</title></rect>`}
     if(c==null)return out+`<rect x="${xN}" y="${y(0)-3}" width="${w}" height="3" fill="var(--bar-empty)"/>`+lb;
     const v=Math.max(0,c);return out+`<rect x="${xN}" y="${y(v)}" width="${w}" height="${y(0)-y(v)}" rx="2" fill="var(--accent)" opacity="${inc[i]?0.45:1}"><title>${MOIS[i]} ${yr} : ${full(c)}${inc[i]?" (mois incomplet)":""}</title></rect><text class="vl" x="${xN+w/2}" y="${y(v)-5}" text-anchor="middle">${lab(c)}</text>`+lb}).join("");
   const leg=hasP?`<rect x="${W-pr-118}" y="6" width="10" height="10" rx="2" fill="var(--n1)"/><text x="${W-pr-104}" y="15">${yr-1}</text><rect x="${W-pr-62}" y="6" width="10" height="10" rx="2" fill="var(--accent)"/><text x="${W-pr-48}" y="15">${yr}</text>`:"";
   const unit=kind==="pct"?"":`<text x="4" y="15">en k€</text>`;
-  return `<div class="scroll"><svg class="chm" viewBox="0 0 ${W} ${H}" width="100%" style="min-width:300px;display:block" role="img" aria-label="${esc(title)}, ${yr} comparé à ${yr-1}">${g}${bars}${leg}${unit}</svg></div>`;
+  return `<div class="scroll"><svg class="chm" viewBox="0 0 ${W} ${H}" width="100%" style="min-width:600px;display:block" role="img" aria-label="${esc(title)}, ${yr} comparé à ${yr-1}">${g}${bars}${leg}${unit}</svg></div>`;
 }
 
 function chart(ms,pv,yr){
