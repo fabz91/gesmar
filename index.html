@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="161">
+<meta name="gm-version" content="162">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -345,6 +345,9 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .facmt{width:110px;text-align:right}
 .facwarn{color:var(--warn);font-size:12px;margin-top:3px}
 .avsf{border:1px solid var(--green);background:var(--green-soft);color:var(--green-2);border-radius:12px;padding:2px 10px;font:700 12px var(--body);cursor:pointer;white-space:nowrap;margin-left:6px}.avsf:hover{background:var(--green);color:var(--on-green)}
+.avdl{display:flex;flex-direction:column;min-width:640px}.avdl .it{display:grid;grid-template-columns:120px minmax(170px,1fr) 80px minmax(200px,260px);gap:12px;align-items:start;padding:7px 0;border-top:1px solid var(--line)}.avdl .it:first-child{border-top:0;padding-top:0}
+.avdl .num b{display:block;font-size:13px}.avdl .num span{display:block;font-size:12px;color:var(--muted)}.avdl .mt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.avdl .dc .avsf{margin:0 0 2px}.avdl .dc .hist{margin-bottom:4px}
+.cmpbl{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}.cmpbl .r{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:13px}.cmpbl .r.t{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-weight:800}.cmpbl .ok{color:var(--good);font-weight:800}.cmpbl .ko{color:var(--warn);font-weight:800}
 .avsfw{text-align:right;margin-top:4px}.avsfw .avsf{margin-left:0}
 .avsf.prop{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.avsf.prop:hover{background:var(--warn);color:#fff}
 .cmpgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.cmpgrid{grid-template-columns:1fr}}
@@ -509,7 +512,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=161;
+const APP_VERSION=162;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1918,6 +1921,12 @@ function avRefs(x){const R=new Set(),add=v=>{const n=refN(v);if(n.length>=4)R.ad
   for(const l of (x.lignes||[])){const t=String(l.libelle||"");let m;const re=/\b(?:BL|avoir n°)\s*(\d{4,})/gi;while((m=re.exec(t)))add(m[1])}
   if(!x.dansFacture)(x.codes||[]).forEach(c=>{if(String(c).length<=10)add(c)});
   return R}
+/* v162 : ligne d'avoir Saint Prim (facture de décade) : « <produit> · avoir n° 368926 du 13/10/26 (BL 368000 du 13/10/26) » */
+function avLigInfo(l){const t=String(l&&l.libelle||""),m=t.match(/^(.*?)\s*·?\s*avoir n°\s*(\d+)\s+du\s+([\d/]+)(?:\s*\(BL\s+(\d+)\s+du\s+([\d/]+)\))?/i);
+  return m?{lib:m[1].replace(/\s*·\s*$/,"").trim(),n:m[2],date:m[3],bl:m[4]||"",blDate:m[5]||"",code:l.code||"",ht:l.ht}:null}
+const avDecade=x=>(x.lignes||[]).length>0&&(x.lignes||[]).every(l=>avLigInfo(l));
+// la ligne d'avoir qui porte le n° de bon / d'avoir de la déclaration
+const avLigDe=(x,a)=>{const f=refN(a&&a.facture);if(!f)return null;return (x.lignes||[]).map(avLigInfo).find(i=>i&&(refN(i.bl)===f||refN(i.n)===f))||null};
 // mots du produit (4 lettres et plus) communs avec les produits de l'avoir
 const avMots=t=>new Set(String(t||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^A-Z]+/).filter(w=>w.length>=4));
 const facFournAv=id=>id==="diapar"?["diapar","epicerie","aa","frais"]:[id];
@@ -2414,17 +2423,26 @@ function facComparer(manId,autoId){const PROP=facPourDecl();
   const L=(k,v)=>v?`<div class="cmpl"><span>${k}</span><b>${v}</b></div>`:"";
   const dec=`${L("Fournisseur",esc(fName(b.fournisseur)))}${L("Produit",esc(b.produit||""))}${L("Code article",esc(b.code||""))}${L("Date de facture",frDate(b.date))}${L("N° de facture",esc(b.facture||""))}${L("Quantité",esc(b.quantite||""))}${L("Motif",esc(b.motif||""))}${L("Montant",b.montant?eur2.format(b.montant)+" HT":"")}${L("Statut",`<span class="pill s-${b.statut}">${SLABEL[b.statut]||b.statut}</span>`)}`;
   const lig=(x.lignes||[]).map(l=>`<div>${l.code?esc(l.code)+" ":""}${esc(l.libelle||"")}${l.ht!=null?" · "+eur2.format(l.ht)+" HT":""}</div>`).join("");
-  const fac=`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""))}${L("Date",frDate(x.date))}${L("Concerne la facture",esc(x.factureOrigine||(x.refs||[]).join(", ")))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`;
+  /* v162 : facture de décade : on ne montre que l'avoir du bon de la déclaration, et toutes les déclarations de ce bon avec leur total */
+  const li=avDecade(x)?avLigDe(x,b):null;
+  const bon=li?S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&a.statut!=="refuse"&&[refN(li.bl),refN(li.n)].includes(refN(a.facture))):[];
+  const bonSom=Math.round(bon.reduce((t,a)=>t+(+a.montant||0),0)*100)/100,bonOk=li&&li.ht!=null&&Math.abs(bonSom-li.ht)<0.05,aLier=bon.filter(a=>a.avoirAuto!==x.id);
+  const fac=li?`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Avoir",esc("n° "+li.n+" du "+li.date))}${L("Bon de livraison",esc(li.bl?li.bl+" du "+li.blDate:""))}${L("Produit",esc((li.code?li.code+" ":"")+li.lib))}${L("Montant",li.ht!=null?eur2.format(li.ht)+" HT":"")}${L("Dans",esc("la facture de décade du "+frDate(x.date)+" ("+x.lignes.length+" avoir"+(x.lignes.length>1?"s":"")+", "+eur2.format(x.total||0)+" TTC)"))}${L("Fichier",esc(x.nom||""))}`
+   :`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""))}${L("Date",frDate(x.date))}${L("Concerne la facture",esc(x.factureOrigine||(x.refs||[]).join(", ")))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`;
   const o=document.createElement("div");o.className="facov";o.id="facCmp";
   o.innerHTML=`<div class="facbox" style="max-width:860px"><div class="band">Avoir sur facture</div><div style="padding:14px 16px">
     ${lie?`<p class="sub" style="margin:0 0 10px">✓ Cette déclaration a été validée : elle est en <b>Accepté</b>.</p>`:`<p class="sub" style="margin:0 0 10px">Cette déclaration semble avoir été accordée par le fournisseur${raison?" ("+esc(raison)+")":""}. Est-ce le même avoir ?</p>`}
     <div class="cmpgrid"><div class="panel"><div class="lbl" style="margin-bottom:8px">Déclaration</div>${dec}</div><div class="panel"><div class="lbl" style="margin-bottom:8px">Avoir sur facture</div>${fac}</div></div>
+    ${li&&bon.length>1?`<div class="cmpbl"><div class="lbl" style="margin-bottom:6px">Déclarations du bon ${esc(li.bl||li.n)}</div>${bon.map(a=>`<div class="r"><span>${a.avoirAuto===x.id?"✓ ":""}${esc(a.produit||"")}</span><span>${a.montant?eur2.format(a.montant)+" HT":"—"}</span></div>`).join("")}
+      <div class="r t"><span>Total des déclarations</span><span>${eur2.format(bonSom)} HT</span></div><div class="r"><span>Avoir n° ${esc(li.n)}</span><span>${li.ht!=null?eur2.format(li.ht)+" HT":"—"}</span></div>
+      <div class="r"><span class="${bonOk?"ok":"ko"}">${bonOk?"✓ Le total correspond à l'avoir":"⚠ Le total ne correspond pas exactement"}</span></div></div>`:""}
     <div class="row" style="justify-content:space-between;margin-top:14px"><div class="row">${FAC_API()&&x.fichier?`<button class="btn" data-cmppdf="${esc(x.fichier)}">Ouvrir le PDF</button>`:""}${lie?`<button class="btn" data-cmpdel="${esc(b.id)}">Ce n'est pas le même avoir</button>`:""}</div>
-      <div class="row">${lie?"":`<button class="btn" data-cmpno="${esc(b.id)}" data-auto="${esc(x.id)}">Non</button><button class="btn primary" data-cmpok="${esc(b.id)}" data-auto="${esc(x.id)}">Valider : passer en Accepté</button>`}<button class="btn" data-cmpx="1">Fermer</button></div></div></div></div>`;
+      <div class="row">${lie?"":`<button class="btn" data-cmpno="${esc(b.id)}" data-auto="${esc(x.id)}">Non</button><button class="btn primary" data-cmpok="${esc(b.id)}" data-auto="${esc(x.id)}">Valider : passer en Accepté</button>`}${aLier.length>1?`<button class="btn primary" data-cmpokall="${esc(aLier.map(a=>a.id).join(","))}" data-auto="${esc(x.id)}">Valider les ${aLier.length} déclarations du bon</button>`:""}<button class="btn" data-cmpx="1">Fermer</button></div></div></div></div>`;
   o.addEventListener("click",async e=>{const t=e.target.closest("button");if(!t){if(e.target===o)o.remove();return}
     if(t.dataset.cmpx){o.remove();return}
     if(t.dataset.cmppdf){facOuvrirPdf(t.dataset.cmppdf).catch(()=>toast("Ouverture du PDF impossible"));return}
     if(t.dataset.cmpok){await facLier(t.dataset.auto,t.dataset.cmpok);o.remove();render();return}
+    if(t.dataset.cmpokall){HIST.lastT=0;for(const id of t.dataset.cmpokall.split(","))await facLier(t.dataset.auto,id,true);toast("Déclarations du bon reliées : Accepté");o.remove();render();return}
     if(t.dataset.cmpno){await facRefuser(t.dataset.auto,t.dataset.cmpno);o.remove();toast("D'accord : ce n'est pas le même avoir");render();return}
     if(t.dataset.cmpdel){if(await askConfirm("Retirer le lien ? La déclaration repasse en cours (statut d'avant).")){await facDelier(t.dataset.cmpdel);o.remove()}}});
   document.getElementById("facCmp")&&document.getElementById("facCmp").remove();document.body.appendChild(o)}
@@ -2440,16 +2458,27 @@ function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fou
     let h=lies.map(a=>`<button class="avsf" data-avsf="${esc(a.id)}" title="Voir la déclaration et l'avoir sur facture">Déclaration : ${esc(a.produit||"")}</button><div class="hist">Déclarée le ${frDate(a.date)} · ${SLABEL[a.statut]||a.statut}</div>`).join("");
     h+=props.map(p=>`<button class="avsf prop" data-avsf="${esc(p.a.id)}" title="Vérifier et valider">À valider : ${esc(p.a.produit||"")}</button><div class="hist">Déclarée le ${frDate(p.a.date)} · ${esc(p.raison)}</div>`).join("");
     return h||`<span class="hist">Aucune déclaration correspondante</span>`};
-  /* v157 : relier à la main une déclaration (même fournisseur, pas encore reliée, pas refusée) */
-  const lierSel=x=>{const D=S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&!a.avoirAuto&&a.statut!=="refuse").sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  /* v162 : facture de décade (Saint Prim) : un bloc par avoir (n° + BL, produit, montant HT, déclarations de ce bon) */
+  const decl=(a,raison,lie)=>lie?`<button class="avsf" data-avsf="${esc(a.id)}" title="Voir la déclaration et l'avoir">✓ ${esc(a.produit||"")}</button><div class="hist">${a.montant?eur2.format(a.montant)+" HT · ":""}${SLABEL[a.statut]||a.statut}</div>`
+    :`<button class="avsf prop" data-avsf="${esc(a.id)}" title="Vérifier et valider">À valider : ${esc(a.produit||"")}</button><div class="hist">${a.montant?eur2.format(a.montant)+" HT · ":""}${esc(raison||"")}</div>`;
+  const decade=x=>{const PR=facPourDecl(),lies=avLies(x).map(id=>S.avoirs.find(z=>z.id===id)).filter(Boolean),props=Object.entries(PR).filter(([id,p])=>p.x.id===x.id).map(([id,p])=>({a:S.avoirs.find(z=>z.id===id),raison:p.raison})).filter(p=>p.a);
+    const pris=new Set();const pour=i=>{const f=[refN(i.bl),refN(i.n)].filter(Boolean),ok=a=>f.includes(refN(a.facture));
+      const L1=lies.filter(ok),P1=props.filter(p=>ok(p.a));L1.forEach(a=>pris.add(a.id));P1.forEach(p=>pris.add(p.a.id));
+      return L1.map(a=>decl(a,"",true)).join("")+P1.map(p=>decl(p.a,"même bon de livraison",false)).join("")||`<span class="hist">Pas de déclaration</span>`};
+    const items=(x.lignes||[]).map(l=>{const i=avLigInfo(l);return `<div class="it"><div class="num"><b>Avoir n° ${esc(i.n)}</b><span>du ${esc(i.date)}</span>${i.bl?`<span>BL ${esc(i.bl)}</span>`:""}</div><div>${esc(i.lib)}${i.code?`<div class="hist">${esc(i.code)}</div>`:""}</div><div class="mt">${i.ht!=null?eur2.format(i.ht)+" HT":""}</div><div class="dc">${pour(i)}</div></div>`}).join("");
+    const reste=lies.filter(a=>!pris.has(a.id)).map(a=>decl(a,"",true)).join("")+props.filter(p=>!pris.has(p.a.id)).map(p=>decl(p.a,p.raison,false)).join("");
+    return `<div class="avdl">${items}${reste?`<div class="it"><div class="num"><b>Autres</b></div><div></div><div></div><div class="dc">${reste}</div></div>`:""}</div>`};
+  /* v157 : relier à la main une déclaration (même fournisseur, pas encore reliée, pas refusée) ; v162 : seulement tant que l'avoir n'est relié à aucune déclaration */
+  const lierSel=x=>{if(avLies(x).length)return "";const D=S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&!a.avoirAuto&&a.statut!=="refuse").sort((a,b)=>String(b.date).localeCompare(String(a.date)));
     return `<select class="avlsel" data-avlsel="${esc(x.id)}" aria-label="Relier à une déclaration" style="display:block;margin-top:4px;max-width:230px"><option value="">${D.length?"Relier à une déclaration…":"Aucune déclaration à relier"}</option>${D.map(a=>`<option value="${esc(a.id)}">${esc(frDate(a.date))} · ${esc(a.produit||"")}${a.montant?" · "+esc(eur2.format(a.montant))+" HT":""} · ${esc(SLABEL[a.statut]||a.statut)}</option>`).join("")}</select>`};
   return `<div class="row" style="margin-bottom:10px"><select id="avfFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${fns.map(f=>`<option value="${esc(f)}" ${S.avfFourn===f?"selected":""}>${esc(f==="diapar"?"DIAPAR":fName(f))}</option>`).join("")}</select></div>
   <div class="panel flush"><div class="band">Avoir sur facture</div><div class="scroll"><table>
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Document</th><th class="l">Produits</th><th>Montant TTC</th><th class="l">Déclaration</th><th></th></tr></thead>
     <tbody>${L.length?L.map(x=>`<tr data-avx="${esc(x.id)}"><td class="l">${frDate(x.date)}</td><td class="l">${esc(fn(x.fournisseur))}</td>
-      <td class="l" style="white-space:normal;min-width:150px">${x.dansFacture?`Facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Avoir déjà déduit</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté dans « Avoirs »</div>`}${x.factureOrigine?`<div class="hist">Concerne la facture ${esc(x.factureOrigine)}</div>`:""}</td>
-      <td class="l" style="white-space:normal;min-width:200px">${prod(x)}</td><td>${eur2.format(x.total||0)}</td>
-      <td class="l" style="white-space:normal;min-width:230px">${rap(x)}${lierSel(x)}</td>
+      <td class="l" style="white-space:normal;min-width:150px">${avDecade(x)?`Facture de décade<div class="hist">Compté dans « Avoirs »</div>`:x.dansFacture?`Facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Avoir déjà déduit</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté dans « Avoirs »</div>`}${x.factureOrigine?`<div class="hist">Concerne la facture ${esc(x.factureOrigine)}</div>`:""}</td>
+      ${avDecade(x)?`<td class="l" colspan="3" style="white-space:normal">${decade(x)}<div class="row" style="justify-content:space-between;margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><span class="hist">${x.lignes.length} avoir${x.lignes.length>1?"s":""} dans la facture de décade</span><b>Total ${eur2.format(x.total||0)} TTC</b></div>${lierSel(x)}</td>`
+      :`<td class="l" style="white-space:normal;min-width:200px">${prod(x)}</td><td>${eur2.format(x.total||0)}</td>
+      <td class="l" style="white-space:normal;min-width:230px">${rap(x)}${lierSel(x)}</td>`}
       <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${FAC_API()&&x.fichier?`<button class="btn small" data-facpdf="${esc(x.fichier)}">PDF</button>`:""}<button class="fx" data-avxdel="${esc(x.id)}" title="Supprimer cet avoir sur facture" aria-label="Supprimer cet avoir sur facture" style="width:26px;height:26px">✕</button></div></td></tr>`).join("")
       :`<tr><td colspan="7" class="l"><div class="empty-state">${S.avfFourn?"Aucun avoir sur facture pour ce fournisseur.":"Aucun avoir lu pour l'instant. Ils arrivent avec la lecture des factures."}</div></td></tr>`}</tbody></table></div></div>`}
 document.addEventListener("change",e=>{if(e.target.id==="avfFourn"){S.avfFourn=e.target.value;render()}
