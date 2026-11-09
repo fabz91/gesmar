@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="159">
+<meta name="gm-version" content="160">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -509,10 +509,10 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=159;
+const APP_VERSION=160;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
-const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA choisie sur la déclaration (5,5 % ou 20 %)
+const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
 const DEFAULT_COEF=0.919; // HT / TTC du tableau d'analyse de septembre 2026 (262 556,21 / 285 581,84)
 
@@ -1059,7 +1059,7 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
       return `<tr${late?' class="lrow"':""}><td class="l">${frDate(a.date)}</td><td class="l">${esc(fName(a.fournisseur))}</td>
       <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}</td>
       <td class="l">${esc(a.quantite)}</td><td class="l">${esc(a.motif)}</td>
-      <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}${+a.tva===20?`<div class="hist">TVA 20 %</div>`:""}</td>
+      <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
       <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
       <td class="l ${late?"late":""}">${late?`<span class="avlate" title="Sans nouvelle depuis ${ds} jours"><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span> `:""}${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
       <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${EN_COURS.includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${avDetBtn(a)}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="btn small" data-mail="${a.id}" title="Envoyer cet avoir par mail (Outlook)" aria-label="Envoyer cet avoir par mail (Outlook)" style="padding:2px 7px">✉️</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div>${a.avoirAuto&&(S.avoirsAuto||[]).some(x=>x.id===a.avoirAuto)?`<div class="avsfw"><button class="avsf" data-avsf="${a.id}" title="Voir l'avoir retrouvé sur la facture">✓ Avoir sur facture</button></div>`:PROP[a.id]?`<div class="avsfw"><button class="avsf prop" data-avsf="${a.id}" title="Cet avoir semble être sur une facture : cliquez pour vérifier">Avoir sur facture : à vérifier</button></div>`:""}</td></tr>`}).join("")
@@ -1079,7 +1079,6 @@ function vForm(){
     <label>Quantité<input id="av-quantite" value="${esc(a.quantite)}" placeholder="Ex. 2 colis"></label>
     <label>Motif<select id="av-motif">${(a.motif&&!MOTIFS.includes(a.motif)?[a.motif,...MOTIFS]:MOTIFS).map(m=>`<option ${a.motif===m?"selected":""}>${esc(m)}</option>`).join("")}</select></label>
     <label>Montant HT (€)<input id="av-montant" inputmode="decimal" value="${a.montant!=null?n2.format(a.montant):""}" placeholder="Laisser vide si inconnu"></label>
-    <label>TVA<select id="av-tva"><option value="5.5"${+a.tva===20?"":" selected"}>5,5 %</option><option value="20"${+a.tva===20?" selected":""}>20 %</option></select></label>
     <label>Statut<select id="av-statut">${STATUTS.filter(([k])=>k!=="accepte"||a.statut==="accepte").map(([k,l])=>`<option value="${k}" ${a.statut===k?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="wide">Infos<textarea id="av-infos" rows="2">${esc(a.infos)}</textarea></label>
     ${(a.relances||[]).length?`<div class="wide hist">Relances : ${a.relances.map(frDate).join(", ")}</div>`:""}
@@ -1153,7 +1152,7 @@ async function saveAvoir(form){
   const g=id=>document.getElementById("av-"+id).value.trim();const mt=parseNum(g("montant"));
   if(Number.isNaN(mt)){toast("Montant illisible : utilisez des chiffres, par ex. 55,86");return}
   const a=S.edit;const statut=g("statut");
-  const body={fournisseur:g("fournisseur"),date:g("date"),produit:g("produit"),code:g("code"),facture:g("facture"),quantite:g("quantite"),motif:g("motif"),montant:mt,tva:g("tva")==="20"?20:5.5,statut,infos:g("infos"),
+  const body={fournisseur:g("fournisseur"),date:g("date"),produit:g("produit"),code:g("code"),facture:g("facture"),quantite:g("quantite"),motif:g("motif"),montant:mt,statut,infos:g("infos"),
     relances:a.relances||[],dateReclamation:a.dateReclamation||todayISO(),creeLe:a.creeLe||todayISO(),majLe:todayISO()};
   /* v157 : Modifier garde le lien avec l'avoir sur facture et la date du dernier changement de statut */
   if(a.id){for(const k of ["avoirAuto","statutAvant","dateStatut"])if(a[k]!=null)body[k]=a[k];if(statut!==a.statut)body.dateStatut=todayISO()}
