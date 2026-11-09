@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="170">
+<meta name="gm-version" content="171">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -516,7 +516,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=170;
+const APP_VERSION=171;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1424,15 +1424,16 @@ const FAC=(()=>{
     for(const a of s)for(const b of s){if(b>a)continue;const c=r2(a+b);if(s.includes(c)&&(best==null||c>best))best=c}return best}
   const TVA_CODE={"0":1,"1":1.055,"2":1.2,"3":1.021,"4":1.1};
   // Lignes d'avoir DIAPAR (section « *AVOIRS* ») : code article, désignation, montant HT (en centimes, suivi de « - » et du code TVA)
-  function avoirsDiapar(L){const out=[];let on=false;
+  function avoirsDiapar(L){const out=[];let on=false,n0=0;
     for(const l of L){const t=l.t;
-      if(/\*\s*AVOIRS?\s*\*/.test(t)){on=true;continue}
+      if(/\*\s*AVOIRS?\s*\*/.test(t)){on=true;n0=out.length;continue}
       if(!on)continue;
-      if(/^\s*\*-{5,}|^\s*BIO =|TOTAL MARCHANDISES|NB\.?COLS|^\s*\d+\s+PALETTES?\b/i.test(t)){on=false;continue}
+      if(/^\s*BIO =/i.test(t))continue; /* v171 : la ligne « BIO = … » (pied de page) peut sortir n'importe où au milieu des avoirs : on la saute (avant : elle arrêtait la lecture) */
+      if(/^\s*\*-{5,}|TOTAL MARCHANDISES|NB\.?COLS|^\s*\d+\s+PALETTES?\b/i.test(t)){on=false;continue}
       if(/^\s*\*/.test(t)&&!/AVOIRS/.test(t))continue;
-      let m=t.match(/^\s*\d+\s*-\s+(\d{6})\b.*?\s(\d+)-(\d)\s+\d+\s*$/); // avoir seul : « 1- 275743 02,09,25 0,000 1088-1 1147 »
+      let m=t.match(/^\s*\d+\s*-\s+(\d{6})\b.*?\s(\d+)-(\d)\s+\d+(?:\s+BIO)?\s*$/); // v171 : « BIO » possible en fin de ligne // avoir seul : « 1- 275743 02,09,25 0,000 1088-1 1147 »
       if(m){const ht=+m[2]/100;out.push({code:m[1],libelle:"",ht,ttc:Math.round(ht*(TVA_CODE[m[3]]||1)*100)/100});continue}
-      m=t.match(/^\s*(\d{6})\s+\S+\s+\S+\s+\d+-\s*(.+?)\s{2,}.*?\s(\d+)-(\d)\s+\d+\s*$/); // dans une facture : « 603068 6X 1 6-BRIK.1L J.ORANGE ABC EP* … 706-1 124 »
+      m=t.match(/^\s*(\d{6})\s+\S+\s+\S+\s+\d+-\s*(.+?)\s{2,}.*?\s(\d+)-(\d)\s+\d+(?:\s+BIO)?\s*$/); // dans une facture : « 603068 6X 1 6-BRIK.1L J.ORANGE ABC EP* … 706-1 124 »
       if(m){const ht=+m[3]/100;out.push({code:m[1],libelle:m[2].replace(/\s+\S*\*$/,"").trim(),ht,ttc:Math.round(ht*(TVA_CODE[m[4]]||1)*100)/100})}}
     return out}
   function diapar(rel,nom,T,L){const m=nom.match(/FACT-(EPIC|FRAIS)-(\d\d)(\d\d)(\d\d)-(\d+)/i),r={fournisseur:"DIAPAR",verif:[]};
@@ -1724,6 +1725,7 @@ async function facScan(silent){
   if(S.fac.etat==="ok")await facAvMigrer();
   if(S.fac.etat==="ok")await facSpRelire();
   if(S.fac.etat==="ok")await facSpProduits();
+  if(S.fac.etat==="ok")await facDiaAvRelire();
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
   if(S.fac.relire){S.fac.relire=false;setTimeout(()=>facScan(),200)}}
 // v97 : petite feuille dans la saisie : quelle facture (PDF) a rempli chaque case (jour + fournisseur)
@@ -1807,6 +1809,21 @@ async function facAvMigrer(){if(FAC_AVMIG||!S.db||!S.store||!S.avoirsAuto||!S.fa
 let FAC_SPREL=false;
 /* v163 : relecture, une seule fois (fiche avoirsAuto : pr), des avoirs de décade déjà lus pour avoir TOUS leurs produits (avant : le 1er seulement). Ne change aucun montant. */
 let FAC_SPPR=false;
+/* v171 : relecture, une seule fois (fiche factures : ra), des factures DIAPAR déjà importées sans avoir lu : l'avoir manqué (ex. Tassimo, facture 48481 du 03/11) va dans « Avoir sur facture ». Ne change pas la saisie. */
+let FAC_DARE=false;
+async function facDiaAvRelire(){if(FAC_DARE||!S.db||!S.store||!S.facImp||!FAC_API())return;FAC_DARE=true;let n=0;
+  try{const rels=(S.fac&&S.fac.rels)||{};
+    for(const[k,x]of Object.entries(S.facImp)){if(!x||x.s!=="i"||x.ra||x.av||x.f!=="diapar"&&!["epicerie","aa","frais"].includes(x.f))continue;
+      const ex=(S.avoirsAuto||[]).find(z=>z.id===k);const rel=x.r||rels[k];if(!rel)continue;const fiche=S.db.doc(P("factures/"+k));
+      let r;try{r=FAC.analyser(rel,await facItems(rel),null)}catch(e){console.error(e);continue}
+      if(ex){if(r.avoirs&&r.avoirs.length>(ex.lignes||[]).length){const lig=r.avoirs.map(a=>({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc}));
+          await S.db.doc(P("avoirsAuto/"+k)).update({lignes:lig.filter(a=>a.code||a.ht!=null),total:Math.round(lig.reduce((t,a)=>t+(a.ttc||0),0)*100)/100,refs:r.refs||[]});n++} /* produits manqués (ligne « BIO ») */
+        await fiche.update({ra:1});continue}
+      if(r.avoirs&&r.avoirs.length){const lig=r.avoirs.map(a=>({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc}));
+        await S.db.doc(P("avoirsAuto/"+k)).set({fournisseur:"diapar",date:r.date||x.d||"",numero:r.numero||"",total:Math.round(lig.reduce((t,a)=>t+(a.ttc||0),0)*100)/100,lignes:lig.filter(a=>a.code||a.ht!=null),codes:[],dansFacture:true,factureOrigine:r.factureOrigine||"",refs:r.refs||[],fichier:rel,nom:x.n||r.nom,manuel:null,manuels:[],refus:[],creeLe:todayISO()});n++}
+      await fiche.update({ra:1})}
+    if(n)toast(n+" avoir(s) DIAPAR retrouvé(s) dans des factures déjà importées : « Avoir sur facture »")}
+  catch(e){console.error(e)}finally{FAC_DARE=false}}
 async function facSpProduits(){if(FAC_SPPR||!S.db||!S.store||!FAC_API())return;FAC_SPPR=true;
   try{for(const x of (S.avoirsAuto||[])){if(x.pr||!x.fichier||typeof avDecade!=="function"||!avDecade(x))continue;
       let r;try{r=FAC.analyser(x.fichier,await facItems(x.fichier),null)}catch(e){console.error(e);continue}
