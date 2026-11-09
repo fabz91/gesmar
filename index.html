@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="160">
+<meta name="gm-version" content="161">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -509,7 +509,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=160;
+const APP_VERSION=161;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -746,7 +746,7 @@ function avDetBtn(a){const p=avPendants().has(a.id)&&(facPourDecl()[a.id]||{}).x
 let AVO={a:null,b:null,c:null,L:null};
 function avoirsObtenus(){const PEND=avPendants();if(AVO.L&&AVO.a===S.avoirs&&AVO.b===S.avoirsAuto&&AVO.c===PEND)return AVO.L;const L=[];
   /* v159 (règle du gérant) : seuls les avoirs sur facture comptent ; une déclaration ne compte plus jamais (elle sert à retrouver l'avoir et à le dater) */
-  for(const x of (S.avoirsAuto||[])){const dm=x.manuel&&(S.avoirs.find(z=>z.id===x.manuel)||{}).date,dt=dm||x.date;if(!x.dansFacture&&x.total&&dt)L.push({d:String(dt),v:Math.abs(+x.total)})}
+  for(const x of (S.avoirsAuto||[])){const dm=avLies(x).map(id=>(S.avoirs.find(z=>z.id===id)||{}).date).filter(Boolean).sort()[0],dt=dm||x.date;if(!x.dansFacture&&x.total&&dt)L.push({d:String(dt),v:Math.abs(+x.total)})}
   AVO={a:S.avoirs,b:S.avoirsAuto,c:PEND,L};return L}
 function monthStats(y,m){
   const doc=S.mois[mkey(y,m)];const r={ca:0,caTTC:0,caN1:0,achats:0,par:{},jours:0,estimes:0,avoirs:0};
@@ -1310,7 +1310,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.setst){setStatut(t.dataset.id,t.dataset.setst);return}
   if(t.dataset.edit){const a=S.avoirs.find(x=>x.id===t.dataset.edit);S.edit=JSON.parse(JSON.stringify(a));S.confirmDel=null;render();window.scrollTo({top:0});return}
   if(t.dataset.askdel){S.confirmDel=t.dataset.askdel;render();return}
-  if(t.dataset.del){try{HIST.lastT=0;const ax=(S.avoirsAuto||[]).find(x=>x.manuel===t.dataset.del);await S.db.doc(P("avoirs/"+t.dataset.del)).delete();if(ax)await S.db.doc(P("avoirsAuto/"+ax.id)).update({manuel:null}); /* v157 : l'avoir sur facture redevient libre */S.edit=null;S.confirmDel=null;toast("Avoir supprimé (↶ pour annuler)");render()}catch(err){fail(err)}return}
+  if(t.dataset.del){try{HIST.lastT=0;const dl=t.dataset.del,ax=(S.avoirsAuto||[]).find(x=>avLies(x).includes(dl));await S.db.doc(P("avoirs/"+dl)).delete();if(ax)await S.db.doc(P("avoirsAuto/"+ax.id)).update(avLienPatch(avLies(ax).filter(i=>i!==dl))); /* v157 : l'avoir sur facture redevient libre */S.edit=null;S.confirmDel=null;toast("Avoir supprimé (↶ pour annuler)");render()}catch(err){fail(err)}return}
   if(t.dataset.up){fMove(t.dataset.up,-1);return} if(t.dataset.down){fMove(t.dataset.down,1);return}
   const act=t.dataset.act;
   if(act==="new"){S.tab="avoirs";S.edit={fournisseur:S.fFourn||((avFourn()[0][0])||S.fourn.find(f=>!f.groupe)||{}).id,statut:"declare",date:todayISO(),motif:"Manquant"};S.confirmDel=null;render();const p=$("#av-produit");p&&p.focus()}
@@ -1442,6 +1442,7 @@ const FAC=(()=>{
     r.col=col;
     r.lignes=r.total!=null&&r.date?[{date:r.date,col,montant:r.total}]:[];
     r.avoirs=avoirsDiapar(L);
+    r.refs=[...new Set([...T.matchAll(/FACT\.?\s*NO\s+(\d+)\s*DU/g)].map(x=>x[1]))]; // v161 : toutes les factures d'origine des avoirs
     const f=T.match(/FACT\.?\s*NO\s+(\d+)?\s*DU\s+(\d{1,2})\/(\d\d)\/(\d\d)/);if(f)r.factureOrigine=(f[1]?f[1]+" ":"")+"du "+f[2].padStart(2,"0")+"/"+f[3]+"/"+f[4];
     return r}
   // Montant dans le texte : « 1 222,25 », « 1222,25 », « 1222.25 »
@@ -1477,6 +1478,9 @@ const FAC=(()=>{
     const par={};bls.forEach(b=>par[b.date]=r2((par[b.date]||0)+b.ht*k));
     const ds=Object.keys(par).sort(),som=r2(ds.reduce((s,d)=>s+par[d],0));if(ds.length)par[ds[ds.length-1]]=r2(par[ds[ds.length-1]]+cible-som);
     return ds.map(d=>({date:d,montant:par[d]}))}
+  /* v161 : références écrites sur un avoir (facture d'origine, bon de livraison) : FDG « Fact. origine », ISLA « Retour issu de la facture » / « Référence origine »,
+     BOCQUET « BDL N° », SAINT PRIM « B.L Ref No », DIAPAR « FACT.NO » */
+  const FAC_REFS=[/Fact\.?\s*origine\s*:?\s*([0-9A-Z]{4,})/gi,/issu\s+de\s+la\s+facture\s*:?\s*(\d{4,})/gi,/R[ée]f[ée]rence\s+origine\s*:\s*([0-9A-Z]{3,})/gi,/BDL\s*N\S*\s*(\d{4,})/gi,/B\.?\s*L\.?\s*Ref\.?\s*No\s*(\d{4,})/gi,/FACT\.?\s*NO\s+(\d{4,})/gi,/(?:sur|concerne)\s+(?:la\s+)?facture\s*(?:n\S*)?\s*:?\s*([0-9A-Z]{4,})/gi];
   function analyser(rel,pages,mod){
     const segs=String(rel).split(/[\\/]/),nom=segs[segs.length-1],L=lignes(pages),T=L.map(l=>l.t).join("\n");
     const four=dossier(rel),ni=nomInfo(nom),base={rel,nom,dossier:four,annee:annee(rel),texte:T.length>80,magasin:magasin(T)};
@@ -1504,6 +1508,8 @@ const FAC=(()=>{
       r.avoirs=avs.map(a=>({code:a.code,libelle:(a.lib?a.lib+" · ":"")+"avoir n° "+a.n+" du "+a.date.slice(8,10)+"/"+a.date.slice(5,7)+"/"+a.date.slice(2,4)+(a.bl?" (BL "+a.bl+" du "+a.blDate+")":""),ht:a.ht,ttc:r2(a.ht*k)}));
       r.verif.push(avs.length+" avoir(s) dans la facture ("+r2(r.avoirs.reduce((s,a)=>s+a.ttc,0)).toFixed(2).replace(".",",")+" € TTC) : bons de livraison entiers dans la saisie, avoirs dans « Avoir sur facture »")}
     r.lignes=lig?lig.map(x=>({date:x.date,col:null,montant:x.montant})):(r.total!=null&&r.date?[{date:r.date,col:null,montant:r.total}]:[]);
+    if(r.type==="avoir"&&base.texte){const R=new Set();for(const re of FAC_REFS)for(const m of T.matchAll(re))R.add(m[1]);r.refs=[...R];
+      const fo=T.match(/Fact\.?\s*origine\s*:?\s*([0-9A-Z]{4,})/i)||T.match(/issu\s+de\s+la\s+facture\s*:?\s*(\d{4,})/i)||T.match(/BDL\s*N\S*\s*(\d{4,})/i);if(fo)r.factureOrigine=fo[1]}
     if(r.type==="avoir")r.avoirs=[{code:"",libelle:"",ht:null,ttc:Math.abs(r.total||0),codes:base.texte?[...new Set((T.match(/\b\d{6,13}\b/g)||[]))].slice(0,30):[]}];
     return r}
   return{avoirsDiapar,nk,num,lignes,nomInfo,ignorer,copieDe,dossier,annee,magasin,analyser,contient,triple,eurs,parBL,repartir}
@@ -1806,7 +1812,7 @@ async function facSpRelire(){if(FAC_SPREL||!S.db||!S.store||!S.facImp||!FAC_API(
     if(n)toast(n+" décade(s) Saint Prim relue(s) : bons de livraison entiers, "+nav+" avoir(s) ajouté(s) dans « Avoir sur facture »")}
   catch(e){console.error(e)}finally{FAC_SPREL=false}}
 // v157 : à la relecture d'une facture (« Reprendre »), l'avoir sur facture garde sa déclaration reliée et ses refus
-function avOld(k){const o=(S.avoirsAuto||[]).find(z=>z.id===k)||{},a=o.manuel&&S.avoirs.find(z=>z.id===o.manuel&&z.avoirAuto===k);return{manuel:a?o.manuel:null,refus:Array.isArray(o.refus)?o.refus:[]}}
+function avOld(k){const o=(S.avoirsAuto||[]).find(z=>z.id===k),l=avLies(o);return{manuel:l[0]||null,manuels:l,refus:o&&Array.isArray(o.refus)?o.refus:[]}}
 async function facImporter(auto,only){
   if(S.fac.imp)return;
   let L;
@@ -1840,7 +1846,7 @@ async function facImporter(auto,only){
         const lig=(r.avoirs||[]).map(a=>({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc}));
         const tt=r.type==="avoir"?Math.abs(r.saisi!=null?r.saisi:r.total||0):Math.round(lig.reduce((s,a)=>s+(a.ttc||0),0)*100)/100;
         await S.db.doc(P("avoirsAuto/"+r.key)).set({fournisseur:avf,date:r.date||"",numero:r.numero||"",total:tt,lignes:lig.filter(a=>a.code||a.ht!=null),
-          codes:(r.avoirs&&r.avoirs[0]&&r.avoirs[0].codes)||[],dansFacture:r.type!=="avoir"&&!r.avHorsTotal,factureOrigine:r.factureOrigine||"",fichier:r.rel,nom:r.nom,manuel:avOld(r.key).manuel,refus:avOld(r.key).refus,creeLe:todayISO()});nAv++}
+          codes:(r.avoirs&&r.avoirs[0]&&r.avoirs[0].codes)||[],dansFacture:r.type!=="avoir"&&!r.avHorsTotal,factureOrigine:r.factureOrigine||"",fichier:r.rel,nom:r.nom,manuel:avOld(r.key).manuel,manuels:avOld(r.key).manuels,refus:avOld(r.key).refus,refs:r.refs||[],creeLe:todayISO()});nAv++}
       nOk++}
     const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({liens});else await ref.set({depart:facDepart()||todayISO(),liens});
     const done=new Set(L.map(r=>r.rel));S.fac.liste=S.fac.liste.filter(r=>!done.has(r.rel));
@@ -1901,27 +1907,43 @@ async function facIgnorer(rel){const r=S.fac.liste.find(x=>x.rel===rel);if(!r)re
   try{await S.db.doc(P("factures/"+r.key)).set({s:"x",n:r.nom,le:todayISO()});S.fac.liste=S.fac.liste.filter(x=>x!==r);toast("Document ignoré : il ne sera plus proposé");facRender();facBadge()}catch(e){fail(e)}}
 
 /* ----- rapprochement avoir lu / avoir manuel ----- */
+/* v161 : un avoir sur facture peut être relié à PLUSIEURS déclarations (ex. Saint Prim : avocat + pomme + poivron du même bon) : champ manuels (liste) ; manuel = le premier (anciennes versions) */
+const avLies=x=>{if(!x)return[];const l=Array.isArray(x.manuels)?x.manuels.slice():[];if(x.manuel&&!l.includes(x.manuel))l.unshift(x.manuel);return l.filter(id=>S.avoirs.some(a=>a.id===id&&a.avoirAuto===x.id))};
+const avLienPatch=l=>({manuels:l,manuel:l[0]||null});
+/* v161 : n° de bon de livraison / facture d'origine lus sur l'avoir (comparés au « N° de facture » de la déclaration) */
+const refN=v=>String(v||"").toUpperCase().replace(/[^0-9A-Z]/g,"").replace(/^0+/,"");
+function avRefs(x){const R=new Set(),add=v=>{const n=refN(v);if(n.length>=4)R.add(n)};
+  (x.refs||[]).forEach(add);add(x.numero);
+  const fo=String(x.factureOrigine||"").match(/^\s*([0-9A-Z]+)\s/i);if(fo)add(fo[1]);
+  for(const l of (x.lignes||[])){const t=String(l.libelle||"");let m;const re=/\b(?:BL|avoir n°)\s*(\d{4,})/gi;while((m=re.exec(t)))add(m[1])}
+  if(!x.dansFacture)(x.codes||[]).forEach(c=>{if(String(c).length<=10)add(c)});
+  return R}
+// mots du produit (4 lettres et plus) communs avec les produits de l'avoir
+const avMots=t=>new Set(String(t||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^A-Z]+/).filter(w=>w.length>=4));
 const facFournAv=id=>id==="diapar"?["diapar","epicerie","aa","frais"]:[id];
 function facCandidats(x){const codes=new Set([...(x.lignes||[]).map(a=>String(a.code||"").replace(/^0+/,"")),...(x.codes||[]).map(c=>String(c).replace(/^0+/,""))].filter(Boolean));
-  const out=[];
+  const out=[],REFS=avRefs(x),LIES=avLies(x);
   for(const a of S.avoirs){const ded=a.statut==="accepte"||a.statut==="deduit"; /* v125 : une déclaration passée en Déduit à la main est aussi rapprochée (sinon comptée deux fois) */
     if(!(EN_COURS.includes(a.statut)||ded)||a.avoirAuto||(x.refus||[]).includes(a.id))continue;
     if(ded&&a.date&&x.date&&(Date.parse(x.date)-Date.parse(a.date))>120*864e5)continue;
     if(!facFournAv(x.fournisseur).includes(a.fournisseur))continue;
     if(a.date&&x.date&&a.date>x.date)continue;
-    const c=String(a.code||"").replace(/\s/g,"").replace(/^0+/,"");let sc=0,raison="";
-    if(c&&codes.has(c)){sc=10;raison="même code article ("+a.code+")"}
+    const c=String(a.code||"").replace(/\s/g,"").replace(/^0+/,"");let sc=0,raison="";const fr=refN(a.facture);
+    if(fr.length>=4&&REFS.has(fr)){sc=12;raison="même n° de bon / facture ("+a.facture+")"}
+    else if(c&&codes.has(c)){sc=10;raison="même code article ("+a.code+")"}
     else if(a.montant){const ht=a.montant,lig=(x.lignes||[]).find(l=>l.ht!=null&&Math.abs(l.ht-ht)<=0.02);
       if(lig){sc=6;raison="même montant HT ("+eur2.format(ht)+")"}
       else if(!(x.lignes||[]).length&&Math.abs(ht*avTva(a)-x.total)<=Math.max(0.05,x.total*0.01)){sc=5;raison="montant proche ("+eur2.format(x.total)+" TTC)"}}
+    if(sc){const mw=avMots(a.produit),lw=avMots((x.lignes||[]).map(l=>l.libelle).join(" "));if([...mw].some(w=>lw.has(w))){sc+=1;raison+=", même produit"}}
+    if(sc&&LIES.length&&sc<10)continue; /* déjà relié : une autre déclaration seulement avec le même n° de bon ou le même code */
     if(sc)out.push({a,sc,raison})}
   return out.sort((p,q)=>q.sc-p.sc)}
 // v90 : pour chaque déclaration en cours, l'avoir sur facture qui lui correspond le mieux (proposition à valider)
-function facPourDecl(){const m={};for(const x of (S.avoirsAuto||[])){if(x.manuel)continue;for(const c of facCandidats(x)){const o=m[c.a.id];if(!o||c.sc>o.sc)m[c.a.id]={x,sc:c.sc,raison:c.raison}}}return m}
-function facPropositions(){const out=[];for(const x of (S.avoirsAuto||[])){if(x.manuel)continue;const c=facCandidats(x);if(c.length)out.push({x,c:c[0]})}return out}
+function facPourDecl(){const m={};for(const x of (S.avoirsAuto||[])){for(const c of facCandidats(x)){const o=m[c.a.id];if(!o||c.sc>o.sc)m[c.a.id]={x,sc:c.sc,raison:c.raison}}}return m}
+function facPropositions(){const out=[];for(const[id,p]of Object.entries(facPourDecl())){const a=S.avoirs.find(z=>z.id===id);if(a)out.push({x:p.x,c:{a,sc:p.sc,raison:p.raison}})}return out} // v161 : une proposition par déclaration
 async function facLier(autoId,manId,silent){const x=(S.avoirsAuto||[]).find(z=>z.id===autoId),a=S.avoirs.find(z=>z.id===manId);if(!x||!a)return;const t=todayISO();
-  try{await S.db.doc(P("avoirs/"+manId)).update({statut:"accepte",dateStatut:a.statut==="accepte"?(a.dateStatut||t):t,majLe:t,avoirAuto:autoId,statutAvant:a.statut});await S.db.doc(P("avoirsAuto/"+autoId)).update({manuel:manId});
-    a.statut="accepte";a.avoirAuto=autoId;x.manuel=manId;if(!silent)toast("Avoir « "+(a.produit||"")+" » relié : Accepté")}catch(e){fail(e)}}
+  try{await S.db.doc(P("avoirs/"+manId)).update({statut:"accepte",dateStatut:a.statut==="accepte"?(a.dateStatut||t):t,majLe:t,avoirAuto:autoId,statutAvant:a.statut});const l=avLies(x).filter(i=>i!==manId).concat(manId);await S.db.doc(P("avoirsAuto/"+autoId)).update(avLienPatch(l));
+    a.statut="accepte";a.avoirAuto=autoId;Object.assign(x,avLienPatch(l));if(!silent)toast("Avoir « "+(a.produit||"")+" » relié : Accepté")}catch(e){fail(e)}}
 // v89 : toute correspondance passe directement en Déduit (sans validation) ; la bulle « Avoir sur facture » permet de vérifier et de défaire
 let FAC_LIENS=false;
 async function facAutoLier(){if(FAC_LIENS||!S.db||!S.store)return;FAC_LIENS=true;let n=0;
@@ -1929,7 +1951,7 @@ async function facAutoLier(){if(FAC_LIENS||!S.db||!S.store)return;FAC_LIENS=true
   if(n)toast(n+" déclaration(s) retrouvée(s) sur facture : passée(s) en Accepté");return n}
 async function facDelier(manId){const a=S.avoirs.find(z=>z.id===manId);if(!a||!a.avoirAuto)return;const x=(S.avoirsAuto||[]).find(z=>z.id===a.avoirAuto),t=todayISO();
   try{await S.db.doc(P("avoirs/"+manId)).update({statut:a.statutAvant||"accepte",avoirAuto:null,dateStatut:t,majLe:t});
-    if(x)await S.db.doc(P("avoirsAuto/"+x.id)).update({manuel:null,refus:[...(x.refus||[]),manId]});toast("Lien retiré : la déclaration est de nouveau en cours")}catch(e){fail(e)}}
+    if(x)await S.db.doc(P("avoirsAuto/"+x.id)).update(Object.assign(avLienPatch(avLies(x).filter(i=>i!==manId)),{refus:[...(x.refus||[]),manId]}));toast("Lien retiré : la déclaration est de nouveau en cours")}catch(e){fail(e)}}
 async function facRefuser(autoId,manId){const x=(S.avoirsAuto||[]).find(z=>z.id===autoId);if(!x)return;
   try{await S.db.doc(P("avoirsAuto/"+autoId)).update({refus:[...(x.refus||[]),manId]})}catch(e){fail(e)}}
 // Après un import : fenêtre qui demande de valider chaque avoir manuel retrouvé sur les factures
@@ -2386,13 +2408,13 @@ function facComparer(manId,autoId){const PROP=facPourDecl();
   let b=manId?S.avoirs.find(z=>z.id===manId):null,x=null,raison="";
   if(b&&b.avoirAuto)x=(S.avoirsAuto||[]).find(z=>z.id===b.avoirAuto);
   else if(b&&PROP[b.id]){x=PROP[b.id].x;raison=PROP[b.id].raison}
-  if(!b&&autoId){x=(S.avoirsAuto||[]).find(z=>z.id===autoId);if(x&&x.manuel)b=S.avoirs.find(z=>z.id===x.manuel);
+  if(!b&&autoId){x=(S.avoirsAuto||[]).find(z=>z.id===autoId);if(x&&avLies(x).length)b=S.avoirs.find(z=>z.id===avLies(x)[0]);
     else if(x){const c=facCandidats(x)[0];if(c){b=c.a;raison=c.raison}}}
   if(!x||!b)return;const lie=b.avoirAuto===x.id,fn=id=>id==="diapar"?"DIAPAR":fName(id);
   const L=(k,v)=>v?`<div class="cmpl"><span>${k}</span><b>${v}</b></div>`:"";
   const dec=`${L("Fournisseur",esc(fName(b.fournisseur)))}${L("Produit",esc(b.produit||""))}${L("Code article",esc(b.code||""))}${L("Date de facture",frDate(b.date))}${L("N° de facture",esc(b.facture||""))}${L("Quantité",esc(b.quantite||""))}${L("Motif",esc(b.motif||""))}${L("Montant",b.montant?eur2.format(b.montant)+" HT":"")}${L("Statut",`<span class="pill s-${b.statut}">${SLABEL[b.statut]||b.statut}</span>`)}`;
   const lig=(x.lignes||[]).map(l=>`<div>${l.code?esc(l.code)+" ":""}${esc(l.libelle||"")}${l.ht!=null?" · "+eur2.format(l.ht)+" HT":""}</div>`).join("");
-  const fac=`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""))}${L("Date",frDate(x.date))}${L("Concerne la facture",esc(x.factureOrigine||""))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`;
+  const fac=`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""))}${L("Date",frDate(x.date))}${L("Concerne la facture",esc(x.factureOrigine||(x.refs||[]).join(", ")))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`;
   const o=document.createElement("div");o.className="facov";o.id="facCmp";
   o.innerHTML=`<div class="facbox" style="max-width:860px"><div class="band">Avoir sur facture</div><div style="padding:14px 16px">
     ${lie?`<p class="sub" style="margin:0 0 10px">✓ Cette déclaration a été validée : elle est en <b>Accepté</b>.</p>`:`<p class="sub" style="margin:0 0 10px">Cette déclaration semble avoir été accordée par le fournisseur${raison?" ("+esc(raison)+")":""}. Est-ce le même avoir ?</p>`}
@@ -2413,12 +2435,13 @@ function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fou
   const fn=id=>id==="diapar"?"DIAPAR":fName(id);
   const prod=x=>{const l=(x.lignes||[]);if(!l.length)return `<span class="hist">${x.dansFacture?"":"Détail dans le PDF"}</span>`;
     return l.slice(0,4).map(a=>`<div>${a.code?`<span class="hist" style="display:inline">${esc(a.code)}</span> `:""}${esc(a.libelle||"")}${a.ht!=null?` <span class="hist" style="display:inline">· ${eur2.format(a.ht)} HT</span>`:""}</div>`).join("")+(l.length>4?`<div class="hist">+ ${l.length-4} autre(s)</div>`:"")};
-  const rap=x=>{const a=x.manuel&&S.avoirs.find(z=>z.id===x.manuel);
-    if(a)return `<button class="avsf" data-avcmp="${esc(x.id)}" title="Voir la déclaration et l'avoir sur facture">Déclaration : ${esc(a.produit||"")}</button><div class="hist">Déclarée le ${frDate(a.date)} · ${SLABEL[a.statut]||a.statut}</div>`;
-    const c=facCandidats(x)[0];if(c)return `<button class="avsf prop" data-avcmp="${esc(x.id)}" title="Vérifier et valider">À valider : ${esc(c.a.produit||"")}</button><div class="hist">Déclarée le ${frDate(c.a.date)} · ${esc(c.raison)}</div>`;
-    return `<span class="hist">Aucune déclaration correspondante</span>`};
+  const rap=x=>{const lies=avLies(x).map(id=>S.avoirs.find(z=>z.id===id)).filter(Boolean),PR=facPourDecl();
+    const props=Object.entries(PR).filter(([id,p])=>p.x.id===x.id).map(([id,p])=>({a:S.avoirs.find(z=>z.id===id),raison:p.raison})).filter(p=>p.a);
+    let h=lies.map(a=>`<button class="avsf" data-avsf="${esc(a.id)}" title="Voir la déclaration et l'avoir sur facture">Déclaration : ${esc(a.produit||"")}</button><div class="hist">Déclarée le ${frDate(a.date)} · ${SLABEL[a.statut]||a.statut}</div>`).join("");
+    h+=props.map(p=>`<button class="avsf prop" data-avsf="${esc(p.a.id)}" title="Vérifier et valider">À valider : ${esc(p.a.produit||"")}</button><div class="hist">Déclarée le ${frDate(p.a.date)} · ${esc(p.raison)}</div>`).join("");
+    return h||`<span class="hist">Aucune déclaration correspondante</span>`};
   /* v157 : relier à la main une déclaration (même fournisseur, pas encore reliée, pas refusée) */
-  const lierSel=x=>{if(x.manuel&&S.avoirs.some(z=>z.id===x.manuel))return "";const D=S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&!a.avoirAuto&&a.statut!=="refuse").sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const lierSel=x=>{const D=S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&!a.avoirAuto&&a.statut!=="refuse").sort((a,b)=>String(b.date).localeCompare(String(a.date)));
     return `<select class="avlsel" data-avlsel="${esc(x.id)}" aria-label="Relier à une déclaration" style="display:block;margin-top:4px;max-width:230px"><option value="">${D.length?"Relier à une déclaration…":"Aucune déclaration à relier"}</option>${D.map(a=>`<option value="${esc(a.id)}">${esc(frDate(a.date))} · ${esc(a.produit||"")}${a.montant?" · "+esc(eur2.format(a.montant))+" HT":""} · ${esc(SLABEL[a.statut]||a.statut)}</option>`).join("")}</select>`};
   return `<div class="row" style="margin-bottom:10px"><select id="avfFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${fns.map(f=>`<option value="${esc(f)}" ${S.avfFourn===f?"selected":""}>${esc(f==="diapar"?"DIAPAR":fName(f))}</option>`).join("")}</select></div>
   <div class="panel flush"><div class="band">Avoir sur facture</div><div class="scroll"><table>
@@ -2436,9 +2459,9 @@ async function avLierMain(autoId,manId){const x=(S.avoirsAuto||[]).find(z=>z.id=
   if(!await askConfirm("Relier la déclaration « "+(a.produit||"")+" » ("+frDate(a.date)+") à cet avoir sur facture ("+eur2.format(x.total||0)+" TTC) ?\n\nLa déclaration passe en Accepté et l'avoir ne compte qu'une seule fois."))return;
   HIST.lastT=0;await facLier(autoId,manId);render()}
 // v157 : supprimer un avoir sur facture (mal lu, mal classé, doublon). Annulable avec ↶. La déclaration reliée garde son statut et compte seule.
-async function avAutoSupprimer(id){const x=(S.avoirsAuto||[]).find(z=>z.id===id);if(!x)return;const a=x.manuel&&S.avoirs.find(z=>z.id===x.manuel);
-  if(!await askConfirm("Supprimer cet avoir sur facture ?\n\n"+(x.fournisseur==="diapar"?"DIAPAR":fName(x.fournisseur))+" · "+frDate(x.date)+" · "+eur2.format(x.total||0)+" TTC"+(x.dansFacture?"":"\nIl ne comptera plus dans « Avoirs ».")+(a?"\nLa déclaration « "+(a.produit||"")+" » n'y sera plus reliée et comptera seule.":"")+"\n\nAnnulable avec la flèche ↶."))return;
-  try{HIST.lastT=0;if(a)await S.db.doc(P("avoirs/"+a.id)).update({avoirAuto:null});await S.db.doc(P("avoirsAuto/"+id)).delete();toast("Avoir sur facture supprimé (↶ pour annuler)");render()}catch(e){fail(e)}}
+async function avAutoSupprimer(id){const x=(S.avoirsAuto||[]).find(z=>z.id===id);if(!x)return;const LA=avLies(x).map(id=>S.avoirs.find(z=>z.id===id)).filter(Boolean),a=LA[0];
+  if(!await askConfirm("Supprimer cet avoir sur facture ?\n\n"+(x.fournisseur==="diapar"?"DIAPAR":fName(x.fournisseur))+" · "+frDate(x.date)+" · "+eur2.format(x.total||0)+" TTC"+(x.dansFacture?"":"\nIl ne comptera plus dans « Avoirs ».")+(LA.length?"\n"+(LA.length>1?LA.length+" déclarations n'y seront plus reliées.":"La déclaration « "+(a.produit||"")+" » n'y sera plus reliée."):"")+"\n\nAnnulable avec la flèche ↶."))return;
+  try{HIST.lastT=0;for(const d of LA)await S.db.doc(P("avoirs/"+d.id)).update({avoirAuto:null});await S.db.doc(P("avoirsAuto/"+id)).delete();toast("Avoir sur facture supprimé (↶ pour annuler)");render()}catch(e){fail(e)}}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-avxdel]");if(b)avAutoSupprimer(b.dataset.avxdel)});
 // v159 : « Détecter » qui clignote : ouvre « Avoir sur facture » sur l'avoir détecté (surligné)
 document.addEventListener("click",e=>{const b=e.target.closest("[data-avdet]");if(!b)return;
