@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="163">
+<meta name="gm-version" content="164">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -512,7 +512,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=163;
+const APP_VERSION=164;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -2477,19 +2477,20 @@ function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fou
   const decade=x=>{const PR=facPourDecl(),lies=avLies(x).map(id=>S.avoirs.find(z=>z.id===id)).filter(Boolean),props=Object.entries(PR).filter(([id,p])=>p.x.id===x.id).map(([id,p])=>({a:S.avoirs.find(z=>z.id===id),raison:p.raison})).filter(p=>p.a);
     const pris=new Set();const pour=i=>{const f=[refN(i.bl),refN(i.n)].filter(Boolean),ok=a=>f.includes(refN(a.facture));
       const L1=lies.filter(ok),P1=props.filter(p=>ok(p.a));L1.forEach(a=>pris.add(a.id));P1.forEach(p=>pris.add(p.a.id));
-      return L1.map(a=>decl(a,"",true)).join("")+P1.map(p=>decl(p.a,"même bon de livraison",false)).join("")||`<span class="hist">Pas de déclaration</span>`};
+      return L1.map(a=>decl(a,"",true)).join("")+P1.map(p=>decl(p.a,"même bon de livraison",false)).join("")||selDecl(x,"Pas de déclaration : relier…")}; /* v164 : sans déclaration, la liste pour relier à la main ; elle laisse la place à « À valider » dès qu'une déclaration correspond */
     const items=(x.lignes||[]).map(l=>{const i=avLigInfo(l);return `<div class="it"><div class="num"><b>Avoir n° ${esc(i.n)}</b><span>du ${esc(i.date)}</span>${i.bl?`<span>BL ${esc(i.bl)}</span>`:""}</div><div>${(l.produits&&l.produits.length>1?l.produits:[{code:i.code,lib:i.lib,ht:null}]).map((q,k,A)=>`<div style="${A.length>1?"margin-bottom:3px":""}">${esc(q.lib)}${A.length>1&&q.ht!=null?` <span class="hist" style="display:inline">· ${eur2.format(q.ht)}</span>`:""}${A.length<2&&q.code?`<div class="hist">${esc(q.code)}</div>`:""}</div>`).join("")}</div><div class="mt">${i.ht!=null?eur2.format(i.ht)+" HT":""}</div><div class="dc">${pour(i)}</div></div>`}).join("");
     const reste=lies.filter(a=>!pris.has(a.id)).map(a=>decl(a,"",true)).join("")+props.filter(p=>!pris.has(p.a.id)).map(p=>decl(p.a,p.raison,false)).join("");
     return `<div class="avdl">${items}${reste?`<div class="it"><div class="num"><b>Autres</b></div><div></div><div></div><div class="dc">${reste}</div></div>`:""}</div>`};
   /* v157 : relier à la main une déclaration (même fournisseur, pas encore reliée, pas refusée) ; v162 : seulement tant que l'avoir n'est relié à aucune déclaration */
-  const lierSel=x=>{if(avLies(x).length)return "";const D=S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&!a.avoirAuto&&a.statut!=="refuse").sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-    return `<select class="avlsel" data-avlsel="${esc(x.id)}" aria-label="Relier à une déclaration" style="display:block;margin-top:4px;max-width:230px"><option value="">${D.length?"Relier à une déclaration…":"Aucune déclaration à relier"}</option>${D.map(a=>`<option value="${esc(a.id)}">${esc(frDate(a.date))} · ${esc(a.produit||"")}${a.montant?" · "+esc(eur2.format(a.montant))+" HT":""} · ${esc(SLABEL[a.statut]||a.statut)}</option>`).join("")}</select>`};
+  const lierSel=x=>{if(avLies(x).length)return "";return selDecl(x)};
+  const selDecl=(x,txt)=>{const D=S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&!a.avoirAuto&&a.statut!=="refuse").sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    return `<select class="avlsel" data-avlsel="${esc(x.id)}" aria-label="Relier à une déclaration" style="display:block;margin-top:4px;max-width:230px"><option value="">${D.length?(txt||"Relier à une déclaration…"):"Aucune déclaration à relier"}</option>${D.map(a=>`<option value="${esc(a.id)}">${esc(frDate(a.date))} · ${esc(a.produit||"")}${a.montant?" · "+esc(eur2.format(a.montant))+" HT":""} · ${esc(SLABEL[a.statut]||a.statut)}</option>`).join("")}</select>`};
   return `<div class="row" style="margin-bottom:10px"><select id="avfFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${fns.map(f=>`<option value="${esc(f)}" ${S.avfFourn===f?"selected":""}>${esc(f==="diapar"?"DIAPAR":fName(f))}</option>`).join("")}</select></div>
   <div class="panel flush"><div class="band">Avoir sur facture</div><div class="scroll"><table>
     <thead><tr><th class="l">Date</th><th class="l">Fournisseur</th><th class="l">Document</th><th class="l">Produits</th><th>Montant TTC</th><th class="l">Déclaration</th><th></th></tr></thead>
     <tbody>${L.length?L.map(x=>`<tr data-avx="${esc(x.id)}"><td class="l">${frDate(x.date)}</td><td class="l">${esc(fn(x.fournisseur))}</td>
       <td class="l" style="white-space:normal;min-width:150px">${avDecade(x)?`Facture de décade<div class="hist">Compté dans « Avoirs »</div>`:x.dansFacture?`Facture${x.numero?" n° "+esc(x.numero):""}<div class="hist">Avoir déjà déduit</div>`:`Avoir${x.numero?" n° "+esc(x.numero):""}<div class="hist">Compté dans « Avoirs »</div>`}${x.factureOrigine?`<div class="hist">Concerne la facture ${esc(x.factureOrigine)}</div>`:""}</td>
-      ${avDecade(x)?`<td class="l" colspan="3" style="white-space:normal">${decade(x)}<div class="row" style="justify-content:space-between;margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><span class="hist">${x.lignes.length} avoir${x.lignes.length>1?"s":""} dans la facture de décade</span><b>Total ${eur2.format(x.total||0)} TTC</b></div>${lierSel(x)}</td>`
+      ${avDecade(x)?`<td class="l" colspan="3" style="white-space:normal">${decade(x)}<div class="row" style="justify-content:space-between;margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><span class="hist">${x.lignes.length} avoir${x.lignes.length>1?"s":""} dans la facture de décade</span><b>Total ${eur2.format(x.total||0)} TTC</b></div></td>`
       :`<td class="l" style="white-space:normal;min-width:200px">${prod(x)}</td><td>${eur2.format(x.total||0)}</td>
       <td class="l" style="white-space:normal;min-width:230px">${rap(x)}${lierSel(x)}</td>`}
       <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${FAC_API()&&x.fichier?`<button class="btn small" data-facpdf="${esc(x.fichier)}">PDF</button>`:""}<button class="fx" data-avxdel="${esc(x.id)}" title="Supprimer cet avoir sur facture" aria-label="Supprimer cet avoir sur facture" style="width:26px;height:26px">✕</button></div></td></tr>`).join("")
