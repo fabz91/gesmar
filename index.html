@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="155">
+<meta name="gm-version" content="156">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -508,7 +508,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance","accepte"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=155;
+const APP_VERSION=156;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 %
 const DEM_MOTIFS=["Casse","DLC dépassée","Produit abîmé","Vol constaté","Consommation interne","Erreur de réception","Autre"];
@@ -619,6 +619,8 @@ function vSaisiePh(){
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.tauxCorr)} <span class="vm">(${eur.format(st.marge)})</span></span><span class="d">Taux N-1 : ${n1st.ca?pct(n1st.tauxCorr):"—"}</span></div>
   </div>
+  <div class="panel flush"><div class="band">Jours de ${esc(MOIS[m].toLowerCase())}</div><ul class="phlist"><li class="hd"><span class="j">Jour</span><span class="c">CA TTC</span><span class="a">Achats</span></li>${lst}</ul></div>
+  <div class="gap"></div>
   <div class="panel flush phday"><div class="band"><button data-phd="-1" aria-label="Jour précédent">‹</button><span class="dl">${WDL[wd]} ${d} ${esc(MOIS[m].toLowerCase())}</span><button data-phd="1" aria-label="Jour suivant">›</button></div>
     ${LOCK?`<div class="phg" style="text-transform:none;letter-spacing:0">🔒 Import automatique des factures : saisie faite par le PC</div>`:""}
     ${row("ca","CA TTC","","ca",j.ca)}
@@ -626,8 +628,6 @@ function vSaisiePh(){
     ${body}
     <div class="phr tot"><span class="n">Total achats du jour</span><span class="v">${tot?eur2.format(tot):"—"}</span></div>
   </div>
-  <div class="gap"></div>
-  <div class="panel flush"><div class="band">Jours de ${esc(MOIS[m].toLowerCase())}</div><ul class="phlist"><li class="hd"><span class="j">Jour</span><span class="c">CA TTC</span><span class="a">Achats</span></li>${lst}</ul></div>
   <p class="phnote">Démarque, factures et colonnes : sur le PC.</p>`}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-phd],[data-phgo]");if(!b||!document.body.classList.contains("ph"))return;
   if(b.dataset.phd){phDayGo(+b.dataset.phd);window.scrollTo({top:Math.max(0,($(".phday")||{}).offsetTop-70||0)});return}
