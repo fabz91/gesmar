@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="167">
+<meta name="gm-version" content="168">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -349,6 +349,8 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .avdl .num b{display:block;font-size:13px}.avdl .num span{display:block;font-size:12px;color:var(--muted)}.avdl .mt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.avdl .dc .avsf{margin:0 0 2px}.avdl .dc .hist{margin-bottom:4px}
 .cmpt{width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--line);border-radius:10px;overflow:hidden}.cmpt th,.cmpt td{padding:7px 10px;border-top:1px solid var(--line);text-align:left;vertical-align:top}.cmpt thead th{border-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--surface-2,transparent)}
 .cmpt tbody th{width:150px;font-weight:600;color:var(--muted);white-space:nowrap}.cmpt td{width:40%;font-weight:700}.cmpt td.ok{color:var(--good)}
+.cmp2{display:grid;grid-template-columns:1fr 1fr;column-gap:12px}.cmp2 .c2{border-left:1px solid var(--line);border-right:1px solid var(--line);padding:0 14px;background:var(--surface)}.cmp2 .c2.top{border-top:1px solid var(--line);border-radius:12px 12px 0 0;padding-top:12px;padding-bottom:6px}.cmp2 .c2.bot{border-bottom:1px solid var(--line);border-radius:0 0 12px 12px;padding-bottom:12px}
+.cmp2 .cmpl{height:100%;box-sizing:border-box;align-items:flex-start}.cmp2 .c2.bot .cmpl{height:auto}.cmp2 .cmpl b.ok{color:var(--good)}@media(max-width:700px){.cmp2{column-gap:6px}.cmp2 .c2{padding:0 8px}}
 .cmpbl{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}.cmpbl .r{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:13px}.cmpbl .r.t{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-weight:800}.cmpbl .ok{color:var(--good);font-weight:800}.cmpbl .ko{color:var(--warn);font-weight:800}
 .avsfw{text-align:right;margin-top:4px}.avsfw .avsf{margin-left:0}
 .avsf.prop{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.avsf.prop:hover{background:var(--warn);color:#fff}
@@ -514,7 +516,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=167;
+const APP_VERSION=168;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -2448,18 +2450,19 @@ function facComparer(manId,autoId){const PROP=facPourDecl();
     avMt=li?(pr&&pr.ht!=null?pr.ht:li.ht):null,avMtTxt=li?(avMt!=null?eur2.format(avMt)+" HT":""):eur2.format(x.total||0)+" TTC",
     avNum=li?(li.bl?"BL "+li.bl:"")+(li.bl?" · ":"")+"avoir n° "+li.n:(x.factureOrigine||(x.refs||[]).join(", ")),avDate=li?li.date:frDate(x.date);
   const eqN=refN(b.facture)&&(li?[refN(li.bl),refN(li.n)]:[...avRefs(x)]).includes(refN(b.facture)),eqM=b.montant&&avMt!=null&&Math.abs(avMt-b.montant)<0.02,eqF=facFournAv(x.fournisseur).includes(b.fournisseur);
-  const R=(k,d,a,ok)=>d||a?`<tr><th>${k}</th><td>${d||'<span class="hist">—</span>'}</td><td class="${ok?"ok":""}">${a||'<span class="hist">—</span>'}${ok?" ✓":""}</td></tr>`:"";
-  const tab=`<table class="cmpt"><thead><tr><th></th><th>Déclaration</th><th>Avoir sur facture</th></tr></thead><tbody>
-    ${R("Fournisseur",esc(fName(b.fournisseur)),esc(fn(x.fournisseur)),eqF)}
-    ${R("Produit",esc(b.produit||"")+(b.code?`<div class="hist">Code ${esc(b.code)}</div>`:""),avProd,false)}
-    ${R("Date",frDate(b.date),esc(avDate||""),false)}
-    ${R("N° de bon / facture",esc(b.facture||""),esc(avNum||""),eqN)}
-    ${R("Montant",b.montant?eur2.format(b.montant)+" HT":"",avMtTxt,eqM)}
-    ${R("Quantité",esc(b.quantite||""),"",false)}${R("Motif",esc(b.motif||""),"",false)}
-    ${R("Statut",`<span class="pill s-${b.statut}">${SLABEL[b.statut]||b.statut}</span>`,"",false)}
-    ${li&&P&&pr?R("Avoir complet","",esc(P.length+" produits · "+(li.ht!=null?eur2.format(li.ht)+" HT":"")),false):""}
-    ${li?R("Dans","",esc("facture de décade du "+frDate(x.date)+" ("+x.lignes.length+" avoir"+(x.lignes.length>1?"s":"")+", "+eur2.format(x.total||0)+" TTC)"),false):R("Document","",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""),false)}
-    ${R("Fichier","",esc(x.nom||""),false)}</tbody></table>`;
+  /* v168 : deux cadres comme avant (chacun ses intitulés) ; Fournisseur, Produit, Date, N°, Montant sur la même ligne des deux côtés ; le reste propre à chaque cadre */
+  const C=(k,v,ok)=>`<div class="cmpl"><span>${k}</span><b class="${ok?"ok":""}">${v||'<i class="hist">—</i>'}${ok?" ✓":""}</b></div>`;
+  const pair=(l,r,cl)=>`<div class="c2 l${cl||""}">${l}</div><div class="c2 r${cl||""}">${r}</div>`;
+  const avNumL=li?"Bon de livraison":"Facture d'origine",avNumV=li?esc(li.bl?li.bl+" du "+li.blDate:""):esc(x.factureOrigine||(x.refs||[]).join(", "));
+  const restL=(b.code?C("Code article",esc(b.code)):"")+C("Quantité",esc(b.quantite||""))+C("Motif",esc(b.motif||""))+C("Statut",`<span class="pill s-${b.statut}">${SLABEL[b.statut]||b.statut}</span>`);
+  const restR=li?C("Avoir",esc("n° "+li.n+" du "+li.date)):C("Document",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""));
+  const tab=`<div class="cmp2">${pair('<div class="lbl">Déclaration</div>','<div class="lbl">Avoir sur facture</div>'," top")}
+    ${pair(C("Fournisseur",esc(fName(b.fournisseur))),C("Fournisseur",esc(fn(x.fournisseur)),eqF))}
+    ${pair(C("Produit",esc(b.produit||"")),C(li&&P&&pr?"Produit":li?"Produit":"Produits",avProd))}
+    ${pair(C("Date de facture",frDate(b.date)),C(li?"Date de l'avoir":"Date",esc(avDate||"")))}
+    ${pair(C("N° de facture",esc(b.facture||"")),C(avNumL,avNumV,eqN))}
+    ${pair(C("Montant",b.montant?eur2.format(b.montant)+" HT":""),C("Montant",avMtTxt,eqM))}
+    ${pair(restL,restR," bot")}</div>`;
   const o=document.createElement("div");o.className="facov";o.id="facCmp";
   o.innerHTML=`<div class="facbox" style="max-width:860px"><div class="band">Avoir sur facture</div><div style="padding:14px 16px">
     ${lie?`<p class="sub" style="margin:0 0 10px">✓ Cette déclaration a été validée : elle est en <b>Accepté</b>.</p>`:`<p class="sub" style="margin:0 0 10px">Cette déclaration semble avoir été accordée par le fournisseur${raison?" ("+esc(raison)+")":""}. Est-ce le même avoir ?</p>`}
