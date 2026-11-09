@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="164">
+<meta name="gm-version" content="165">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -270,7 +270,7 @@ nav.tabs button[aria-selected="true"]{box-shadow:none}
 .ibtn.upd{position:relative}
 .ibtn.upd::after{content:"1";position:absolute;top:-7px;right:-7px;width:auto;height:17px;min-width:17px;padding:0 4px;border-radius:9px;background:#d3262b;color:#fff;border:0;box-shadow:0 0 0 2px var(--hdr);font:700 11px/17px var(--body);text-align:center}
 /* v25 : la pastille « 1 » clignote pour être bien visible (comme GESTIME v30) */
-.btn.det:disabled{opacity:.45;cursor:default}.btn.det.on{background:#f59e0b;border-color:#d97706;color:#fff;animation:detBlink 1s ease-in-out infinite}@keyframes detBlink{0%,100%{opacity:1}50%{opacity:.35}}tr.avfocus td{background:#fff3c4!important;transition:background .6s}
+.detp{border:0;background:#f59e0b;color:#fff;border-radius:999px;padding:2px 9px;font:700 12px var(--body);line-height:1.5;cursor:pointer;white-space:nowrap;animation:detBlink 1s ease-in-out infinite}.btn.det:disabled{opacity:.45;cursor:default}.btn.det.on{background:#f59e0b;border-color:#d97706;color:#fff;animation:detBlink 1s ease-in-out infinite}@keyframes detBlink{0%,100%{opacity:1}50%{opacity:.35}}tr.avfocus td{background:#fff3c4!important;transition:background .6s}
 @keyframes updBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(1.2)}}
 .ibtn.upd::after,.rbtn .pas{animation:updBlink 1s ease-in-out infinite}
 .rbtn .pas{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#d3262b;color:#fff;font:700 12px/20px var(--body);text-align:center}
@@ -512,7 +512,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=164;
+const APP_VERSION=165;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -646,12 +646,12 @@ function vAvoirsPh(){
   list=list.slice().sort((a,b)=>(isLate(b)-isLate(a))||String(b.date).localeCompare(String(a.date)));
   const chip=(k,l)=>{const c=cnt(k);return `<button class="chip" data-fstat="${k}" aria-pressed="${S.fStat===k}">${l}<span class="c">${c.length} · ${eur.format(sum(c))}</span></button>`};
   const card=a=>{const la=lastAction(a),ds=daysSince(la),late=isLate(a),enc=EN_COURS.includes(a.statut);
-    return `<div class="phav${late?" late":""}"><div class="t"><b>${esc(a.produit)}</b><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></div>
+    return `<div class="phav${late?" late":""}"><div class="t"><b>${esc(a.produit)}</b>${enc&&avDetBtn(a)||`<span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span>`}</div>
       <div class="m">${esc(fName(a.fournisseur))} · ${frDate(a.date)}${a.quantite?" · "+esc(a.quantite):""} · ${esc(a.motif)}</div>
       ${a.code||a.facture?`<div class="m">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}
       ${a.infos?`<div class="m">${esc(a.infos)}</div>`:""}
       <div class="m"><span class="mt">${a.montant?eur2.format(a.montant)+" HT":`<span class="pill s-a_reclamer">à chiffrer</span>`}</span> · ${late?"⚠️ ":""}dernière action ${frDate(la)}${ds!=null&&enc?` (${ds} j)`:""}${(a.relances||[]).length?` · ${a.relances.length} relance${a.relances.length>1?"s":""}`:""}</div>
-      <div class="acts">${enc?`<button class="btn small" data-relance="${a.id}">Relancer</button>${avDetBtn(a)}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></div>`};
+      <div class="acts">${enc?`<button class="btn small" data-relance="${a.id}">Relancer</button><button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></div>`};
   return `<div class="row" style="margin-bottom:10px;gap:8px"><select id="fFourn" aria-label="Fournisseur" style="flex:1;min-width:0"><option value="">Tous les fournisseurs</option>${avOptsMois(S.fFourn)}</select><button class="btn red" data-act="new">+ Nouveau</button></div>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   <div class="gap"></div>
@@ -744,7 +744,7 @@ const avDiapar=id=>id==="diapar"||grp(id)==="diapar";
 /* v159 (règle du gérant) : bouton « Détecter » d'une déclaration : grisé tant qu'aucun avoir sur facture ne lui correspond ; clignote dès qu'un avoir sur facture
    la détecte (proposition à valider) ; clic = ouvre « Avoir sur facture » sur cet avoir. On n'accepte plus une déclaration à la main. */
 function avDetBtn(a){const p=avPendants().has(a.id)&&(facPourDecl()[a.id]||{}).x;
-  return p?`<button class="btn small det on" data-avdet="${esc(p.id)}" title="Un avoir sur facture correspond : cliquez pour le voir et valider">Détecter</button>`:`<button class="btn small det" disabled title="Aucun avoir sur facture ne correspond pour l'instant">Détecter</button>`}
+  return p?`<button class="detp" data-avdet="${esc(p.id)}" title="Un avoir sur facture correspond : cliquez pour le voir et valider">Détecté</button>`:""} /* v165 : plus de bouton « Détecter » ni d'étiquette « à vérifier » : dans la colonne Statut, « Détecté » (orange, clignote) remplace Déclaré / Relancé ; clic = l'avoir sur facture */
 /* v141 : avoirs obtenus (mêmes règles que la pastille) avec leur date de comptage : {d, v TTC} */
 let AVO={a:null,b:null,c:null,L:null};
 function avoirsObtenus(){const PEND=avPendants();if(AVO.L&&AVO.a===S.avoirs&&AVO.b===S.avoirsAuto&&AVO.c===PEND)return AVO.L;const L=[];
@@ -1063,9 +1063,9 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
       <td class="l" style="white-space:normal;min-width:160px"><b>${esc(a.produit)}</b>${a.code||a.facture?`<div class="hist">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}${a.infos?`<div class="hist">${esc(a.infos)}</div>`:""}</td>
       <td class="l">${esc(a.quantite)}</td><td class="l">${esc(a.motif)}</td>
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
-      <td class="l"><span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span></td>
+      <td class="l">${EN_COURS.includes(a.statut)&&avDetBtn(a)||`<span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span>`}</td>
       <td class="l ${late?"late":""}">${late?`<span class="avlate" title="Sans nouvelle depuis ${ds} jours"><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span> `:""}${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
-      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${EN_COURS.includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button>${avDetBtn(a)}<button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="btn small" data-mail="${a.id}" title="Envoyer cet avoir par mail (Outlook)" aria-label="Envoyer cet avoir par mail (Outlook)" style="padding:2px 7px">✉️</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div>${a.avoirAuto&&(S.avoirsAuto||[]).some(x=>x.id===a.avoirAuto)?`<div class="avsfw"><button class="avsf" data-avsf="${a.id}" title="Voir l'avoir retrouvé sur la facture">✓ Avoir sur facture</button></div>`:PROP[a.id]?`<div class="avsfw"><button class="avsf prop" data-avsf="${a.id}" title="Cet avoir semble être sur une facture : cliquez pour vérifier">Avoir sur facture : à vérifier</button></div>`:""}</td></tr>`}).join("")
+      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${EN_COURS.includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button><button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="btn small" data-mail="${a.id}" title="Envoyer cet avoir par mail (Outlook)" aria-label="Envoyer cet avoir par mail (Outlook)" style="padding:2px 7px">✉️</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div>${a.avoirAuto&&(S.avoirsAuto||[]).some(x=>x.id===a.avoirAuto)?`<div class="avsfw"><button class="avsf" data-avsf="${a.id}" title="Voir l'avoir retrouvé sur la facture">✓ Avoir sur facture</button></div>`:""}</td></tr>`}).join("")
       :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « Nouveau » pour en créer un.</div></td></tr>`}</tbody>
   </table></div></div>`;
 }
@@ -2477,12 +2477,12 @@ function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fou
   const decade=x=>{const PR=facPourDecl(),lies=avLies(x).map(id=>S.avoirs.find(z=>z.id===id)).filter(Boolean),props=Object.entries(PR).filter(([id,p])=>p.x.id===x.id).map(([id,p])=>({a:S.avoirs.find(z=>z.id===id),raison:p.raison})).filter(p=>p.a);
     const pris=new Set();const pour=i=>{const f=[refN(i.bl),refN(i.n)].filter(Boolean),ok=a=>f.includes(refN(a.facture));
       const L1=lies.filter(ok),P1=props.filter(p=>ok(p.a));L1.forEach(a=>pris.add(a.id));P1.forEach(p=>pris.add(p.a.id));
-      return L1.map(a=>decl(a,"",true)).join("")+P1.map(p=>decl(p.a,"même bon de livraison",false)).join("")||selDecl(x,"Pas de déclaration : relier…")}; /* v164 : sans déclaration, la liste pour relier à la main ; elle laisse la place à « À valider » dès qu'une déclaration correspond */
+      return L1.map(a=>decl(a,"",true)).join("")+P1.map(p=>decl(p.a,"même bon de livraison",false)).join("")||`<span class="hist">Aucune déclaration correspondante</span>`}; /* v165 : plus de liaison à la main (décision du gérant) */ /* v164 : sans déclaration, la liste pour relier à la main ; elle laisse la place à « À valider » dès qu'une déclaration correspond */
     const items=(x.lignes||[]).map(l=>{const i=avLigInfo(l);return `<div class="it"><div class="num"><b>Avoir n° ${esc(i.n)}</b><span>du ${esc(i.date)}</span>${i.bl?`<span>BL ${esc(i.bl)}</span>`:""}</div><div>${(l.produits&&l.produits.length>1?l.produits:[{code:i.code,lib:i.lib,ht:null}]).map((q,k,A)=>`<div style="${A.length>1?"margin-bottom:3px":""}">${esc(q.lib)}${A.length>1&&q.ht!=null?` <span class="hist" style="display:inline">· ${eur2.format(q.ht)}</span>`:""}${A.length<2&&q.code?`<div class="hist">${esc(q.code)}</div>`:""}</div>`).join("")}</div><div class="mt">${i.ht!=null?eur2.format(i.ht)+" HT":""}</div><div class="dc">${pour(i)}</div></div>`}).join("");
     const reste=lies.filter(a=>!pris.has(a.id)).map(a=>decl(a,"",true)).join("")+props.filter(p=>!pris.has(p.a.id)).map(p=>decl(p.a,p.raison,false)).join("");
     return `<div class="avdl">${items}${reste?`<div class="it"><div class="num"><b>Autres</b></div><div></div><div></div><div class="dc">${reste}</div></div>`:""}</div>`};
   /* v157 : relier à la main une déclaration (même fournisseur, pas encore reliée, pas refusée) ; v162 : seulement tant que l'avoir n'est relié à aucune déclaration */
-  const lierSel=x=>{if(avLies(x).length)return "";return selDecl(x)};
+  const lierSel=x=>""; /* v165 : plus de liste « Relier à une déclaration » */
   const selDecl=(x,txt)=>{const D=S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&!a.avoirAuto&&a.statut!=="refuse").sort((a,b)=>String(b.date).localeCompare(String(a.date)));
     return `<select class="avlsel" data-avlsel="${esc(x.id)}" aria-label="Relier à une déclaration" style="display:block;margin-top:4px;max-width:230px"><option value="">${D.length?(txt||"Relier à une déclaration…"):"Aucune déclaration à relier"}</option>${D.map(a=>`<option value="${esc(a.id)}">${esc(frDate(a.date))} · ${esc(a.produit||"")}${a.montant?" · "+esc(eur2.format(a.montant))+" HT":""} · ${esc(SLABEL[a.statut]||a.statut)}</option>`).join("")}</select>`};
   return `<div class="row" style="margin-bottom:10px"><select id="avfFourn" aria-label="Fournisseur"><option value="">Tous les fournisseurs</option>${fns.map(f=>`<option value="${esc(f)}" ${S.avfFourn===f?"selected":""}>${esc(f==="diapar"?"DIAPAR":fName(f))}</option>`).join("")}</select></div>
