@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="166">
+<meta name="gm-version" content="167">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -347,6 +347,8 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .avsf{border:1px solid var(--green);background:var(--green-soft);color:var(--green-2);border-radius:12px;padding:2px 10px;font:700 12px var(--body);cursor:pointer;white-space:nowrap;margin-left:6px}.avsf:hover{background:var(--green);color:var(--on-green)}
 .avdl{display:flex;flex-direction:column;min-width:640px}.avdl .it{display:grid;grid-template-columns:120px minmax(170px,1fr) 80px minmax(200px,260px);gap:12px;align-items:start;padding:7px 0;border-top:1px solid var(--line)}.avdl .it:first-child{border-top:0;padding-top:0}
 .avdl .num b{display:block;font-size:13px}.avdl .num span{display:block;font-size:12px;color:var(--muted)}.avdl .mt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.avdl .dc .avsf{margin:0 0 2px}.avdl .dc .hist{margin-bottom:4px}
+.cmpt{width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--line);border-radius:10px;overflow:hidden}.cmpt th,.cmpt td{padding:7px 10px;border-top:1px solid var(--line);text-align:left;vertical-align:top}.cmpt thead th{border-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--surface-2,transparent)}
+.cmpt tbody th{width:150px;font-weight:600;color:var(--muted);white-space:nowrap}.cmpt td{width:40%;font-weight:700}.cmpt td.ok{color:var(--good)}
 .cmpbl{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}.cmpbl .r{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:13px}.cmpbl .r.t{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-weight:800}.cmpbl .ok{color:var(--good);font-weight:800}.cmpbl .ko{color:var(--warn);font-weight:800}
 .avsfw{text-align:right;margin-top:4px}.avsfw .avsf{margin-left:0}
 .avsf.prop{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}.avsf.prop:hover{background:var(--warn);color:#fff}
@@ -512,7 +514,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=166;
+const APP_VERSION=167;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -2433,23 +2435,35 @@ function facComparer(manId,autoId){const PROP=facPourDecl();
     else if(x){const c=facCandidats(x)[0];if(c){b=c.a;raison=c.raison}}}
   if(!x||!b)return;const lie=b.avoirAuto===x.id,fn=id=>id==="diapar"?"DIAPAR":fName(id);
   const L=(k,v)=>v?`<div class="cmpl"><span>${k}</span><b>${v}</b></div>`:"";
-  const dec=`${L("Fournisseur",esc(fName(b.fournisseur)))}${L("Produit",esc(b.produit||""))}${L("Code article",esc(b.code||""))}${L("Date de facture",frDate(b.date))}${L("N° de facture",esc(b.facture||""))}${L("Quantité",esc(b.quantite||""))}${L("Motif",esc(b.motif||""))}${L("Montant",b.montant?eur2.format(b.montant)+" HT":"")}${L("Statut",`<span class="pill s-${b.statut}">${SLABEL[b.statut]||b.statut}</span>`)}`;
   const lig=(x.lignes||[]).map(l=>`<div>${l.code?esc(l.code)+" ":""}${esc(l.libelle||"")}${l.ht!=null?" · "+eur2.format(l.ht)+" HT":""}</div>`).join("");
   /* v162 : facture de décade : on ne montre que l'avoir du bon de la déclaration, et toutes les déclarations de ce bon avec leur total */
   const li=avDecade(x)?avLigDe(x,b):null;
   const bon=li?S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&a.statut!=="refuse"&&[refN(li.bl),refN(li.n)].includes(refN(a.facture))):[];
   const bonSom=Math.round(bon.reduce((t,a)=>t+(+a.montant||0),0)*100)/100,bonOk=li&&li.ht!=null&&Math.abs(bonSom-li.ht)<0.05,aLier=bon.filter(a=>a.avoirAuto!==x.id);
-  const fac=li?`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Avoir",esc("n° "+li.n+" du "+li.date))}${L("Bon de livraison",esc(li.bl?li.bl+" du "+li.blDate:""))}${(()=>{const lg=(x.lignes||[]).find(l=>{const q=avLigInfo(l);return q&&q.n===li.n})||{},P=lg.produits&&lg.produits.length>1?lg.produits:null;
-     if(!P)return L("Produit",esc((li.code?li.code+" ":"")+li.lib))+L("Montant",li.ht!=null?eur2.format(li.ht)+" HT":"");
-     /* v166 : avoir à plusieurs produits : seulement le produit de la déclaration (même montant, sinon mots du nom), puis le total de l'avoir */
-     const mw=avMots(b.produit),sc=q=>(b.montant&&q.ht!=null&&Math.abs(q.ht-b.montant)<0.02?10:0)+[...avMots(q.lib)].filter(w=>mw.has(w)).length,best=P.slice().sort((p,q)=>sc(q)-sc(p))[0];
-     return sc(best)>0?`${L("Produit",esc((best.code?best.code+" ":"")+best.lib))}${L("Montant",best.ht!=null?eur2.format(best.ht)+" HT":"")}${L("Avoir complet",esc(P.length+" produits · "+(li.ht!=null?eur2.format(li.ht)+" HT":"")))}`
-       :`<div class="cmpl"><span>Produits</span><div>${P.map(q=>`<div>${esc(q.lib)}${q.ht!=null?" · "+eur2.format(q.ht)+" HT":""}</div>`).join("")}</div></div>${L("Montant",li.ht!=null?eur2.format(li.ht)+" HT":"")}`})()}${L("Dans",esc("la facture de décade du "+frDate(x.date)+" ("+x.lignes.length+" avoir"+(x.lignes.length>1?"s":"")+", "+eur2.format(x.total||0)+" TTC)"))}${L("Fichier",esc(x.nom||""))}`
-   :`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""))}${L("Date",frDate(x.date))}${L("Concerne la facture",esc(x.factureOrigine||(x.refs||[]).join(", ")))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`;
+  /* v167 : tableau sur une ligne par information : Déclaration | Avoir sur facture (✓ vert quand c'est pareil) */
+  let pr=null,P=null;if(li){const lg=(x.lignes||[]).find(l=>{const q=avLigInfo(l);return q&&q.n===li.n})||{};P=lg.produits&&lg.produits.length>1?lg.produits:null;
+    if(P){const mw=avMots(b.produit),sc=q=>(b.montant&&q.ht!=null&&Math.abs(q.ht-b.montant)<0.02?10:0)+[...avMots(q.lib)].filter(w=>mw.has(w)).length,best=P.slice().sort((p,q)=>sc(q)-sc(p))[0];if(sc(best)>0)pr=best}
+    else pr={code:li.code,lib:li.lib,ht:li.ht}}
+  const avProd=li?(pr?esc((pr.code?pr.code+" ":"")+pr.lib):P.map(q=>`<div>${esc(q.lib)}${q.ht!=null?" · "+eur2.format(q.ht)+" HT":""}</div>`).join("")):(lig||""),
+    avMt=li?(pr&&pr.ht!=null?pr.ht:li.ht):null,avMtTxt=li?(avMt!=null?eur2.format(avMt)+" HT":""):eur2.format(x.total||0)+" TTC",
+    avNum=li?(li.bl?"BL "+li.bl:"")+(li.bl?" · ":"")+"avoir n° "+li.n:(x.factureOrigine||(x.refs||[]).join(", ")),avDate=li?li.date:frDate(x.date);
+  const eqN=refN(b.facture)&&(li?[refN(li.bl),refN(li.n)]:[...avRefs(x)]).includes(refN(b.facture)),eqM=b.montant&&avMt!=null&&Math.abs(avMt-b.montant)<0.02,eqF=facFournAv(x.fournisseur).includes(b.fournisseur);
+  const R=(k,d,a,ok)=>d||a?`<tr><th>${k}</th><td>${d||'<span class="hist">—</span>'}</td><td class="${ok?"ok":""}">${a||'<span class="hist">—</span>'}${ok?" ✓":""}</td></tr>`:"";
+  const tab=`<table class="cmpt"><thead><tr><th></th><th>Déclaration</th><th>Avoir sur facture</th></tr></thead><tbody>
+    ${R("Fournisseur",esc(fName(b.fournisseur)),esc(fn(x.fournisseur)),eqF)}
+    ${R("Produit",esc(b.produit||"")+(b.code?`<div class="hist">Code ${esc(b.code)}</div>`:""),avProd,false)}
+    ${R("Date",frDate(b.date),esc(avDate||""),false)}
+    ${R("N° de bon / facture",esc(b.facture||""),esc(avNum||""),eqN)}
+    ${R("Montant",b.montant?eur2.format(b.montant)+" HT":"",avMtTxt,eqM)}
+    ${R("Quantité",esc(b.quantite||""),"",false)}${R("Motif",esc(b.motif||""),"",false)}
+    ${R("Statut",`<span class="pill s-${b.statut}">${SLABEL[b.statut]||b.statut}</span>`,"",false)}
+    ${li&&P&&pr?R("Avoir complet","",esc(P.length+" produits · "+(li.ht!=null?eur2.format(li.ht)+" HT":"")),false):""}
+    ${li?R("Dans","",esc("facture de décade du "+frDate(x.date)+" ("+x.lignes.length+" avoir"+(x.lignes.length>1?"s":"")+", "+eur2.format(x.total||0)+" TTC)"),false):R("Document","",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""),false)}
+    ${R("Fichier","",esc(x.nom||""),false)}</tbody></table>`;
   const o=document.createElement("div");o.className="facov";o.id="facCmp";
   o.innerHTML=`<div class="facbox" style="max-width:860px"><div class="band">Avoir sur facture</div><div style="padding:14px 16px">
     ${lie?`<p class="sub" style="margin:0 0 10px">✓ Cette déclaration a été validée : elle est en <b>Accepté</b>.</p>`:`<p class="sub" style="margin:0 0 10px">Cette déclaration semble avoir été accordée par le fournisseur${raison?" ("+esc(raison)+")":""}. Est-ce le même avoir ?</p>`}
-    <div class="cmpgrid"><div class="panel"><div class="lbl" style="margin-bottom:8px">Déclaration</div>${dec}</div><div class="panel"><div class="lbl" style="margin-bottom:8px">Avoir sur facture</div>${fac}</div></div>
+    ${tab}
     ${li&&bon.length>1?`<div class="cmpbl"><div class="lbl" style="margin-bottom:6px">Déclarations du bon ${esc(li.bl||li.n)}</div>${bon.map(a=>`<div class="r"><span>${a.avoirAuto===x.id?"✓ ":""}${esc(a.produit||"")}</span><span>${a.montant?eur2.format(a.montant)+" HT":"—"}</span></div>`).join("")}
       <div class="r t"><span>Total des déclarations</span><span>${eur2.format(bonSom)} HT</span></div><div class="r"><span>Avoir n° ${esc(li.n)}</span><span>${li.ht!=null?eur2.format(li.ht)+" HT":"—"}</span></div>
       <div class="r"><span class="${bonOk?"ok":"ko"}">${bonOk?"✓ Le total correspond à l'avoir":"⚠ Le total ne correspond pas exactement"}</span></div></div>`:""}
