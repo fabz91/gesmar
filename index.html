@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="169">
+<meta name="gm-version" content="170">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -516,7 +516,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=169;
+const APP_VERSION=170;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -582,17 +582,18 @@ const GA=(()=>{const SK="horaires-auth",ID_DOM="@hotmail.com";let tok=null,exp=0
 // Code d'accès GT1 (collé une fois dans GESTIME Web ou ici) : adresse + clé publishable de Supabase, gardés sur le téléphone, jamais dans le dépôt.
 function gtCfg(){try{const c=JSON.parse(localStorage.getItem("gt-cfg")||"null");if(c&&c.url&&c.key)return c}catch(e){}return null}
 function gtCode(t){const m=/^GT1-([A-Za-z0-9+/=_-]+)$/.exec(String(t||"").replace(/\s+/g,""));if(!m)return null;try{const p=atob(m[1].replace(/-/g,"+").replace(/_/g,"/")).split("|");if(/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(p[0])&&p[1])return{url:p[0],key:p[1]}}catch(e){}return null}
-function gmLogin(msg){if(!WEBM)return;let o=$("#lg");if(!o){o=document.createElement("div");o.id="lg";document.body.appendChild(o)}
+/* v170 : connexion G20 aussi sur PC (comme GESTIME) : une seule fois par PC ; « Plus tard » tant que la base reste ouverte */
+function gmLogin(msg){if(!WEBM&&S.lgLater&&!msg)return;let o=$("#lg");if(!o){o=document.createElement("div");o.id="lg";document.body.appendChild(o)}
   const need=!SYNC.cfg();
-  o.innerHTML=`<div class="lgb"><h2>🔒 Connexion à GESMAR</h2><p>Une seule fois sur ce téléphone : ensuite GESMAR (et GESTIME) restent connectés.</p>${need?'<input id="lgc" type="text" placeholder="Code d’accès (GT1-…)" autocomplete="off" autocapitalize="off" spellcheck="false">':""}<input id="lge" type="text" placeholder="Identifiant" autocomplete="username" autocapitalize="off" spellcheck="false"><input id="lgp" type="password" placeholder="Mot de passe" autocomplete="current-password"><button class="btn primary" id="lgo" style="padding:11px;font-size:15px">Se connecter</button><div id="lgm">${esc(msg||"")}</div></div>`}
+  o.innerHTML=`<div class="lgb"><h2>🔒 Connexion à GESMAR</h2><p>${WEBM?"Une seule fois sur ce téléphone : ensuite GESMAR (et GESTIME) restent connectés.":"Une seule fois sur ce PC : ensuite GESMAR reste connecté. Même identifiant que GESTIME (G20)."}</p>${need?'<input id="lgc" type="text" placeholder="Code d’accès (GT1-…)" autocomplete="off" autocapitalize="off" spellcheck="false">':""}<input id="lge" type="text" placeholder="Identifiant" autocomplete="username" autocapitalize="off" spellcheck="false"><input id="lgp" type="password" placeholder="Mot de passe" autocomplete="current-password"><button class="btn primary" id="lgo" style="padding:11px;font-size:15px">Se connecter</button>${WEBM?"":'<button class="btn" id="lgl" style="padding:9px;font-size:14px">Plus tard</button>'}<div id="lgm">${esc(msg||"")}</div></div>`}
 async function gmDoLogin(){const m=$("#lgm"),ci=$("#lgc");let nc=null,c=SYNC.cfg();
   if(!c){nc=gtCode(ci&&ci.value);if(!nc){m.textContent="Code d’accès incorrect : collez-le en entier (il commence par GT1-).";return}c=nc}
   const id=$("#lge").value,pw=$("#lgp").value;if(!id.trim()||!pw){m.textContent="Tapez l’identifiant et le mot de passe.";return}
   m.textContent="Connexion…";$("#lgo").disabled=true;
   try{await GA.login(c,id,pw);if(nc)try{localStorage.setItem("gt-cfg",JSON.stringify(nc))}catch(e){}
-    $("#lg").remove();SYNC.start().catch(()=>{})}
+    $("#lg").remove();SYNC.start().catch(()=>{});if(S.modal)renderModal()}
   catch(e){const b=$("#lgo");if(b)b.disabled=false;m.textContent=e.message==="OFFLINE"?"Pas de connexion internet : réessayez.":"Connexion refusée : "+e.message+"."}}
-document.addEventListener("click",e=>{if(e.target.id==="lgo"){gmDoLogin();return}const b=e.target.closest('[data-act="gmLogout"]');if(!b)return;
+document.addEventListener("click",e=>{if(e.target.id==="lgo"){gmDoLogin();return}if(e.target.id==="lgl"){S.lgLater=true;const o=$("#lg");if(o)o.remove();return}if(e.target.closest('[data-act="gmLogin"]')){S.modal=false;render();gmLogin("");return}const b=e.target.closest('[data-act="gmLogout"]');if(!b)return;
   if(!S.gmOut){S.gmOut=1;renderModal();setTimeout(()=>{S.gmOut=0;if(S.modal)renderModal()},4000);return}
   try{["horaires-auth","horaires-auth-at","horaires-auth-mail"].forEach(k=>localStorage.removeItem(k))}catch(_){}location.reload()});
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="lgp")gmDoLogin()});
@@ -2222,7 +2223,8 @@ let VT_LIST=null;
 async function vtListLocal(force){if(!VT_LIST||force||Date.now()-VT_LIST.t>60000){const L=await window.api.caLister();VT_LIST={t:Date.now(),L}}return VT_LIST.L}
 function vtCfgSb(){try{return SYNC.cfg()}catch(e){return null}}
 async function vtSb(path,opt){const c=vtCfgSb();if(!c)throw new Error("Base en ligne non réglée");
-  const r=await fetch(c.url+"/rest/v1/"+path,Object.assign({},opt,{headers:Object.assign({apikey:c.key,"Content-Type":"application/json"},(c.key.split(".").length===3?{Authorization:"Bearer "+c.key}:{}),opt&&opt.headers)}));
+  const au=WEBM||GA.has()?{Authorization:"Bearer "+await GA.token(c)}:(c.key.split(".").length===3?{Authorization:"Bearer "+c.key}:{}); // v170
+  const r=await fetch(c.url+"/rest/v1/"+path,Object.assign({},opt,{headers:Object.assign({apikey:c.key,"Content-Type":"application/json"},au,opt&&opt.headers)}));
   if(!r.ok){let t="";try{t=(await r.json()).message||""}catch(e){}throw new Error(r.status===404||/does not exist|schema cache/.test(t)?"Table « gesmar_ventes » absente : lancez le script pc/supabase-gesmar-ventes.sql dans Supabase":"Erreur "+r.status+(t?" : "+t:""))}
   return r.status===204||r.status===201?null:r.json()}
 async function vtGet(a,b){const mag=S.store,want=vtDays(a,b).filter(d=>!(mag+"|"+d in VT.cache));
@@ -2639,9 +2641,9 @@ const SYNC=(()=>{
   const ERR=/Erreur|Accès|Table/;
   function set(state,msg){const ch=st.state!==state||st.msg!==msg;st.state=state;st.msg=msg;if(ch&&typeof renderModal==="function"&&S.modal)renderModal()}
   async function req(path,opt,again){const c=cfg();
-    const auth=WEBM?{Authorization:"Bearer "+await GA.token(c)}:(c.key.split(".").length===3?{Authorization:"Bearer "+c.key}:{}); // v154 : web = connexion G20
+    const auth=WEBM||GA.has()?{Authorization:"Bearer "+await GA.token(c)}:(c.key.split(".").length===3?{Authorization:"Bearer "+c.key}:{}); // v154 : web = connexion G20 ; v170 : PC connecté aussi
     const r=await fetch(c.url+"/rest/v1/"+path,Object.assign({},opt,{headers:Object.assign({apikey:c.key,"Content-Type":"application/json"},auth,opt&&opt.headers)}));
-    if(r.status===401&&WEBM&&!again){GA.drop();return req(path,opt,true)}
+    if(r.status===401&&(WEBM||GA.has())&&!again){GA.drop();return req(path,opt,true)}
     if(!r.ok){let t="";try{t=(await r.json()).message||""}catch(e){}
       throw new Error(r.status===401||r.status===403?"Accès refusé par la base (vérifiez la clé et le script SQL)":r.status===404||/does not exist|schema cache/.test(t)?"Table « gesmar » absente : lancez le script SQL dans Supabase":"Erreur "+r.status+(t?" : "+t:""))}
     return r.status===204||r.status===201?null:r.json()}
@@ -2693,10 +2695,11 @@ const SYNC=(()=>{
     catch(e){if(WEBM&&!GA.has()){st.started=false;clearInterval(st.poll);set("off","Pas connecté");gmLogin("Session terminée : reconnectez-vous.");return}set("ko",ERR.test(e.message)?e.message:"Hors ligne")}}
   let visHook=false;
   async function start(){if(st.started)return;if(WEBM&&(!cfg()||!GA.has())){set("off","Pas connecté");gmLogin("");return}
+    if(!WEBM&&cfg()&&!GA.has()&&!S.lgAsked){S.lgAsked=true;setTimeout(()=>gmLogin(""),1500)} /* v170 : PC pas encore connecté : proposé une fois (Plus tard possible) */
     if(!cfg()){set("off","Synchronisation non réglée");return}
     st.started=true;set("wait","Synchronisation…");
     try{await first();if(st.pend.size)await flush();else set("ok","Synchronisé avec les autres postes")}
-    catch(e){st.started=false;if(WEBM&&!GA.has()){set("off","Pas connecté");gmLogin("Session terminée : reconnectez-vous.");return}set("ko",ERR.test(e.message)?e.message:"Hors ligne : modifications gardées sur cet appareil");setTimeout(start,15000);return}
+    catch(e){st.started=false;if(WEBM&&!GA.has()){set("off","Pas connecté");gmLogin("Session terminée : reconnectez-vous.");return}if(!WEBM&&!GA.has()&&/Accès refusé/.test(e.message)){set("off","Pas connecté");gmLogin("La base est protégée : connectez ce PC (identifiant G20).");setTimeout(start,15000);return}set("ko",ERR.test(e.message)?e.message:"Hors ligne : modifications gardées sur cet appareil");setTimeout(start,15000);return}
     clearInterval(st.poll);st.poll=setInterval(poll,15000);
     if(!visHook){visHook=true;document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll()})}}
   function configure(url,key){rawSave("gesmar-sync",JSON.stringify({url:String(url).trim(),key:String(key).trim()}));st.started=false;return start()}
@@ -2872,7 +2875,8 @@ function renderModal(){
     ${P1==="maj"?`<div class="rinfo">${S.local?"Pour mettre à jour, remplacez ce fichier GESMAR.html par la nouvelle version et ouvrez-la dans le même navigateur : vos données sont reprises automatiquement. Exportez une sauvegarde avant, par précaution.":"La version en ligne se met à jour toute seule : vous avez la dernière version."}</div>`:""}`}
     <h4>Affichage</h4>
     <div class="rtheme"><button data-theme="clair" aria-pressed="${!dark}">☀️ Clair</button><button data-theme="sombre" aria-pressed="${dark}">🌙 Sombre</button></div>
-    ${WEBM&&GA.has()?`<h4>Compte</h4><div class="rmaj">Connecté : ${esc(GA.who()||"oui")}</div><button class="rbtn" data-act="gmLogout"><span class="ic">🚪</span>${S.gmOut?"Confirmer la déconnexion ?":"Se déconnecter"}</button>`:""}
+    ${!WEBM&&!GA.has()?`<h4>Compte</h4><div class="rmaj">Ce PC n'est pas connecté.</div><button class="rbtn" data-act="gmLogin"><span class="ic">🔒</span>Se connecter (G20)</button>`:""}
+    ${GA.has()?`<h4>Compte</h4><div class="rmaj">Connecté : ${esc(GA.who()||"oui")}</div><button class="rbtn" data-act="gmLogout"><span class="ic">🚪</span>${S.gmOut?"Confirmer la déconnexion ?":"Se déconnecter"}</button>`:""}
   </div>`;
 }
 document.addEventListener("click",e=>{if(e.target.dataset&&e.target.dataset.act==="closeModalBg"){S.modal=false;S.modalPanel=null;render()}});
