@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="168">
+<meta name="gm-version" content="169">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -516,7 +516,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=168;
+const APP_VERSION=169;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -2437,7 +2437,7 @@ function facComparer(manId,autoId){const PROP=facPourDecl();
     else if(x){const c=facCandidats(x)[0];if(c){b=c.a;raison=c.raison}}}
   if(!x||!b)return;const lie=b.avoirAuto===x.id,fn=id=>id==="diapar"?"DIAPAR":fName(id);
   const L=(k,v)=>v?`<div class="cmpl"><span>${k}</span><b>${v}</b></div>`:"";
-  const lig=(x.lignes||[]).map(l=>`<div>${l.code?esc(l.code)+" ":""}${esc(l.libelle||"")}${l.ht!=null?" · "+eur2.format(l.ht)+" HT":""}</div>`).join("");
+  const lig=(x.lignes||[]).map(l=>`<div>${esc(l.libelle||"")}${l.ht!=null?" · "+eur2.format(l.ht)+" HT":""}</div>`).join(""); /* v169 : sans le code devant le nom du produit */
   /* v162 : facture de décade : on ne montre que l'avoir du bon de la déclaration, et toutes les déclarations de ce bon avec leur total */
   const li=avDecade(x)?avLigDe(x,b):null;
   const bon=li?S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&a.statut!=="refuse"&&[refN(li.bl),refN(li.n)].includes(refN(a.facture))):[];
@@ -2446,7 +2446,7 @@ function facComparer(manId,autoId){const PROP=facPourDecl();
   let pr=null,P=null;if(li){const lg=(x.lignes||[]).find(l=>{const q=avLigInfo(l);return q&&q.n===li.n})||{};P=lg.produits&&lg.produits.length>1?lg.produits:null;
     if(P){const mw=avMots(b.produit),sc=q=>(b.montant&&q.ht!=null&&Math.abs(q.ht-b.montant)<0.02?10:0)+[...avMots(q.lib)].filter(w=>mw.has(w)).length,best=P.slice().sort((p,q)=>sc(q)-sc(p))[0];if(sc(best)>0)pr=best}
     else pr={code:li.code,lib:li.lib,ht:li.ht}}
-  const avProd=li?(pr?esc((pr.code?pr.code+" ":"")+pr.lib):P.map(q=>`<div>${esc(q.lib)}${q.ht!=null?" · "+eur2.format(q.ht)+" HT":""}</div>`).join("")):(lig||""),
+  const avProd=li?(pr?esc(pr.lib):P.map(q=>`<div>${esc(q.lib)}${q.ht!=null?" · "+eur2.format(q.ht)+" HT":""}</div>`).join("")):(lig||""),
     avMt=li?(pr&&pr.ht!=null?pr.ht:li.ht):null,avMtTxt=li?(avMt!=null?eur2.format(avMt)+" HT":""):eur2.format(x.total||0)+" TTC",
     avNum=li?(li.bl?"BL "+li.bl:"")+(li.bl?" · ":"")+"avoir n° "+li.n:(x.factureOrigine||(x.refs||[]).join(", ")),avDate=li?li.date:frDate(x.date);
   const eqN=refN(b.facture)&&(li?[refN(li.bl),refN(li.n)]:[...avRefs(x)]).includes(refN(b.facture)),eqM=b.montant&&avMt!=null&&Math.abs(avMt-b.montant)<0.02,eqF=facFournAv(x.fournisseur).includes(b.fournisseur);
