@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="162">
+<meta name="gm-version" content="163">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -512,7 +512,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=162;
+const APP_VERSION=163;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1461,10 +1461,12 @@ const FAC=(()=>{
     for(const l of L){const t=l.t;
       // v139 : SAINT PRIM, avoirs dans la facture de décade (« Avoir No … du … / B.L Ref No … du … », « Total Avoir N° … ») : déduits du total de la décade seulement, pas des bons de livraison
       let a=t.match(/Avoir\s+No\s*(\d+)\s+du\s+(\d\d)\/(\d\d)\/(\d\d)/i);
-      if(a){const b=t.match(/B\.?\s*L\.?\s*Ref\.?\s*No\s*(\d+)\s+du\s+(\d\d)\/(\d\d)\/(\d\d)/i);cav={n:a[1],date:iso(a[2],a[3],a[4]),bl:b?b[1]:"",blDate:b?b[2]+"/"+b[3]+"/"+b[4]:"",ht:null,code:"",lib:""};avs.push(cav);cur=null;continue}
+      if(a){const b=t.match(/B\.?\s*L\.?\s*Ref\.?\s*No\s*(\d+)\s+du\s+(\d\d)\/(\d\d)\/(\d\d)/i);cav={n:a[1],date:iso(a[2],a[3],a[4]),bl:b?b[1]:"",blDate:b?b[2]+"/"+b[3]+"/"+b[4]:"",ht:null,code:"",lib:"",prods:[]};avs.push(cav);cur=null;continue}
       a=t.match(/Total\s+Avoir\s*N\S*\s*(\d+)\s+(-?[\d \u00a0]+,\d\d)/i);
       if(a){const x=avs.find(z=>z.n===a[1]);if(x)x.ht=Math.abs(num(a[2]));cav=null;continue}
-      if(cav){if(!cav.code&&!/Livraison/i.test(t)){const p=t.trim().match(/^([0-9][0-9A-Z]{3,11})\s+(.+)$/i);if(p){cav.code=p[1];cav.lib=p[2].replace(/\s+(FRANCE|ESPAGNE|ITALIE|MAROC|BELGIQUE|PAYS[- ]?BAS|PORTUGAL|ALLEMAGNE)\b.*$/i,"").replace(/\s{2,}.*$/,"").trim().slice(0,60)}}continue}
+      if(cav){if(!/Livraison/i.test(t)){const p=t.trim().match(/^([0-9][0-9A-Z]{3,11})\s+(.+)$/i);if(p){const lib=p[2].replace(/\s+(FRANCE|ESPAGNE|ITALIE|MAROC|BELGIQUE|PAYS[- ]?BAS|PORTUGAL|ALLEMAGNE|POLOGNE|PEROU|AFRIQUE DU SUD|TURQUIE|EQUATEUR|COLOMBIE|CHILI|ISRAEL|EGYPTE|COSTA RICA|SENEGAL|BRESIL|ARGENTINE|NOUVELLE[- ]ZELANDE|PAYS[- ]BAS)\b.*$/i,"").replace(/\s{2,}.*$/,"").trim().slice(0,60);
+          const mt=[...t.matchAll(/(-\d[\d \u00a0]*,\d\d)/g)].pop(); /* v163 : tous les produits de l'avoir, avec leur montant HT */
+          if(mt){if(!cav.code){cav.code=p[1];cav.lib=lib}cav.prods.push({code:p[1],lib,ht:Math.abs(num(mt[1]))})}}}continue}
       let m=t.match(/BL\s*n\S*\s*([\d-]+)\s*-\s*Livraison\s+le\s+(\d\d)\/(\d\d)\/(\d\d)/i); // CDPO
       if(m){cur={n:m[1],date:iso(m[2],m[3],m[4]),ht:0,lig:0};bl.push(cur);continue}
       m=t.match(/B\.?\s*L\.?\s*No\s*(\d+)\s+du\s+(\d\d)\/(\d\d)\/(\d\d)/i); // SAINT PRIM
@@ -1508,7 +1510,7 @@ const FAC=(()=>{
     const avs=(bls.av||[]),avHt=r2(avs.reduce((s,a)=>s+a.ht,0));
     let lig=null;if(bls.length>1||(bls.length===1&&bls[0].date!==r.date)||(bls.length&&avs.length)){lig=repartir(bls,r.total,avHt);if(lig)r.decoupe=true}
     if(lig&&avs.length){const ht=bls.reduce((s,b)=>s+b.ht,0),k=r.total/(ht-avHt);r.avHorsTotal=true;
-      r.avoirs=avs.map(a=>({code:a.code,libelle:(a.lib?a.lib+" · ":"")+"avoir n° "+a.n+" du "+a.date.slice(8,10)+"/"+a.date.slice(5,7)+"/"+a.date.slice(2,4)+(a.bl?" (BL "+a.bl+" du "+a.blDate+")":""),ht:a.ht,ttc:r2(a.ht*k)}));
+      r.avoirs=avs.map(a=>({code:a.code,produits:(a.prods||[]).length>1?a.prods:undefined,libelle:(a.lib?a.lib+" · ":"")+"avoir n° "+a.n+" du "+a.date.slice(8,10)+"/"+a.date.slice(5,7)+"/"+a.date.slice(2,4)+(a.bl?" (BL "+a.bl+" du "+a.blDate+")":""),ht:a.ht,ttc:r2(a.ht*k)}));
       r.verif.push(avs.length+" avoir(s) dans la facture ("+r2(r.avoirs.reduce((s,a)=>s+a.ttc,0)).toFixed(2).replace(".",",")+" € TTC) : bons de livraison entiers dans la saisie, avoirs dans « Avoir sur facture »")}
     r.lignes=lig?lig.map(x=>({date:x.date,col:null,montant:x.montant})):(r.total!=null&&r.date?[{date:r.date,col:null,montant:r.total}]:[]);
     if(r.type==="avoir"&&base.texte){const R=new Set();for(const re of FAC_REFS)for(const m of T.matchAll(re))R.add(m[1]);r.refs=[...R];
@@ -1716,6 +1718,7 @@ async function facScan(silent){
   finally{S.fac.busy=false;S.fac.prog="";facRender();facBadge()}
   if(S.fac.etat==="ok")await facAvMigrer();
   if(S.fac.etat==="ok")await facSpRelire();
+  if(S.fac.etat==="ok")await facSpProduits();
   if(S.fac.etat==="ok"&&facAutoOn()&&S.fac.liste.some(facPret))await facImporter(true);
   if(S.fac.relire){S.fac.relire=false;setTimeout(()=>facScan(),200)}}
 // v97 : petite feuille dans la saisie : quelle facture (PDF) a rempli chaque case (jour + fournisseur)
@@ -1797,6 +1800,15 @@ async function facAvMigrer(){if(FAC_AVMIG||!S.db||!S.store||!S.avoirsAuto||!S.fa
 // v140 : relecture, une seule fois par facture (fiche factures/<clé> : sp), des décades SAINT PRIM déjà importées avant la v139 :
 // les jours reprennent le bon de livraison entier (case = case − ancien montant du jour + nouveau), et les avoirs de la décade vont dans « Avoir sur facture » (comptés dans Avoirs).
 let FAC_SPREL=false;
+/* v163 : relecture, une seule fois (fiche avoirsAuto : pr), des avoirs de décade déjà lus pour avoir TOUS leurs produits (avant : le 1er seulement). Ne change aucun montant. */
+let FAC_SPPR=false;
+async function facSpProduits(){if(FAC_SPPR||!S.db||!S.store||!FAC_API())return;FAC_SPPR=true;
+  try{for(const x of (S.avoirsAuto||[])){if(x.pr||!x.fichier||typeof avDecade!=="function"||!avDecade(x))continue;
+      let r;try{r=FAC.analyser(x.fichier,await facItems(x.fichier),null)}catch(e){console.error(e);continue}
+      const ref=S.db.doc(P("avoirsAuto/"+x.id)),num=l=>(String(l.libelle||"").match(/avoir n°\s*(\d+)/)||[])[1];
+      const lig=(x.lignes||[]).map(l=>{const a=(r.avoirs||[]).find(z=>num(z)===num(l));return a&&a.produits?Object.assign({},l,{produits:a.produits}):l});
+      await ref.update({lignes:lig,pr:1})}}
+  catch(e){console.error(e)}}
 async function facSpRelire(){if(FAC_SPREL||!S.db||!S.store||!S.facImp||!FAC_API())return;FAC_SPREL=true;let n=0,nav=0;
   try{const rels=(S.fac&&S.fac.rels)||{},C=facCache();
     for(const[k,x]of Object.entries(S.facImp)){if(!x||x.s!=="i"||x.sp||x.av||!x.f||FAC.nk(fName(x.f))!=="SAINTPRIM")continue;
@@ -1809,7 +1821,7 @@ async function facSpRelire(){if(FAC_SPREL||!S.db||!S.store||!S.facImp||!FAC_API(
         const doc=S.mois[d.slice(0,7)],j=doc&&doc.jours&&doc.jours[d.slice(8,10)],cur=(j&&j.achats&&j.achats[x.f])||0,v=Math.round((cur-o+m)*100)/100;
         ch.push(Math.abs(v)<0.005?{date:d,col:x.f,montant:0,efface:true}:{date:d,col:x.f,montant:v})}
       if(ch.length)await facEcrire(ch,true);
-      if(!(S.avoirsAuto||[]).some(z=>z.id===k)){const lig=r.avoirs.map(a=>({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc}));
+      if(!(S.avoirsAuto||[]).some(z=>z.id===k)){const lig=r.avoirs.map(a=>Object.assign({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc},a.produits?{produits:a.produits}:{}));
         await S.db.doc(P("avoirsAuto/"+k)).set({fournisseur:x.f,date:r.date||x.d||"",numero:r.numero||"",total:Math.round(lig.reduce((t,a)=>t+(a.ttc||0),0)*100)/100,lignes:lig,codes:[],dansFacture:false,factureOrigine:"",fichier:rel,nom:x.n||r.nom,manuel:null,refus:[],creeLe:todayISO()});nav+=lig.length}
       await fiche.update({sp:1,m:Math.round(nv.reduce((t,l)=>t+l.montant,0)*100)/100});n++}
     if(n)toast(n+" décade(s) Saint Prim relue(s) : bons de livraison entiers, "+nav+" avoir(s) ajouté(s) dans « Avoir sur facture »")}
@@ -1846,7 +1858,7 @@ async function facImporter(auto,only){
       // avoirs lus : document d'avoir, ou partie « avoirs » d'une facture DIAPAR (déjà déduite du total)
       const avf=fid==="epicerie"||fid==="aa"||fid==="frais"?"diapar":fid;
       if(r.type==="avoir"||(r.avoirs&&r.avoirs.length)){
-        const lig=(r.avoirs||[]).map(a=>({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc}));
+        const lig=(r.avoirs||[]).map(a=>Object.assign({code:a.code||"",libelle:a.libelle||"",ht:a.ht,ttc:a.ttc},a.produits?{produits:a.produits}:{}));
         const tt=r.type==="avoir"?Math.abs(r.saisi!=null?r.saisi:r.total||0):Math.round(lig.reduce((s,a)=>s+(a.ttc||0),0)*100)/100;
         await S.db.doc(P("avoirsAuto/"+r.key)).set({fournisseur:avf,date:r.date||"",numero:r.numero||"",total:tt,lignes:lig.filter(a=>a.code||a.ht!=null),
           codes:(r.avoirs&&r.avoirs[0]&&r.avoirs[0].codes)||[],dansFacture:r.type!=="avoir"&&!r.avHorsTotal,factureOrigine:r.factureOrigine||"",fichier:r.rel,nom:r.nom,manuel:avOld(r.key).manuel,manuels:avOld(r.key).manuels,refus:avOld(r.key).refus,refs:r.refs||[],creeLe:todayISO()});nAv++}
@@ -1943,7 +1955,7 @@ function facCandidats(x){const codes=new Set([...(x.lignes||[]).map(a=>String(a.
     else if(a.montant){const ht=a.montant,lig=(x.lignes||[]).find(l=>l.ht!=null&&Math.abs(l.ht-ht)<=0.02);
       if(lig){sc=6;raison="même montant HT ("+eur2.format(ht)+")"}
       else if(!(x.lignes||[]).length&&Math.abs(ht*avTva(a)-x.total)<=Math.max(0.05,x.total*0.01)){sc=5;raison="montant proche ("+eur2.format(x.total)+" TTC)"}}
-    if(sc){const mw=avMots(a.produit),lw=avMots((x.lignes||[]).map(l=>l.libelle).join(" "));if([...mw].some(w=>lw.has(w))){sc+=1;raison+=", même produit"}}
+    if(sc){const mw=avMots(a.produit),lw=avMots((x.lignes||[]).map(l=>l.libelle+" "+(l.produits||[]).map(q=>q.lib).join(" ")).join(" "));if([...mw].some(w=>lw.has(w))){sc+=1;raison+=", même produit"}}
     if(sc&&LIES.length&&sc<10)continue; /* déjà relié : une autre déclaration seulement avec le même n° de bon ou le même code */
     if(sc)out.push({a,sc,raison})}
   return out.sort((p,q)=>q.sc-p.sc)}
@@ -2427,7 +2439,8 @@ function facComparer(manId,autoId){const PROP=facPourDecl();
   const li=avDecade(x)?avLigDe(x,b):null;
   const bon=li?S.avoirs.filter(a=>facFournAv(x.fournisseur).includes(a.fournisseur)&&a.statut!=="refuse"&&[refN(li.bl),refN(li.n)].includes(refN(a.facture))):[];
   const bonSom=Math.round(bon.reduce((t,a)=>t+(+a.montant||0),0)*100)/100,bonOk=li&&li.ht!=null&&Math.abs(bonSom-li.ht)<0.05,aLier=bon.filter(a=>a.avoirAuto!==x.id);
-  const fac=li?`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Avoir",esc("n° "+li.n+" du "+li.date))}${L("Bon de livraison",esc(li.bl?li.bl+" du "+li.blDate:""))}${L("Produit",esc((li.code?li.code+" ":"")+li.lib))}${L("Montant",li.ht!=null?eur2.format(li.ht)+" HT":"")}${L("Dans",esc("la facture de décade du "+frDate(x.date)+" ("+x.lignes.length+" avoir"+(x.lignes.length>1?"s":"")+", "+eur2.format(x.total||0)+" TTC)"))}${L("Fichier",esc(x.nom||""))}`
+  const fac=li?`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Avoir",esc("n° "+li.n+" du "+li.date))}${L("Bon de livraison",esc(li.bl?li.bl+" du "+li.blDate:""))}${(()=>{const lg=(x.lignes||[]).find(l=>{const q=avLigInfo(l);return q&&q.n===li.n})||{},P=lg.produits&&lg.produits.length>1?lg.produits:null;
+     return P?`<div class="cmpl"><span>Produits</span><div>${P.map(q=>`<div>${esc(q.lib)}${q.ht!=null?" · "+eur2.format(q.ht)+" HT":""}</div>`).join("")}</div></div>`:L("Produit",esc((li.code?li.code+" ":"")+li.lib))})()}${L("Montant",li.ht!=null?eur2.format(li.ht)+" HT":"")}${L("Dans",esc("la facture de décade du "+frDate(x.date)+" ("+x.lignes.length+" avoir"+(x.lignes.length>1?"s":"")+", "+eur2.format(x.total||0)+" TTC)"))}${L("Fichier",esc(x.nom||""))}`
    :`${L("Fournisseur",esc(fn(x.fournisseur)))}${L("Document",(x.dansFacture?"Facture":"Avoir")+(x.numero?" n° "+esc(x.numero):"")+(x.dansFacture?" (avoir déjà déduit)":""))}${L("Date",frDate(x.date))}${L("Concerne la facture",esc(x.factureOrigine||(x.refs||[]).join(", ")))}${lig?`<div class="cmpl"><span>Produits</span><div>${lig}</div></div>`:""}${L("Montant",eur2.format(x.total||0)+" TTC")}${L("Fichier",esc(x.nom||""))}`;
   const o=document.createElement("div");o.className="facov";o.id="facCmp";
   o.innerHTML=`<div class="facbox" style="max-width:860px"><div class="band">Avoir sur facture</div><div style="padding:14px 16px">
@@ -2465,7 +2478,7 @@ function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fou
     const pris=new Set();const pour=i=>{const f=[refN(i.bl),refN(i.n)].filter(Boolean),ok=a=>f.includes(refN(a.facture));
       const L1=lies.filter(ok),P1=props.filter(p=>ok(p.a));L1.forEach(a=>pris.add(a.id));P1.forEach(p=>pris.add(p.a.id));
       return L1.map(a=>decl(a,"",true)).join("")+P1.map(p=>decl(p.a,"même bon de livraison",false)).join("")||`<span class="hist">Pas de déclaration</span>`};
-    const items=(x.lignes||[]).map(l=>{const i=avLigInfo(l);return `<div class="it"><div class="num"><b>Avoir n° ${esc(i.n)}</b><span>du ${esc(i.date)}</span>${i.bl?`<span>BL ${esc(i.bl)}</span>`:""}</div><div>${esc(i.lib)}${i.code?`<div class="hist">${esc(i.code)}</div>`:""}</div><div class="mt">${i.ht!=null?eur2.format(i.ht)+" HT":""}</div><div class="dc">${pour(i)}</div></div>`}).join("");
+    const items=(x.lignes||[]).map(l=>{const i=avLigInfo(l);return `<div class="it"><div class="num"><b>Avoir n° ${esc(i.n)}</b><span>du ${esc(i.date)}</span>${i.bl?`<span>BL ${esc(i.bl)}</span>`:""}</div><div>${(l.produits&&l.produits.length>1?l.produits:[{code:i.code,lib:i.lib,ht:null}]).map((q,k,A)=>`<div style="${A.length>1?"margin-bottom:3px":""}">${esc(q.lib)}${A.length>1&&q.ht!=null?` <span class="hist" style="display:inline">· ${eur2.format(q.ht)}</span>`:""}${A.length<2&&q.code?`<div class="hist">${esc(q.code)}</div>`:""}</div>`).join("")}</div><div class="mt">${i.ht!=null?eur2.format(i.ht)+" HT":""}</div><div class="dc">${pour(i)}</div></div>`}).join("");
     const reste=lies.filter(a=>!pris.has(a.id)).map(a=>decl(a,"",true)).join("")+props.filter(p=>!pris.has(p.a.id)).map(p=>decl(p.a,p.raison,false)).join("");
     return `<div class="avdl">${items}${reste?`<div class="it"><div class="num"><b>Autres</b></div><div></div><div></div><div class="dc">${reste}</div></div>`:""}</div>`};
   /* v157 : relier à la main une déclaration (même fournisseur, pas encore reliée, pas refusée) ; v162 : seulement tant que l'avoir n'est relié à aucune déclaration */
