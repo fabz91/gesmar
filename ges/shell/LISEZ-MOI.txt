@@ -13,8 +13,14 @@ Ce que fait GES
 - La croix de la fenêtre ne ferme pas GES : elle le range dans la petite icône. Les lectures
   automatiques continuent (factures de GESMAR, caisse Casio de GESTAT…).
   Pour vraiment fermer : clic droit sur la petite icône → « Quitter GES ».
-- Vos données ne bougent pas : chaque logiciel garde ses données, ses réglages et sa connexion
-  (dossiers %APPDATA%\GESMAR, \GESTIME, \GESTAT, \GESCOUNT). Rien n'est effacé.
+- Tout est rangé dans UN seul dossier : %APPDATA%\GES (un sous-dossier par logiciel :
+  GES\GESMAR, GES\GESTIME, GES\GESTAT, GES\GESCOUNT).
+  Au premier lancement, GES y RECOPIE les données, réglages et connexions des anciens programmes
+  (%APPDATA%\GESMAR, \GESTIME, \GESTAT, \GESCOUNT). Les anciens dossiers ne sont pas touchés :
+  ils servent de copie de secours.
+- À retaper UNE fois (Windows protège ces mots de passe programme par programme) :
+  le mot de passe de la caisse Casio dans GESTAT (Réglages → Connexion à la caisse Casio),
+  et la connexion automatique de GESCOUNT si vous l'utilisiez.
 - Les mises à jour de chaque logiciel continuent comme avant (bouton « Mettre à jour le logiciel »
   et chaque soir à 21 h). Ce kit ne sert qu'une fois par PC.
 
@@ -28,8 +34,11 @@ Installer (une fois par PC)
 
 Après avoir vérifié que tout marche dans GES
 --------------------------------------------
-Désinstallez les 4 anciens programmes (Paramètres Windows → Applications → GESMAR, GESTIME,
-GESTAT, GESCOUNT → Désinstaller). Vos données restent : elles sont utilisées par GES.
-Ne rouvrez plus les anciens programmes en même temps que GES.
+1. Désinstallez les 4 anciens programmes (Paramètres Windows → Applications → GESMAR, GESTIME,
+   GESTAT, GESCOUNT → Désinstaller).
+2. Quelques jours plus tard, si tout va bien, vous pouvez supprimer les anciens dossiers
+   %APPDATA%\GESMAR, %APPDATA%\GESTIME, %APPDATA%\GESTAT et %APPDATA%\GESCOUNT
+   (tapez %APPDATA% dans la barre d'adresse de l'Explorateur).
+   NE SUPPRIMEZ JAMAIS le dossier %APPDATA%\GES : c'est là que sont vos données.
 
 Ce kit contient l'adresse et la clé de la base en ligne : ne le mettez jamais sur GitHub.

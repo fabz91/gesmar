@@ -1,6 +1,6 @@
 ﻿; GES - réglages de l'installateur (NSIS)
-; GES réunit GESMAR, GESTIME, GESTAT et GESCOUNT. Les données de chaque logiciel restent dans
-; %APPDATA%\GESMAR, \GESTIME, \GESTAT et \GESCOUNT : elles ne sont jamais effacées (ni par l'installation, ni par la désinstallation).
+; GES réunit GESMAR, GESTIME, GESTAT et GESCOUNT. Toutes les données sont dans %APPDATA%\GES (un sous-dossier par logiciel),
+; recopiées au 1er lancement depuis les anciens dossiers %APPDATA%\GESMAR… Rien n'est effacé (ni à l'installation, ni à la désinstallation).
 
 !macro customHeader
   ShowInstDetails show
@@ -15,7 +15,7 @@
 !macroend
 
 !macro customInstall
-  DetailPrint "Vos données restent dans $APPDATA\GESMAR, GESTIME, GESTAT et GESCOUNT."
+  DetailPrint "Vos données seront dans $APPDATA\GES (recopiées au premier lancement depuis les anciens programmes)."
   ; GESCOUNT ne démarre plus seul avec Windows : c'est GES qui démarre (avec les 4 logiciels).
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "fr.fabz91.gescount"
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "electron.app.GESCOUNT"
@@ -33,5 +33,5 @@
 
 !macro customUnInstall
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "fr.fabz91.ges"
-  DetailPrint "Les données de GESMAR, GESTIME, GESTAT et GESCOUNT sont conservées."
+  DetailPrint "Les données de $APPDATA\GES sont conservées."
 !macroend

@@ -1,8 +1,9 @@
 'use strict';
 // GES - programme Windows unique qui réunit GESMAR, GESTIME, GESTAT et GESCOUNT (10/11/2026).
 // - démarre avec Windows, en petite icône (zone de notification, en bas à droite) ;
-// - chaque logiciel garde SES données (%APPDATA%\GESMAR, \GESTIME, \GESTAT, \GESCOUNT) et SA connexion, comme avant :
-//   la fenêtre de chaque logiciel utilise le stockage de l'ancien programme (session.fromPath) ;
+// - TOUT est rangé dans %APPDATA%\GES : un dossier par logiciel (%APPDATA%\GES\GESMAR, \GESTIME, \GESTAT, \GESCOUNT).
+//   Au 1er lancement, les dossiers des anciens programmes (%APPDATA%\GESMAR…) y sont RECOPIÉS (données, réglages,
+//   connexion G20, page à jour) ; les anciens dossiers ne sont pas touchés (copie de secours, à supprimer plus tard) ;
 // - un clic sur l'icône du logiciel (en haut à gauche) ouvre le choix du logiciel ;
 // - fermer la fenêtre (croix) la range dans la petite icône : les lectures automatiques continuent
 //   (factures de GESMAR, caisse Casio de GESTAT…). « Quitter GES » dans le menu de la petite icône arrête tout.
@@ -34,11 +35,36 @@ function reglagesSave(r) { try { fs.mkdirSync(path.dirname(reglagesPath()), { re
 let quitting = false, tray = null, courant = null;
 const fenetres = {}; // id -> { win, mod }
 
+// ---------- dossier d'un logiciel dans %APPDATA%\GES (recopie de l'ancien programme au 1er lancement) ----------
+const CACHES = new Set(['cache', 'code cache', 'gpucache', 'dawncache', 'dawngraphitecache', 'dawnwebgpucache', 'crashpad', 'shadercache', 'grshadercache']);
+function dossierDe(a) {
+  const dir = path.join(app.getPath('userData'), a.dossier), ok = path.join(dir, 'ges-reprise.txt');
+  if (fs.existsSync(ok)) return dir;
+  const ancien = path.join(app.getPath('appData'), a.dossier);
+  try {
+    if (fs.existsSync(ancien) && !fs.existsSync(dir)) {
+      const tmp = dir + '.copie';
+      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.cpSync(ancien, tmp, { recursive: true, filter: (src) => !CACHES.has(path.basename(src).toLowerCase()) });
+      fs.renameSync(tmp, dir);
+      fs.writeFileSync(ok, 'Recopié depuis ' + ancien + ' le ' + new Date().toLocaleString('fr-FR') + '.\r\nL\'ancien dossier n\'est plus utilisé par GES : il peut être supprimé quand tout marche.\r\n', 'utf8');
+      return dir;
+    }
+  } catch (e) {
+    // copie impossible (disque plein, fichier bloqué…) : on travaille cette fois dans l'ancien dossier, la copie sera retentée au prochain lancement
+    console.error('reprise ' + a.nom, e); try { fs.rmSync(dir + '.copie', { recursive: true, force: true }); } catch (_) {}
+    return ancien;
+  }
+  if (fs.existsSync(ancien) && fs.existsSync(dir) && !fs.existsSync(path.join(dir, 'donnees'))) { try { fs.rmSync(dir, { recursive: true, force: true }); return dossierDe(a); } catch (e) { return ancien; } }
+  fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(ancien)) fs.writeFileSync(ok, 'Nouveau dossier GES (pas d\'ancien programme sur ce PC).\r\n', 'utf8');
+  return dir;
+}
+
 // ---------- chargement d'un logiciel ----------
 function charger(a) {
   if (fenetres[a.id]) return fenetres[a.id];
-  const userDir = path.join(app.getPath('appData'), a.dossier);
-  fs.mkdirSync(userDir, { recursive: true });
+  const userDir = dossierDe(a);
   const ipc = {
     on: (ch, fn) => ipcMain.on(a.id + '|' + ch, fn),
     handle: (ch, fn) => ipcMain.handle(a.id + '|' + ch, fn)
@@ -60,7 +86,7 @@ function charger(a) {
     title: 'GES - ' + a.nom, icon: path.join(ROOT, 'icon.png'), backgroundColor: '#2a2e32', autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(ROOT, 'apps', a.id, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false,
-      session: session.fromPath(userDir) // même stockage que l'ancien programme : connexion, réglages et caches gardés
+      session: session.fromPath(userDir) // stockage propre à ce logiciel (repris de l'ancien programme) : connexion G20, réglages, caches
     }
   });
   if (r.bounds) { try { win.setBounds(r.bounds); } catch (e) {} }
@@ -151,7 +177,7 @@ app.whenReady().then(() => {
   // GESMAR, GESTIME et GESTAT sont chargés tout de suite (cachés) pour que leurs lectures automatiques tournent.
   // GESCOUNT (admin) seulement à la demande, ou au démarrage s'il était réglé pour démarrer avec Windows.
   for (const a of APPS) { if (!a.admin) charger(a); }
-  try { const p = JSON.parse(fs.readFileSync(path.join(app.getPath('appData'), 'GESCOUNT', 'poste.json'), 'utf8')); if (p && p.demarrage) charger(parId.gescount); } catch (e) {}
+  try { const p = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'GESCOUNT', 'poste.json'), 'utf8')); if (p && p.demarrage) charger(parId.gescount); } catch (e) {}
   if (!enFond) montrer(reglages().dernier || 'gesmar');
   else courant = reglages().dernier || 'gesmar';
   menuTray();
