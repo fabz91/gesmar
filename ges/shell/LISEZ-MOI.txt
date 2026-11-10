@@ -1,0 +1,35 @@
+GES - un seul programme pour GESMAR, GESTIME, GESTAT et GESCOUNT
+====================================================================
+
+Ce que fait GES
+---------------
+- Il remplace les 4 programmes séparés. Une seule icône : GES.
+- Il démarre tout seul avec Windows et se range en petite icône en bas à droite
+  (à côté de l'horloge ; cliquez sur la petite flèche ^ si elle est cachée).
+- Un clic sur la petite icône rouvre le dernier logiciel utilisé.
+- Pour changer de logiciel : cliquez sur l'icône verte du logiciel, en haut à gauche,
+  à côté de son nom. Une petite fenêtre propose GESMAR, GESTIME, GESTAT, et à part,
+  en bas, GESCOUNT (Admin).
+- La croix de la fenêtre ne ferme pas GES : elle le range dans la petite icône. Les lectures
+  automatiques continuent (factures de GESMAR, caisse Casio de GESTAT…).
+  Pour vraiment fermer : clic droit sur la petite icône → « Quitter GES ».
+- Vos données ne bougent pas : chaque logiciel garde ses données, ses réglages et sa connexion
+  (dossiers %APPDATA%\GESMAR, \GESTIME, \GESTAT, \GESCOUNT). Rien n'est effacé.
+- Les mises à jour de chaque logiciel continuent comme avant (bouton « Mettre à jour le logiciel »
+  et chaque soir à 21 h). Ce kit ne sert qu'une fois par PC.
+
+Installer (une fois par PC)
+---------------------------
+1. Fermez GESMAR, GESTIME, GESTAT et GESCOUNT s'ils sont ouverts (l'installateur les ferme aussi).
+2. Si Node.js n'est pas installé : installez la version LTS depuis https://nodejs.org
+3. Double-cliquez sur CREER-INSTALLATEUR.bat (quelques minutes).
+4. Le dossier « dist » s'ouvre : lancez « GES-Installateur-1.0.0.exe ».
+5. GES s'ouvre. Les anciennes icônes GESMAR, GESTIME, GESTAT, GESCOUNT du bureau sont remplacées par GES.
+
+Après avoir vérifié que tout marche dans GES
+--------------------------------------------
+Désinstallez les 4 anciens programmes (Paramètres Windows → Applications → GESMAR, GESTIME,
+GESTAT, GESCOUNT → Désinstaller). Vos données restent : elles sont utilisées par GES.
+Ne rouvrez plus les anciens programmes en même temps que GES.
+
+Ce kit contient l'adresse et la clé de la base en ligne : ne le mettez jamais sur GitHub.
