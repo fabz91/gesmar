@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="172">
+<meta name="gm-version" content="173">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -516,7 +516,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=172;
+const APP_VERSION=173;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1404,10 +1404,12 @@ const FAC=(()=>{
       const eq=n.match(/=\s*(-?\d+(?:[.,]\d{1,2})?)\s*€/);if(eq)montant=num(eq[1])}
     return{date,montant}}
   // Documents qui ne sont pas des factures (bons de livraison, relevés, extraits de compte, RIB, commandes…)
-  function ignorer(rel){const segs=String(rel).split(/[\\/]/),nom=segs[segs.length-1],N=nk(nom);
-    if(!/\.pdf$/i.test(nom))return"Pas un PDF";
+  function ignorer(rel){const segs=String(rel).split(/[\\/]/),nom=segs[segs.length-1],N=nk(nom.replace(/\.[a-z0-9]+$/i,"")); // v173 : sans l'extension (avant, « … rib.pdf » n'était jamais reconnu)
+    if(!/\.(pdf|jpe?g|png)$/i.test(nom))return"Pas un PDF"; // v173 : photos de facture (CLAMART : CENTRASOL, LUCIEN GEORGELIN) lues par le nom du fichier
     if(segs.slice(0,-1).some(s=>/^RELEV/i.test(nk(s))))return"Relevé (copie des factures)";
-    if(/^(BONDE|BL\d|BLC|001BLC|EXTRAIT|RIB|COMMANDE|RELEV|CRFMARKET)/.test(N)||/RIB$/.test(N)||/BONDELIVRAISON|BONDECOMPTAGE|BONDEDEPOT/.test(N))return"Bon de livraison, relevé ou autre document";
+    if(segs.slice(0,-1).some(s=>/^(BL|BLS|BONSDELIVRAISON|BONDELIVRAISON)$/.test(nk(s))))return"Bon de livraison (dossier BL)"; // v173 : CLAMART SAINT PRIM\bl, FDG\BL
+    if(/^(BONDE|BL\d|BLC|001BLC|EXTRAIT|RIB|COMMANDE|RELEV|CRFMARKET)/.test(N)||/RIB$/.test(N)||/BONDELIVRAISON|BONDECOMPTAGE|BONDEDEPOT/.test(N)||/[-_ ]BL[-_ ]/i.test(nom))return"Bon de livraison, relevé ou autre document"; // v173 : « SAINTPRIM PARIS-BL-302656 », « FDG_BL_… »
+    if(/REFUSE/.test(N))return"Livraison refusée"; // v173 : « Seeberger erreur-livraison refusée »
     return null}
   const copieDe=nom=>/ - Copie( \(\d+\))?(\.[a-z]+)$/i.test(nom)?nom.replace(/ - Copie( \(\d+\))?(\.[a-z]+)$/i,"$2"):null;
   // Dossier du fournisseur : le dossier qui suit FOURNISSEURS (ou DIAPAR)
@@ -1436,7 +1438,7 @@ const FAC=(()=>{
       m=t.match(/^\s*(\d{6})\s+\S+\s+\S+\s+\d+-\s*(.+?)\s{2,}.*?\s(\d+)-(\d)\s+\d+(?:\s+BIO)?\s*$/); // dans une facture : « 603068 6X 1 6-BRIK.1L J.ORANGE ABC EP* … 706-1 124 »
       if(m){const ht=+m[3]/100;out.push({code:m[1],libelle:m[2].replace(/\s+\S*\*$/,"").trim(),ht,ttc:Math.round(ht*(TVA_CODE[m[4]]||1)*100)/100})}}
     return out}
-  function diapar(rel,nom,T,L){const m=nom.match(/FACT-(EPIC|FRAIS)-(\d\d)(\d\d)(\d\d)-(\d+)/i),r={fournisseur:"DIAPAR",verif:[]};
+  function diapar(rel,nom,T,L){const m=nom.match(/FACT-(EPIC|FRAIS)-(\d\d)(\d\d)(\d\d)-(\d+)/i)||nom.match(/AVOIR-(EPIC|FRAIS)-.*?-\s*(\d\d)(\d\d)(\d\d)-(\d+)/i),r={fournisseur:"DIAPAR",verif:[]};
     if(m){r.date=iso(m[4],m[3],m[2]);r.numero=m[5];r.rayon=m[1].toUpperCase()}else{r.verif.push("Nom de fichier DIAPAR inhabituel")}
     const E=eurs(T),pos=triple(E.filter(e=>!e.neg).map(e=>e.v)),neg=triple(E.filter(e=>e.neg).map(e=>e.v));
     // Une facture peut contenir une partie « avoirs » déjà déduite de son total ; un document d'avoir seul n'a que des montants négatifs
@@ -1496,13 +1498,18 @@ const FAC=(()=>{
     const segs=String(rel).split(/[\\/]/),nom=segs[segs.length-1],L=lignes(pages),T=L.map(l=>l.t).join("\n");
     const four=dossier(rel),ni=nomInfo(nom),base={rel,nom,dossier:four,annee:annee(rel),texte:T.length>80,magasin:magasin(T)};
     if(nk(four)==="DIAPAR"||/^FACT-(EPIC|FRAIS)-/i.test(nom))return Object.assign(base,diapar(rel,nom,T,L));
+    // v173 : preuve de virement de la banque (CLAMART : « Cyber+ Entreprise | Gérer les virements ») rangée avec les factures : ce n'est pas une facture
+    if(base.texte&&/Statut du virement|G[ée]rer les virements|Motifs? du virement/i.test(T)&&!/NET\s*[AÀ]\s*PAYER|TOTAL\s*T\.?\s*T\.?\s*C/i.test(T))return Object.assign(base,{fournisseur:four,type:"virement",nonFacture:"Preuve de virement (pas une facture)",verif:[],date:null,total:null,lignes:[]});
     const r=Object.assign(base,{fournisseur:four,type:"facture",verif:[],date:ni.date||null,total:null,source:"pdf"});
+    // v173 : année fausse dans le nom (« FDG 13.01.25 » pour un avoir du 13/01/2026) : si le PDF porte le même jour/mois dans l'année du dossier, on prend cette date
+    if(r.date&&base.annee&&+r.date.slice(0,4)<base.annee&&base.texte){const re=new RegExp("(^|\\D)"+r.date.slice(8,10)+"[/.\\-]"+r.date.slice(5,7)+"[/.\\-](?:"+base.annee+"|"+String(base.annee).slice(2)+")(?!\\d)");
+      if(re.test(T)){r.date=base.annee+r.date.slice(4);r.verif.push("Année du nom du fichier corrigée d'après le PDF")}}
     // v106 : facture modèle du fournisseur (montant TTC et date repérés par le texte écrit juste avant)
     const mm=mod&&base.texte&&typeof modLire==="function"?modLire(L,mod.mt,"n"):null,md=mod&&base.texte&&typeof modLire==="function"?modLire(L,mod.dt,"d"):null;
     if(!r.date&&md)r.date=md;
     if(!r.date){const d=T.match(/(\d\d)\/(\d\d)\/(20\d\d|\d\d)\b/);if(d)r.date=iso(d[1],d[2],d[3]);if(r.date)r.verif.push("Date prise dans le PDF")}
     const mc=base.texte?(mm!=null?mm:motCle(L)):null;
-    if(!base.texte){r.total=ni.montant;r.source="nom";r.verif.push(ni.montant!=null?"PDF scanné : montant pris du nom du fichier":"PDF scanné, sans montant dans le nom : à remplir")}
+    if(!base.texte){const ph=/\.(jpe?g|png)$/i.test(nom)?"Photo":"PDF scanné";r.total=ni.montant;r.source="nom";r.verif.push(ni.montant!=null?ph+" : montant pris du nom du fichier":ph+", sans montant dans le nom : à remplir")}
     else if(ni.montant!=null&&contient(T,ni.montant))r.total=ni.montant;
     else if(mm!=null){r.total=mm;r.source="modele";if(ni.montant!=null&&Math.abs(ni.montant-mm)>0.01)r.verif.push("Le nom du fichier indique "+ni.montant.toFixed(2).replace(".",",")+" € : montant de la facture modèle gardé")}
     else if(ni.montant!=null){r.total=ni.montant;r.source="nom";r.verif.push("Montant du nom du fichier introuvable dans le PDF"+(mc!=null?" (le PDF indique "+mc.toFixed(2).replace(".",",")+" €)":""))}
@@ -1533,7 +1540,7 @@ const FAC=(()=>{
 const FAC_API=()=>!!(window.api&&typeof window.api.facLister==="function");
 const FAC_ALIAS={VANDERMOORTELE:"CROUSTICO",VANDEMOORTELE:"CROUSTICO",ISLAMONDIAL:"ISLA",ISLADELICE:"ISLA",LEBATISTOU:"BATISTOU",LUCIENGEORGELIN:"LUCIEN",SAINTPRIMPARIS:"SAINT PRIM",SAINTPRIM:"SAINT PRIM"};
 const facKey=s=>{let h=5381,h2=52711;s=String(s);for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h=(h*33)^c;h2=(h2*31)^c}return"f"+(h>>>0).toString(36)+(h2>>>0).toString(36)};
-const facNomDate=nom=>{const m=String(nom).match(/FACT-(?:EPIC|FRAIS)-(\d\d)(\d\d)(\d\d)-/i);if(m)return"20"+m[1]+"-"+m[2]+"-"+m[3];return FAC.nomInfo(nom).date||null};
+const facNomDate=nom=>{const m=String(nom).match(/FACT-(?:EPIC|FRAIS)-(\d\d)(\d\d)(\d\d)-/i)||String(nom).match(/AVOIR-(?:EPIC|FRAIS)-.*?-\s*(\d\d)(\d\d)(\d\d)-/i);if(m)return"20"+m[1]+"-"+m[2]+"-"+m[3];return FAC.nomInfo(nom).date||null};
 const facDepart=()=>(S.facReg&&S.facReg.depart)||null;
 // v87 : import automatique (par défaut) : chaque lecture écrit tout de suite les nouvelles factures et avoirs lisibles.
 // Mode manuel de la v86 (liste à valider) : réglage reglages/factures.auto = false (bouton dans la fenêtre Factures).
@@ -1639,7 +1646,8 @@ async function facScan(silent){
       // factures d'avant la mise en service : déjà saisies à la main, on ne les lit pas
       const dn=facNomDate(nom),mt=new Date(f.mtime),miso=mt.getFullYear()+"-"+String(mt.getMonth()+1).padStart(2,"0")+"-"+String(mt.getDate()).padStart(2,"0");
       // v93 : « Factures à partir du » = date de la facture (date du nom de fichier) ; sans date dans le nom : date de modification du fichier
-      if(dn?dn<dep:miso<dep)continue;
+      const an=FAC.annee(f.rel),dnOk=dn&&!(an&&+dn.slice(0,4)<an); // v173 : année du nom plus ancienne que le dossier (souvent une faute de frappe) : on décide après lecture du PDF
+      if(dnOk?dn<dep:miso<dep)continue;
       // v108 : un « bon de livraison chiffré » (ex. LE BATISTOU : _001_BLC_…) est lu comme une facture si ce fournisseur a une facture modèle
       let ig=FAC.ignorer(f.rel);if(ig&&/^Bon de livraison/.test(ig)){const fm=S.fourn.find(x=>x.id===facFid(FAC.dossier(f.rel)));if(fm&&fm.modele)ig=null}
       if(ig){if(/\.pdf$/i.test(f.rel))ecartes.push({rel:f.rel,raison:ig});continue}
@@ -1648,15 +1656,18 @@ async function facScan(silent){
     let n=0;const res=[];
     for(const f of aLire){n++;const c=C[f.rel];let r;
       const fm=S.fourn.find(x=>x.id===facFid(FAC.dossier(f.rel))),mod=fm&&fm.modele||null,sig=mod?JSON.stringify([mod.mt,mod.dt]):"";
-      if(c&&c.size===f.size&&c.mtime===f.mtime&&(c.sig||"")===sig)r=c.r;
+      const img=/\.(jpe?g|png)$/i.test(f.rel),cv=c&&(c.v>=173||(FAC.nk(FAC.dossier(f.rel))==="DIAPAR"&&!/(^|\/)AVOIR-/i.test(f.rel))); // v173 : relecture une fois des factures fournisseurs (virements, années, avoirs DIAPAR)
+      if(c&&cv&&c.size===f.size&&c.mtime===f.mtime&&(c.sig||"")===sig)r=c.r;
+      else if(img){r=FAC.analyser(f.rel,[]);C[f.rel]={size:f.size,mtime:f.mtime,r,sig,v:173}}
       else{S.fac.prog="Lecture des factures : "+n+" / "+aLire.length;facRender();
         try{r=FAC.analyser(f.rel,await facItems(f.rel),mod)}catch(e){console.error(e);r=FAC.analyser(f.rel,[]);r.verif=["PDF illisible ("+(e&&e.message||"erreur")+")"].concat(r.verif||[])}
-        delete r.texteBrut;C[f.rel]={size:f.size,mtime:f.mtime,r,sig}}
+        delete r.texteBrut;C[f.rel]={size:f.size,mtime:f.mtime,r,sig,v:173}}
       res.push(Object.assign({},r))}
     facCacheSave();
     // doublons : même fournisseur, même date, même montant qu'une facture déjà importée ou déjà dans la liste
     const deja=new Set(Object.values(reg).filter(x=>x&&x.s==="i"&&x.id).map(x=>x.id)),vus=new Set(),liste=[];const deplaces=[];
     for(const r of res){const id=facIdent(r);
+      if(r.nonFacture){ecartes.push({rel:r.rel,raison:r.nonFacture});continue} // v173 : preuve de virement
       if(r.date&&r.date<dep)continue; // v93 : facture datée d'avant « Factures à partir du » : ignorée (déjà saisie à la main)
       if(r.total!=null&&(deja.has(id)||vus.has(id))){
         // v126 : PDF déplacé ou renommé après l'import : la facture déjà importée dont le fichier n'est plus à son ancienne place reprend ce nouvel emplacement (rien d'autre ne change)
