@@ -89,11 +89,51 @@ module.exports = function (ipc) {
     });
     badge(); setTimeout(badge, 1500); setTimeout(badge, 5000);
   });
+  // Bandeau GES en haut de l'écran quand l'icône du logiciel n'est pas visible
+  // (écran de connexion ou de verrouillage, par ex. GESCOUNT) : boutons directs vers les autres logiciels.
+  let barre = null;
+  function iconeVisible() {
+    for (const ic of document.querySelectorAll(SEL)) {
+      const r = ic.getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight) continue;
+      const x = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (x && (x === ic || ic.contains(x) || (x.closest && x.closest('.ges-bi') && x.closest('.ges-bi').contains(ic)))) return true;
+    }
+    return false;
+  }
+  function majBarre() {
+    if (!document.body) return;
+    const montrer = !iconeVisible() && !hote;
+    if (!montrer) { if (barre) { barre.remove(); barre = null; } return; }
+    if (barre && barre.isConnected) return;
+    const I = lireInfos(); if (!I.apps || !I.apps.length) return;
+    const dk = sombre();
+    barre = document.createElement('div');
+    barre.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483645;pointer-events:none';
+    const sr = barre.attachShadow({ mode: 'open' });
+    const autres = I.apps.filter(a => a.id !== I.courant);
+    sr.innerHTML = `<style>
+      .b{pointer-events:auto;margin:10px auto 0;width:max-content;max-width:calc(100vw - 20px);display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
+        padding:7px 10px;border-radius:12px;font:13px system-ui,"Segoe UI",sans-serif;background:${dk ? '#2a2b2e' : '#fff'};color:${dk ? '#eceae4' : '#1d1f1e'};
+        box-shadow:0 4px 16px rgba(0,0,0,.25);border:1px solid ${dk ? '#3a3b3f' : '#e2e0d8'}}
+      .l{font-weight:700;opacity:.75;margin:0 4px}
+      button{all:unset;display:flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:9px;cursor:pointer;font-weight:900;font-size:14px;border:1px solid ${dk ? '#3a3b3f' : '#e2e0d8'}}
+      button:hover{background:${dk ? '#34363a' : '#f2f1ec'}}
+      button img{width:24px;height:24px;border-radius:6px}
+      button i{font-style:normal;color:${dk ? '#f0473d' : '#d3262b'}}
+      button.adm{background:${dk ? '#33291a' : '#fff6e5'}}
+    </style>
+    <div class="b"><span class="l">⇄ Changer de logiciel :</span>
+      ${autres.map(a => `<button data-id="${esc(a.id)}" class="${a.admin ? 'adm' : ''}"><img src="${esc(a.icone)}" alt=""><span>GES<i>${esc(a.suffixe)}</i></span></button>`).join('')}
+    </div>`;
+    sr.querySelectorAll('button').forEach(b => b.addEventListener('click', () => ipc.send('ges:montrer', b.dataset.id)));
+    document.body.appendChild(barre);
+  }
+  window.addEventListener('DOMContentLoaded', () => { setTimeout(majBarre, 800); setInterval(majBarre, 1000); });
+
   // clic délégué : marche même si la page redessine son bandeau
   document.addEventListener('click', (e) => {
     const t = e.target && e.target.closest && e.target.closest(SEL);
     if (!t) return;
-    if (t.closest('.lockbox')) return; // écran de verrouillage de GESCOUNT : pas de changement
     e.preventDefault(); e.stopPropagation(); ouvrir();
   }, true);
 };

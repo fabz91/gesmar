@@ -29,7 +29,7 @@ Installer (une fois par PC)
 1. Fermez GESMAR, GESTIME, GESTAT et GESCOUNT s'ils sont ouverts (l'installateur les ferme aussi).
 2. Si Node.js n'est pas installé : installez la version LTS depuis https://nodejs.org
 3. Double-cliquez sur CREER-INSTALLATEUR.bat (quelques minutes).
-4. Le dossier « dist » s'ouvre : lancez « GES-Installateur-1.0.0.exe ».
+4. Le dossier « dist » s'ouvre : lancez « GES-Installateur-1.0.1.exe ».
 5. GES s'ouvre. Les anciennes icônes GESMAR, GESTIME, GESTAT, GESCOUNT du bureau sont remplacées par GES.
 
 Après avoir vérifié que tout marche dans GES
