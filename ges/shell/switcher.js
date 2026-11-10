@@ -93,6 +93,10 @@ module.exports = function (ipc) {
   // (écran de connexion ou de verrouillage, par ex. GESCOUNT) : boutons directs vers les autres logiciels.
   let barre = null;
   function iconeVisible() {
+    if (barre) barre.style.display = 'none'; // le bandeau lui-même ne doit pas cacher l'icône pendant la vérification
+    try { return iconeVue(); } finally { if (barre) barre.style.display = ''; }
+  }
+  function iconeVue() {
     for (const ic of document.querySelectorAll(SEL)) {
       const r = ic.getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight) continue;
       const x = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
