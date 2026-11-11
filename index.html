@@ -552,10 +552,19 @@ const PH_TABS=["bord","saisie","avoirs"];
 function phApply(){const on=PHW();document.body.classList.toggle("ph",on);if(on&&!PH_TABS.includes(S.tab))S.tab="bord";if(on&&S.avVue==="auto")S.avVue="man";return on}
 let phW=window.innerWidth;window.addEventListener("resize",()=>{if(Math.abs(window.innerWidth-phW)<40)return;phW=window.innerWidth;const was=document.body.classList.contains("ph");if(phApply()!==was)render()});
 try{if(WEBM)localStorage.setItem("ges-app","gesmar")}catch(e){}
-// Toucher l'icône GESMAR : passe à GESTIME Web (même magasin)
-function phSwitch(){try{localStorage.setItem("ges-app","gestime");if(S.store)localStorage.setItem("gt-store",S.store)}catch(e){}location.href="../gestime/"}
+// Toucher l'icône GESMAR : choix du logiciel (GESMAR, GESTIME, GESTAT), même magasin
+/* GES sur téléphone : toucher l'icône du logiciel ouvre le choix GESMAR / GESTIME / GESTAT (même adresse, même connexion, même magasin) */
+function gesMenu(cur,store){const A=[["gesmar","GESMAR","Marges, saisie, avoirs","../gesmar/"],["gestime","GESTIME","Plannings et heures","../gestime/"],["gestat","GESTAT","Ventes et caisse","../Gestat/"]];
+  let o=document.getElementById("gesMenu");if(o){o.remove();return}
+  if(!document.getElementById("gesMenuCss")){const st=document.createElement("style");st.id="gesMenuCss";st.textContent='#gesMenu{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}#gesMenu .gmb{background:#fff;color:#1d1d1f;width:100%;max-width:460px;border-radius:18px 18px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.25);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}#gesMenu h3{margin:2px 4px 10px;font-size:15px;color:#6b6b70;font-weight:700;letter-spacing:.06em}#gesMenu button{display:flex;width:100%;align-items:center;gap:12px;text-align:left;border:1.5px solid #e2e2e2;background:#fff;color:inherit;border-radius:12px;padding:12px 14px;margin:0 0 8px;font:inherit;cursor:pointer}#gesMenu button b{font-size:17px;letter-spacing:.04em;display:block}#gesMenu button span{font-size:13px;color:#6b6b70}#gesMenu button.on{border-color:#237a3b;background:#eef7f0}#gesMenu button i{margin-left:auto;font-style:normal;font-size:12px;font-weight:700;color:#237a3b}#gesMenu .gmx{justify-content:center;border:none;background:#f1f1f1;font-weight:700;margin:4px 0 0}';document.head.appendChild(st)}
+  o=document.createElement("div");o.id="gesMenu";o.setAttribute("role","dialog");o.setAttribute("aria-label","Changer de logiciel");
+  o.innerHTML='<div class="gmb"><h3>CHANGER DE LOGICIEL</h3>'+A.map(a=>'<button data-ga="'+a[0]+'"'+(a[0]===cur?' class="on"':'')+'><div><b>'+a[1]+'</b><span>'+a[2]+'</span></div>'+(a[0]===cur?'<i>ouvert</i>':'')+'</button>').join("")+'<button class="gmx" data-ga="">Fermer</button></div>';
+  o.addEventListener("click",e=>{const b=e.target.closest("[data-ga]");if(!b&&e.target!==o)return;const k=b?b.dataset.ga:"";o.remove();if(!k||k===cur)return;const a=A.find(x=>x[0]===k);
+    try{localStorage.setItem("ges-app",k);const m=store();if(m){localStorage.setItem("gesmar.store",m);localStorage.setItem("gt-store",m);localStorage.setItem("gestat.store",m)}}catch(_){}location.href=a[3]});
+  document.body.appendChild(o)}
+function phSwitch(){gesMenu("gesmar",()=>S.store)}
 (function(){const ic=document.querySelector(".appico");if(!ic||!WEBM)return;
-  ic.removeAttribute("aria-hidden");ic.setAttribute("role","button");ic.setAttribute("tabindex","0");ic.setAttribute("aria-label","Passer à GESTIME");ic.title="Passer à GESTIME";
+  ic.removeAttribute("aria-hidden");ic.setAttribute("role","button");ic.setAttribute("tabindex","0");ic.setAttribute("aria-label","Changer de logiciel");ic.title="Changer de logiciel";
   ic.insertAdjacentHTML("beforeend",'<span class="sw" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></span>');
   ic.addEventListener("click",phSwitch);ic.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();phSwitch()}})})();
 
