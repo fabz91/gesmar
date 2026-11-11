@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="175">
+<meta name="gm-version" content="176">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -516,7 +516,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=175;
+const APP_VERSION=176;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -692,7 +692,7 @@ function mailRender(){if(!MAILX.ouvert)return;let o=document.getElementById("mai
   const body=`<p class="sub" style="margin:0 0 10px">GESMAR lit la boîte mail <b>en lecture seule</b> (il ne marque rien comme lu, ne déplace et ne supprime rien) toutes les 15 minutes : boîte de réception, corbeille et les dossiers indiqués. Les PDF des expéditeurs associés à un fournisseur sont rangés dans <b>${esc(I.racine||"Documents\\GES\\FACTURES-MAIL")}</b>, puis lus comme les factures de la comptable (une facture présente aux deux endroits n'est importée qu'une fois).</p>
     <div class="facreg">
     <div class="row"><label style="min-width:170px" for="mlU"><b>Adresse de la boîte</b></label><input id="mlU" type="email" value="${esc(I.user||"")}" placeholder="g20.clamart@orange.fr" autocomplete="off" style="min-width:260px"></div>
-    <div class="row"><label style="min-width:170px" for="mlP"><b>Mot de passe pour logiciels</b></label><input id="mlP" type="password" value="" placeholder="${I.aMdp?"enregistré (laisser vide pour le garder)":"xxxxx-xxxxx-xxxxx-xxxxx"}" autocomplete="new-password" style="min-width:260px"></div>
+    <div class="row"><label style="min-width:170px" for="mlP"><b>Mot de passe pour logiciels</b></label><input id="mlP" type="password" value="" placeholder="${I.aMdp?"enregistré (laisser vide pour le garder)":"à taper (ex. abcde-fghij-klmno-pqrst)"}" autocomplete="new-password" style="min-width:260px"></div>
     <div class="hist" style="margin:-4px 0 4px 178px">Orange : le « mot de passe pour logiciels et applications de messagerie tiers » (Espace client → Vos services de messagerie). Gardé chiffré par Windows sur ce PC.</div>
     <div class="row"><label style="min-width:170px" for="mlH"><b>Serveur</b></label><input id="mlH" value="${esc(I.hote||"imap.orange.fr")}" style="min-width:200px"></div>
     <div class="row"><label style="min-width:170px" for="mlD"><b>Dossiers en plus</b></label><input id="mlD" value="${esc((I.dossiers||[]).join(", "))}" placeholder="SANDRINE" style="min-width:260px"><span class="hist">(boîte de réception et corbeille : toujours lues)</span></div>
@@ -714,7 +714,7 @@ async function mailTester(){const v=id=>(document.getElementById(id)||{}).value|
     const t=await window.api.mailTester();const manque=v("mlD").split(/[,;]/).map(x=>x.trim().toUpperCase()).filter(x=>x&&!t.dossiers.includes(x));
     MAILX.msg="✓ Connexion réussie. Dossiers lus : "+esc(t.dossiers.join(", "))+(manque.length?"<br>⚠️ Introuvable dans la boîte : "+esc(manque.join(", "))+" (dossiers existants : "+esc(t.tous.join(", "))+")":"");
     MAILX.busy=false;await mailCharger();if(MAILX.info&&MAILX.info.actif)mailRelever();return}
-  catch(e){MAILX.msg="⚠️ "+esc(e.message||"Connexion impossible")}MAILX.busy=false;MAILX.force=true;await mailCharger()}
+  catch(e){MAILX.msg="⚠️ "+esc(String(e.message||"Connexion impossible").replace(/^Error invoking remote method '[^']*': (Error: )?/,"")+(/non réglé/.test(e.message||"")?" : tapez le mot de passe pour logiciels dans la case (le texte gris n'est qu'un exemple).":""))}MAILX.busy=false;MAILX.force=true;await mailCharger()}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-mail]");if(!b)return;const k=b.dataset.mail;
   if(k==="ouvrir"){S.modal=false;render();mailOuvrir()}else if(k==="fermer")mailFermer();else if(k==="tester")mailTester();else if(k==="relever")mailRelever();else if(k==="dossier")window.api.mailOuvrirDossier()});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||t.dataset.mailexp==null)return;window.api.mailExp(t.dataset.mailexp,t.value).then(i=>{MAILX.info=i;MAILX.msg=t.value&&t.value!=="-"?"✓ Associé à "+esc(t.value)+" : ses PDF seront récupérés à la prochaine relève (« Relever maintenant » pour tout de suite).":"✓ Enregistré.";MAILX.force=true;mailRender()})});
