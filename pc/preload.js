@@ -25,6 +25,14 @@ contextBridge.exposeInMainWorld('api', {
   caLister: () => ipcRenderer.invoke('gm:caLister'),
   caLire: (nom) => ipcRenderer.invoke('gm:caLire', nom),
   caChoisir: () => ipcRenderer.invoke('gm:caChoisir'),
-  venteLire: (nom) => ipcRenderer.invoke('gm:venteLire', nom)
+  venteLire: (nom) => ipcRenderer.invoke('gm:venteLire', nom),
+  // 1.6.0 : factures reçues par mail (lecture seule)
+  mailInfos: () => ipcRenderer.invoke('gm:mailInfos'),
+  mailRegler: (o) => ipcRenderer.invoke('gm:mailRegler', o),
+  mailExp: (a, f) => ipcRenderer.invoke('gm:mailExp', a, f),
+  mailTester: () => ipcRenderer.invoke('gm:mailTester'),
+  mailReleve: () => ipcRenderer.invoke('gm:mailReleve'),
+  mailOuvrirDossier: () => ipcRenderer.invoke('gm:mailOuvrirDossier'),
+  onMailProg: (f) => { ipcRenderer.removeAllListeners('gm:mailProg'); ipcRenderer.on('gm:mailProg', (e, p) => f(p)); }
 });
 contextBridge.exposeInMainWorld('SYNC', { updateUrl: cfg.updateUrl || '', url: cfg.supabaseUrl || '', key: cfg.supabaseKey || '' });

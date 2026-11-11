@@ -1,7 +1,7 @@
 {
   "name": "gesmar",
   "productName": "GESMAR",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "GESMAR - marges et avoirs fournisseurs",
   "author": "fabz91",
   "main": "main.js",
@@ -25,6 +25,7 @@
     "files": [
       "main.js",
       "core.js",
+      "imap.js",
       "preload.js",
       "config.js",
       "index.html",

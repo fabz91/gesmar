@@ -21,7 +21,7 @@ UPDATE = {
     'gescount': 'https://raw.githubusercontent.com/fabz91/gescount/main',
 }
 EXTRA = {  # fichiers du programme PC à reprendre en plus de main.js / preload.js
-    'gesmar': ['core.js', 'pdfjs'],
+    'gesmar': ['core.js', 'imap.js', 'pdfjs'],
     'gestat': ['core.js', 'casio.js', 'ftp.js', 'sevenzip.js', 'az050.js'],
     'gescount': ['core.js', 'pdfjs'],
     'gestime': [],

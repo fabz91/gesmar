@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="173">
+<meta name="gm-version" content="174">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -516,7 +516,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=173;
+const APP_VERSION=174;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -672,6 +672,53 @@ function vAvoirsPh(){
   ${S.edit?vForm():""}
   ${list.length?list.map(card).join(""):`<div class="empty-state">Aucun avoir dans ce filtre. Touchez « + Nouveau » pour en créer un.</div>`}
   <p class="phnote">En rouge : sans nouvelle depuis ${RELANCE_JOURS} jours.</p>`}
+
+/* ================= v174 (programme 1.6.0) : factures reçues par mail =================
+   GESMAR relève la boîte mail du magasin (IMAP, LECTURE SEULE : rien n'est lu, déplacé ni supprimé) toutes les 15 min :
+   boîte de réception, corbeille et dossiers choisis (ex. SANDRINE). Les PDF des expéditeurs associés à un fournisseur
+   sont rangés dans Documents\GES\FACTURES-MAIL\<année>\FOURNISSEURS\<fournisseur> et lus comme ceux du dossier de la comptable
+   (même facture dans les deux = « Déjà importée »). Le mot de passe reste chiffré par Windows sur ce PC. */
+const MAILX={ouvert:false,info:null,msg:"",busy:false,prog:""};
+async function mailCharger(){try{MAILX.info=await window.api.mailInfos()}catch(e){MAILX.msg="⚠️ "+e.message}mailRender()}
+function mailOuvrir(){MAILX.ouvert=true;MAILX.msg="";mailCharger();if(window.api.onMailProg)window.api.onMailProg(p=>{MAILX.prog=p&&p.dossier?"Lecture : "+p.dossier+" ("+p.n+" nouveaux mails)":"";mailRender()})}
+function mailFermer(){MAILX.ouvert=false;const o=document.getElementById("mailRoot");if(o)o.remove()}
+function mailRender(){if(!MAILX.ouvert)return;let o=document.getElementById("mailRoot");
+  if(!o){o=document.createElement("div");o.id="mailRoot";o.className="facov";document.body.appendChild(o)}
+  const a=document.activeElement;if(a&&o.contains(a)&&/INPUT/.test(a.tagName)&&!MAILX.force)return;MAILX.force=false;
+  const I=MAILX.info||{},E=I.etat||{},X=Object.entries(I.exp||{}).sort((u,w)=>(!!u[1].f-!!w[1].f)||String(w[1].dernier||"").localeCompare(String(u[1].dernier||"")));
+  const four=S.fourn.filter(f=>!f.groupe&&!isParent(f)).map(f=>String(f.nom)).filter(Boolean).sort((u,w)=>u.localeCompare(w));
+  const opts=v=>`<option value="" ${!v?"selected":""}>— à choisir —</option><option value="-" ${v==="-"?"selected":""}>Ignorer (pas des factures)</option><option value="DIAPAR" ${v==="DIAPAR"?"selected":""}>DIAPAR</option>${four.filter(n=>FAC.nk(n)!=="DIAPAR").map(n=>`<option value="${esc(n)}" ${v===n?"selected":""}>${esc(n)}</option>`).join("")}${v&&v!=="-"&&v!=="DIAPAR"&&!four.includes(v)?`<option value="${esc(v)}" selected>${esc(v)}</option>`:""}`;
+  const etat=MAILX.busy?(MAILX.prog||"Relève en cours…"):E.quand?(E.ok?`Dernière relève : ${new Date(E.quand).toLocaleString("fr-FR")} · ${E.mails||0} mails lus · ${E.nouveaux||0} PDF récupérés${E.attente?` · <b>${E.attente} en attente</b> (expéditeur à associer ci-dessous)`:""}<br>Dossiers lus : ${esc((E.dossiers||[]).join(", "))}`:`⚠️ ${esc(E.erreur||"Relève impossible")}`):"Pas encore relevée.";
+  const body=`<p class="sub" style="margin:0 0 10px">GESMAR lit la boîte mail <b>en lecture seule</b> (il ne marque rien comme lu, ne déplace et ne supprime rien) toutes les 15 minutes : boîte de réception, corbeille et les dossiers indiqués. Les PDF des expéditeurs associés à un fournisseur sont rangés dans <b>${esc(I.racine||"Documents\\GES\\FACTURES-MAIL")}</b>, puis lus comme les factures de la comptable (une facture présente aux deux endroits n'est importée qu'une fois).</p>
+    <div class="facreg">
+    <div class="row"><label style="min-width:170px" for="mlU"><b>Adresse de la boîte</b></label><input id="mlU" type="email" value="${esc(I.user||"")}" placeholder="g20.clamart@orange.fr" autocomplete="off" style="min-width:260px"></div>
+    <div class="row"><label style="min-width:170px" for="mlP"><b>Mot de passe pour logiciels</b></label><input id="mlP" type="password" value="" placeholder="${I.aMdp?"enregistré (laisser vide pour le garder)":"xxxxx-xxxxx-xxxxx-xxxxx"}" autocomplete="new-password" style="min-width:260px"></div>
+    <div class="hist" style="margin:-4px 0 4px 178px">Orange : le « mot de passe pour logiciels et applications de messagerie tiers » (Espace client → Vos services de messagerie). Gardé chiffré par Windows sur ce PC.</div>
+    <div class="row"><label style="min-width:170px" for="mlH"><b>Serveur</b></label><input id="mlH" value="${esc(I.hote||"imap.orange.fr")}" style="min-width:200px"></div>
+    <div class="row"><label style="min-width:170px" for="mlD"><b>Dossiers en plus</b></label><input id="mlD" value="${esc((I.dossiers||[]).join(", "))}" placeholder="SANDRINE" style="min-width:260px"><span class="hist">(boîte de réception et corbeille : toujours lues)</span></div>
+    <div class="row"><label style="min-width:170px" for="mlS"><b>Mails reçus depuis le</b></label><input id="mlS" type="date" value="${esc(I.depuis||facDepart()||todayISO())}"></div>
+    <div class="row"><label><input type="checkbox" id="mlA" ${I.actif?"checked":""}> <b>Relever cette boîte automatiquement</b> (toutes les 15 min)</label></div>
+    <div class="row"><button class="btn small primary" data-mail="tester" ${MAILX.busy?"disabled":""}>Enregistrer et tester</button><button class="btn small" data-mail="relever" ${MAILX.busy||!I.actif?"disabled":""}>Relever maintenant</button><button class="btn small" data-mail="dossier">Ouvrir le dossier des PDF</button></div>
+    <div class="hist">${MAILX.msg?MAILX.msg+"<br>":""}${etat}</div></div>
+    <h4 style="margin:16px 0 6px">Expéditeurs de PDF (${X.length})</h4>
+    ${X.length?`<p class="sub" style="margin:0 0 8px">Associez chaque expéditeur à son fournisseur (une seule fois). « Ignorer » : ses PDF ne sont pas des factures.</p><div class="scroll" style="max-height:44vh"><table class="factab"><thead><tr><th class="l">Expéditeur</th><th class="l">Dernier mail</th><th>PDF</th><th class="l">Fournisseur</th></tr></thead><tbody>
+      ${X.map(([ad,x])=>`<tr><td class="l" style="white-space:normal"><b>${esc(x.nom||ad)}</b><div class="hist">${esc(ad)}</div></td><td class="l" style="white-space:normal">${esc(x.dernier?frDate(x.dernier):"")}<div class="hist">${esc(x.sujet||"")}</div></td><td>${x.n||0}</td><td class="l"><select data-mailexp="${esc(ad)}" aria-label="Fournisseur de ${esc(ad)}">${opts(x.f||"")}</select></td></tr>`).join("")}</tbody></table></div>`
+      :`<div class="hist">La liste se remplit à la première relève.</div>`}`;
+  o.innerHTML=`<div class="facbox" style="max-width:980px"><div class="band">Factures reçues par mail — ${esc(storeNom())}<button class="pillbtn" data-mail="fermer">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`}
+async function mailRelever(){MAILX.busy=true;MAILX.msg="";MAILX.force=true;mailRender();
+  try{const r=await window.api.mailReleve();MAILX.msg=r.ok?(r.nouveaux?"✓ "+r.nouveaux+" PDF récupérés : lecture des factures…":"✓ Relève faite."):"⚠️ "+esc(r.erreur||"Relève impossible");
+    if(r.ok&&r.nouveaux&&typeof facScan==="function"){S.fac.dernier=0;facScan(true)}}catch(e){MAILX.msg="⚠️ "+esc(e.message)}
+  MAILX.busy=false;MAILX.prog="";MAILX.force=true;await mailCharger()}
+async function mailTester(){const v=id=>(document.getElementById(id)||{}).value||"";MAILX.busy=true;MAILX.msg="Connexion à la boîte mail…";MAILX.force=true;mailRender();
+  try{await window.api.mailRegler({user:v("mlU"),pass:v("mlP"),hote:v("mlH"),dossiers:v("mlD").split(/[,;]/),depuis:v("mlS"),actif:!!(document.getElementById("mlA")||{}).checked});
+    const t=await window.api.mailTester();const manque=v("mlD").split(/[,;]/).map(x=>x.trim().toUpperCase()).filter(x=>x&&!t.dossiers.includes(x));
+    MAILX.msg="✓ Connexion réussie. Dossiers lus : "+esc(t.dossiers.join(", "))+(manque.length?"<br>⚠️ Introuvable dans la boîte : "+esc(manque.join(", "))+" (dossiers existants : "+esc(t.tous.join(", "))+")":"");
+    MAILX.busy=false;await mailCharger();if(MAILX.info&&MAILX.info.actif)mailRelever();return}
+  catch(e){MAILX.msg="⚠️ "+esc(e.message||"Connexion impossible")}MAILX.busy=false;MAILX.force=true;await mailCharger()}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-mail]");if(!b)return;const k=b.dataset.mail;
+  if(k==="ouvrir"){S.modal=false;render();mailOuvrir()}else if(k==="fermer")mailFermer();else if(k==="tester")mailTester();else if(k==="relever")mailRelever();else if(k==="dossier")window.api.mailOuvrirDossier()});
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||t.dataset.mailexp==null)return;window.api.mailExp(t.dataset.mailexp,t.value).then(i=>{MAILX.info=i;MAILX.msg=t.value&&t.value!=="-"?"✓ Associé à "+esc(t.value)+" : ses PDF seront récupérés à la prochaine relève (« Relever maintenant » pour tout de suite).":"✓ Enregistré.";MAILX.force=true;mailRender()})});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&MAILX.ouvert)mailFermer()});
 
 /* ---------- affichage clair / sombre (comme GESTIME) ---------- */
 function getTheme(){try{return localStorage.getItem("gesmar.theme")}catch(e){return null}}
@@ -2113,7 +2160,8 @@ function facReglagesFac(){const F=S.fac,dep=facDepart();
     <div><b>Import facture</b></div>
     <div class="segm" role="group" aria-label="Import facture"><button data-facauto="0" aria-pressed="${!facAutoOn()}">Manuel</button><button data-facauto="1" aria-pressed="${facAutoOn()}">Auto</button></div>
     ${etat?`<div class="hist">${etat}</div>`:""}${F.dernierImport?`<div class="hist">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
-    ${facPopBtns()}</div>`}
+    ${facPopBtns()}
+    ${window.api&&window.api.mailInfos?`<div><b>Boîte mail des factures</b></div><div class="row"><button class="btn small" data-mail="ouvrir">📧 Factures reçues par mail…</button></div>`:""}</div>`}
 // v102 : « Dernières factures importées » et « Factures ignorées » : boutons qui ouvrent une fenêtre
 function facPopBtns(){const R=Object.values(S.facImp||{}),ni=R.filter(x=>x&&x.s==="i").length,nx=R.filter(x=>x&&x.s==="x").length;
   const b=(k,ic,t,n)=>`<button class="facpopbtn" data-facpop="${k}"${n?"":" disabled"}><span class="ic">${ic}</span><span class="t">${t}</span><span class="n">${n}</span><span class="chev">›</span></button>`;
