@@ -1,1 +1,1 @@
-{"version": 180, "note": "Factures par mail : pas de double import si le mail arrive avant la comptable"}
+{"version": 181, "note": "CDPO recu par mail : montant TTC lu dans le PDF"}
