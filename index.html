@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="178">
+<meta name="gm-version" content="179">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -519,7 +519,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=178;
+const APP_VERSION=179;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1725,7 +1725,10 @@ async function facScan(silent){
     const an=new Date().getFullYear();S.fac.annees=[...new Set(files.map(f=>FAC.annee(f.rel)).filter(Boolean))].sort();
     S.fac.sansAnnee=new Date().getMonth()<=1&&S.fac.annees.length&&!S.fac.annees.includes(an)?an:null;
     const aLire=[],ecartes=[];
+    // v179 : un PDF reçu par mail identique (même fournisseur, même taille) à un PDF du dossier de la comptable n'est pas relu : c'est le même document (souvent renommé par la comptable, ex. « CDPO 30.10.26 745.25€.pdf »)
+    const tailleCompta=new Set(files.filter(f=>!f.rel.startsWith("@mail/")).map(f=>FAC.nk(FAC.dossier(f.rel))+"|"+f.size));
     for(const f of files){const k=facKey(f.rel);if(reg[k])continue;
+      if(f.rel.startsWith("@mail/")&&tailleCompta.has(FAC.nk(FAC.dossier(f.rel))+"|"+f.size)){ecartes.push({rel:f.rel,raison:"Reçu par mail : même PDF que celui de la comptable"});continue}
       const segs=f.rel.split("/"),nom=segs[segs.length-1],cp=FAC.copieDe(nom);
       // factures d'avant la mise en service : déjà saisies à la main, on ne les lit pas
       const dn=facNomDate(nom),mt=new Date(f.mtime),miso=mt.getFullYear()+"-"+String(mt.getMonth()+1).padStart(2,"0")+"-"+String(mt.getDate()).padStart(2,"0");
