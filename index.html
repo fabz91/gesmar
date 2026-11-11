@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="174">
+<meta name="gm-version" content="175">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -516,7 +516,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=174;
+const APP_VERSION=175;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -2160,7 +2160,7 @@ function facReglagesFac(){const F=S.fac,dep=facDepart();
     <div><b>Import facture</b></div>
     <div class="segm" role="group" aria-label="Import facture"><button data-facauto="0" aria-pressed="${!facAutoOn()}">Manuel</button><button data-facauto="1" aria-pressed="${facAutoOn()}">Auto</button></div>
     ${etat?`<div class="hist">${etat}</div>`:""}${F.dernierImport?`<div class="hist">Dernier import (${esc(F.dernierImport.le)}) : ${esc(F.dernierImport.msg)}</div>`:""}
-    ${facPopBtns()}
+    ${""/* v175 : boutons « Dernières factures importées » et « Factures ignorées » retirés (demande du gérant) ; facPopBtns gardé */}
     ${window.api&&window.api.mailInfos?`<div><b>Boîte mail des factures</b></div><div class="row"><button class="btn small" data-mail="ouvrir">📧 Factures reçues par mail…</button></div>`:""}</div>`}
 // v102 : « Dernières factures importées » et « Factures ignorées » : boutons qui ouvrent une fenêtre
 function facPopBtns(){const R=Object.values(S.facImp||{}),ni=R.filter(x=>x&&x.s==="i").length,nx=R.filter(x=>x&&x.s==="x").length;
