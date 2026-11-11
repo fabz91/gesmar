@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="177">
+<meta name="gm-version" content="178">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -337,6 +337,9 @@ tr.lrow td{color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transpare
 .facpopbtn .t{flex:1;font-weight:600}.facpopbtn .n{min-width:26px;padding:1px 8px;border-radius:999px;background:var(--sunk);font-size:12px;text-align:center}.facpopbtn .chev{font-size:18px;opacity:.6}
 .poptab{width:100%;border-collapse:collapse;font-size:14px}.poptab th{font-size:12px;text-transform:uppercase;opacity:.7;padding:6px 8px;border-bottom:1px solid var(--line,#ddd)}
 .poptab td{padding:8px;border-bottom:1px solid var(--line,#eee);vertical-align:middle}.poptab td.fic{white-space:normal;word-break:break-word}.poptab tr:hover td{background:rgba(127,127,127,.06)}
+.mlx{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px}.mlx.ok{border-color:var(--green,#2e9e44)}.mlx.ign{opacity:.6}.mlxi{min-width:0;flex:1}.mlxa{display:flex;gap:6px;align-items:center;flex:none}.mlxa select{min-width:200px;font-size:14px;padding:6px 8px}
+/* v178 : pas de bandeau « Changer de logiciel » de GES quand une fenêtre (réglages, factures…) est ouverte */
+body:has(#modalRoot > *, .facov) > div[style*="2147483645"]{display:none!important}
 .facov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:grid;place-items:center;padding:16px}
 .facbox{background:var(--surface);color:var(--fg);border-radius:12px;max-width:1180px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .facmpw{display:flex;gap:12px;align-items:stretch}.facmp{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column}.facmph{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line)}.facmph .hist{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.facmpb{height:68vh;overflow:auto;padding:8px;background:#e9e9e6}
@@ -516,7 +519,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=177;
+const APP_VERSION=178;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -700,11 +703,33 @@ function mailRender(){if(!MAILX.ouvert)return;let o=document.getElementById("mai
     <div class="row"><label><input type="checkbox" id="mlA" ${I.actif?"checked":""}> <b>Relever cette boîte automatiquement</b> (toutes les 15 min)</label></div>
     <div class="row"><button class="btn small primary" data-mail="tester" ${MAILX.busy?"disabled":""}>Enregistrer et tester</button><button class="btn small" data-mail="relever" ${MAILX.busy||!I.actif?"disabled":""}>Relever maintenant</button><button class="btn small" data-mail="dossier">Ouvrir le dossier des PDF</button></div>
     <div class="hist">${MAILX.msg?MAILX.msg+"<br>":""}${etat}</div></div>
-    <h4 style="margin:16px 0 6px">Expéditeurs de PDF (${X.length})</h4>
-    ${X.length?`<p class="sub" style="margin:0 0 8px">Associez chaque expéditeur à son fournisseur (une seule fois). « Ignorer » : ses PDF ne sont pas des factures.</p><div class="scroll" style="max-height:44vh"><table class="factab"><thead><tr><th class="l">Expéditeur</th><th class="l">Dernier mail</th><th>PDF</th><th class="l">Fournisseur</th></tr></thead><tbody>
-      ${X.map(([ad,x])=>`<tr><td class="l" style="white-space:normal"><b>${esc(x.nom||ad)}</b><div class="hist">${esc(ad)}</div></td><td class="l" style="white-space:normal">${esc(x.dernier?frDate(x.dernier):"")}<div class="hist">${esc(x.sujet||"")}</div></td><td>${x.n||0}</td><td class="l"><select data-mailexp="${esc(ad)}" aria-label="Fournisseur de ${esc(ad)}">${opts(x.f||"")}</select></td></tr>`).join("")}</tbody></table></div>`
+    <h4 style="margin:16px 0 6px">Expéditeurs de PDF</h4>
+    ${X.length?`<div class="row"><button class="btn primary" data-mail="exp">Associer les expéditeurs… (${X.length}${X.filter(([a,x])=>!x.f).length?" · <b>"+X.filter(([a,x])=>!x.f).length+" à associer</b>":""})</button></div><div class="hist">${X.filter(([a,x])=>x.f&&x.f!=="-").map(([a,x])=>esc(x.nom||a)+" → "+esc(x.f)).join(" · ")||"Aucun expéditeur associé à un fournisseur pour l'instant."}</div>`
       :`<div class="hist">La liste se remplit à la première relève.</div>`}`;
-  o.innerHTML=`<div class="facbox" style="max-width:980px"><div class="band">Factures reçues par mail — ${esc(storeNom())}<button class="pillbtn" data-mail="fermer">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`}
+  o.innerHTML=`<div class="facbox" style="max-width:980px"><div class="band">Factures reçues par mail — ${esc(storeNom())}<button class="pillbtn" data-mail="fermer">Fermer</button></div><div style="padding:14px 16px">${body}</div></div>`;mailExpRender()}
+// v178 : fenêtre à part pour associer les expéditeurs (demande du gérant) : filtres, recherche, gros boutons
+function mailExpRender(){let o=document.getElementById("mailExpRoot");if(!MAILX.ouvert||!MAILX.exp){if(o)o.remove();return}
+  if(!o){o=document.createElement("div");o.id="mailExpRoot";o.className="facov";o.style.zIndex="9100";document.body.appendChild(o)}
+  const a=document.activeElement;if(a&&o.contains(a)&&a.id==="mlQ"&&!MAILX.force)return;
+  const I=MAILX.info||{},f=MAILX.fx||"todo",q=FAC.nk(MAILX.q||"");
+  const four=S.fourn.filter(x=>!x.groupe&&!isParent(x)).map(x=>String(x.nom)).filter(Boolean).sort((u,w)=>u.localeCompare(w));
+  let X=Object.entries(I.exp||{}).sort((u,w)=>String(w[1].dernier||"").localeCompare(String(u[1].dernier||"")));
+  const nTodo=X.filter(([ad,x])=>!x.f).length,nF=X.filter(([ad,x])=>x.f&&x.f!=="-").length,nI=X.filter(([ad,x])=>x.f==="-").length;
+  X=X.filter(([ad,x])=>f==="todo"?!x.f:f==="four"?x.f&&x.f!=="-":f==="ign"?x.f==="-":true);
+  if(q)X=X.filter(([ad,x])=>FAC.nk(ad+" "+(x.nom||"")+" "+(x.sujet||"")+" "+(x.f||"")).includes(q));
+  const opts=v=>`<option value="" ${!v||v==="-"?"selected":""}>— fournisseur —</option><option value="DIAPAR" ${v==="DIAPAR"?"selected":""}>DIAPAR</option>${four.filter(n=>FAC.nk(n)!=="DIAPAR").map(n=>`<option value="${esc(n)}" ${v===n?"selected":""}>${esc(n)}</option>`).join("")}${v&&v!=="-"&&v!=="DIAPAR"&&!four.includes(v)?`<option value="${esc(v)}" selected>${esc(v)}</option>`:""}`;
+  const tab=(k,l,n)=>`<button class="btn small${f===k?" primary":""}" data-mailfx="${k}">${l} (${n})</button>`;
+  const ligne=([ad,x])=>`<div class="mlx${x.f==="-"?" ign":x.f?" ok":""}"><div class="mlxi"><b>${esc(x.nom||ad)}</b> <span class="hist">${esc(ad)}</span><div class="hist">${x.n||0} PDF · dernier le ${esc(x.dernier?frDate(x.dernier):"—")} · « ${esc(x.sujet||"")} »</div></div>
+    <div class="mlxa"><select data-mailexp="${esc(ad)}" aria-label="Fournisseur de ${esc(ad)}">${opts(x.f||"")}</select><button class="btn small${x.f==="-"?" primary":""}" data-mailign="${esc(ad)}" title="Ses PDF ne sont pas des factures">${x.f==="-"?"Ignoré ✓":"Ignorer"}</button>${x.f?`<button class="btn small" data-mailraz="${esc(ad)}" title="Remettre dans « À associer »">↺</button>`:""}</div></div>`;
+  o.innerHTML=`<div class="facbox" style="max-width:900px"><div class="band">Expéditeurs de PDF — associer à un fournisseur<button class="pillbtn" data-mail="expx">Fermer</button></div><div style="padding:14px 16px">
+    <p class="sub" style="margin:0 0 10px">Choisissez le fournisseur de chaque expéditeur (une seule fois) : ses PDF seront récupérés et lus. « Ignorer » : ce ne sont pas des factures (publicité, communiqués…).</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${tab("todo","À associer",nTodo)}${tab("four","Associés",nF)}${tab("ign","Ignorés",nI)}${tab("tous","Tous",nTodo+nF+nI)}<input id="mlQ" type="search" placeholder="Chercher (nom, adresse, sujet)…" value="${esc(MAILX.q||"")}" style="flex:1;min-width:200px"></div>
+    <div class="scroll" style="max-height:62vh;margin-top:10px">${X.length?X.map(ligne).join(""):`<div class="empty-state" style="padding:16px">${f==="todo"?"✓ Tous les expéditeurs sont associés ou ignorés.":"Aucun expéditeur."}</div>`}</div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-mail="relever" ${MAILX.busy?"disabled":""}>Relever maintenant (récupérer les PDF)</button><span class="hist">${esc(MAILX.msgExp||"")}</span></div></div></div>`;MAILX.force=false}
+async function mailExpSet(ad,v){try{MAILX.info=await window.api.mailExp(ad,v);MAILX.msgExp=v==="-"?"Ignoré.":v?"✓ Associé à "+v+".":"Remis à associer.";}catch(e){MAILX.msgExp="⚠️ "+e.message}MAILX.force=true;mailExpRender();mailRender()}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-mailfx],[data-mailign],[data-mailraz]");if(!b)return;
+  if(b.dataset.mailfx){MAILX.fx=b.dataset.mailfx;MAILX.force=true;mailExpRender()}else if(b.dataset.mailign)mailExpSet(b.dataset.mailign,"-");else if(b.dataset.mailraz)mailExpSet(b.dataset.mailraz,"")});
+document.addEventListener("input",e=>{if(e.target.id!=="mlQ")return;MAILX.q=e.target.value;MAILX.force=true;mailExpRender();const n=document.getElementById("mlQ");if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}});
 async function mailRelever(){MAILX.busy=true;MAILX.msg="";MAILX.force=true;mailRender();
   try{const r=await window.api.mailReleve();MAILX.msg=r.ok?(r.nouveaux?"✓ "+r.nouveaux+" PDF récupérés : lecture des factures…":"✓ Relève faite."):"⚠️ "+esc(r.erreur||"Relève impossible");
     if(r.ok&&r.nouveaux&&typeof facScan==="function"){S.fac.dernier=0;facScan(true)}}catch(e){MAILX.msg="⚠️ "+esc(e.message)}
@@ -719,9 +744,9 @@ async function mailTester(){const v=id=>(document.getElementById(id)||{}).value|
     MAILX.busy=false;await mailCharger();if(MAILX.info&&MAILX.info.actif)mailRelever();return}
   catch(e){MAILX.msg="⚠️ "+esc(String(e.message||"Connexion impossible").replace(/^Error invoking remote method '[^']*': (Error: )?/,"")+(/non réglé/.test(e.message||"")?" : tapez le mot de passe pour logiciels dans la case (le texte gris n'est qu'un exemple).":""))}MAILX.busy=false;MAILX.force=true;await mailCharger()}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-mail]");if(!b)return;const k=b.dataset.mail;
-  if(k==="ouvrir"){S.modal=false;render();mailOuvrir()}else if(k==="fermer")mailFermer();else if(k==="tester")mailTester();else if(k==="relever")mailRelever();else if(k==="dossier")window.api.mailOuvrirDossier()});
-document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||t.dataset.mailexp==null)return;window.api.mailExp(t.dataset.mailexp,t.value).then(i=>{MAILX.info=i;MAILX.msg=t.value&&t.value!=="-"?"✓ Associé à "+esc(t.value)+" : ses PDF seront récupérés à la prochaine relève (« Relever maintenant » pour tout de suite).":"✓ Enregistré.";MAILX.force=true;mailRender()})});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&MAILX.ouvert)mailFermer()});
+  if(k==="ouvrir"){S.modal=false;render();mailOuvrir()}else if(k==="exp"){MAILX.exp=true;MAILX.fx=MAILX.fx||"todo";MAILX.force=true;mailExpRender()}else if(k==="expx"){MAILX.exp=false;mailExpRender()}else if(k==="fermer"){MAILX.exp=false;mailExpRender();mailFermer()}else if(k==="tester")mailTester();else if(k==="relever")mailRelever();else if(k==="dossier")window.api.mailOuvrirDossier()});
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||t.dataset.mailexp==null)return;mailExpSet(t.dataset.mailexp,t.value)});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape"||!MAILX.ouvert)return;if(MAILX.exp){MAILX.exp=false;mailExpRender()}else mailFermer()});
 
 /* ---------- affichage clair / sombre (comme GESTIME) ---------- */
 function getTheme(){try{return localStorage.getItem("gesmar.theme")}catch(e){return null}}

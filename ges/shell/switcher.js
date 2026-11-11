@@ -99,6 +99,7 @@ module.exports = function (ipc) {
   function iconeVue() {
     for (const ic of document.querySelectorAll(SEL)) {
       const r = ic.getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight) continue;
+      return true; // GES 1.0.3 : icône dans l'écran = pas de bandeau, même si une fenêtre (réglages…) la recouvre (demande du gérant)
       const x = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       if (x && (x === ic || ic.contains(x) || (x.closest && x.closest('.ges-bi') && x.closest('.ges-bi').contains(ic)))) return true;
     }
