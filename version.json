@@ -1,1 +1,1 @@
-{"version": 179, "note": "Factures par mail : un PDF deja present chez la comptable n est plus en anomalie"}
+{"version": 180, "note": "Factures par mail : pas de double import si le mail arrive avant la comptable"}
