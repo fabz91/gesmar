@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="184">
+<meta name="gm-version" content="185">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -519,7 +519,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=184;
+const APP_VERSION=185;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -640,6 +640,7 @@ function vSaisiePh(){
     <div class="kpi"><span class="lbl">CA TTC du mois</span><span class="v">${eur.format(st.caTTC)}</span><span class="d">N-1 : ${n1st.caTTC?eur.format(n1st.caTTC):"—"}</span></div>
     <div class="kpi"><span class="lbl">Achats</span><span class="v">${eur.format(st.achats)}</span><span class="d">N-1 : ${n1st.achats?eur.format(n1st.achats):"—"}</span></div>
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.tauxCorr)} <span class="vm">(${eur.format(st.marge)})</span></span><span class="d">Taux N-1 : ${n1st.ca?pct(n1st.tauxCorr):"—"}</span></div>
+    ${flKpi(y,m,st)}
   </div>
   <div class="panel flush"><div class="band">Jours de ${esc(MOIS[m].toLowerCase())}</div><ul class="phlist"><li class="hd"><span class="j">Jour</span><span class="c">CA TTC</span><span class="a">Achats</span></li>${lst}</ul></div>
   <div class="gap"></div>
@@ -1086,6 +1087,7 @@ function vSaisie(){
     <div class="kpi ${st.demarque?"alert":""}"><span class="lbl">Démarque connue</span><span class="v">${eur.format(st.demarque)}</span><span class="d">Démarque N-1 : ${n1st.demarque?eur.format(n1st.demarque):"—"}</span></div>
     <div class="kpi"><span class="lbl">Avoirs</span><span class="v">${eur.format(st.avoirs)}</span><span class="d">TTC obtenus ce mois</span></div>
     <div class="kpi hl"><span class="lbl">Taux de marge</span><span class="v">${pct(st.tauxCorr)} <span class="vm">(${eur.format(st.marge)})</span></span><span class="d">Taux N-1 : ${n1st.ca?pct(n1st.tauxCorr):"—"}</span></div>
+    ${flKpi(y,m,st)}
   </div>
   <div class="panel flush"><div class="band band-s">Saisie ${esc(MOIS[m])} ${y}<span style="display:flex;gap:8px;align-items:center">${LOCK?`<span class="lockmsg" title="Pour taper à la main : Réglages ⚙ → Dossier des factures → Manuel">🔒 Import auto : saisie bloquée</span>`:""}<button class="pillbtn" data-act="addFourn">+ Fournisseur</button></span></div><div class="scroll sheet-scroll"><table class="sheet${LOCK?" locked":""}">
     <thead>${head1}${head2}</thead>
@@ -2343,6 +2345,43 @@ function vtParse(txt,iso){const D={d:iso,ca:0,cli:0,nart:0,rem:0,pay:[],ops:[],t
     D.fam.forEach(x=>{x[2]=fq[x[0]]||0;x[5]=fk[x[0]]||0;rq[x[4]]=(rq[x[4]]||0)+x[2];rk[x[4]]=(rk[x[4]]||0)+x[5]});
     D.ray.forEach(x=>{x[2]=rq[x[0]]||0;x[4]=rk[x[0]]||0});D.nart=u;D.kg=kg}
   D.v=2;return D}
+// ===== v185 : pastille « Marge fruits et légumes » (après le taux de marge, saisie du mois) — demande du gérant =====
+// Ventes : rayon FRUITS ET LEGUMES des journées de caisse du mois (GESTAT : fichiers Videor de ce PC ou table en ligne gesmar_ventes),
+// pas la famille « FRUITS ET LEGUMES LS » du rayon FRAIS. Achats : fournisseurs cochés « fruits et légumes » (champ fl de la fiche fournisseur ;
+// tant qu'aucun n'est coché : SAINT PRIM / LAURANCE). Tout en TTC, sans les stocks.
+const flIsRay=nm=>/fruit/i.test(nm||"")&&/l[eé]gum/i.test(nm||"")&&!/\bLS\b/i.test(nm||"");
+function flIds(){const any=S.fourn.some(f=>f.fl!=null);return S.fourn.filter(f=>!f.supprime&&(any?!!f.fl:/saint\s*-?\s*prim|laurance/i.test(f.nom||""))).map(f=>f.id)}
+const FLV={};
+function flVentes(y,m){const a=y+"-"+String(m+1).padStart(2,"0")+"-01",t=todayISO(),fin=new Date(y,m+1,0),b0=y+"-"+String(m+1).padStart(2,"0")+"-"+String(fin.getDate()).padStart(2,"0"),b=b0<t?b0:t,k=S.store+"|"+a+"|"+b;
+  const c=FLV[k];if(c&&(c.etat==="cours"||Date.now()-c.t<10*60000))return c;
+  const o=FLV[k]={etat:"cours",t:Date.now()};
+  if(a>t){o.etat="ok";o.ca=0;o.kg=0;o.nj=0;return o}
+  vtGet(a,b).then(days=>{let ca=0,kg=0;const A=vtAgg(days);for(const r of vtLst(A.ray))if(flIsRay(r.nm)){ca+=r.ca;kg+=r.kg||0}
+      Object.assign(o,{etat:"ok",ca:Math.round(ca*100)/100,kg,nj:days.length,t:Date.now()})})
+    .catch(e=>Object.assign(o,{etat:"err",err:e.message||String(e),t:Date.now()}))
+    .finally(()=>{const el=document.getElementById("flKpi");if(el&&S.tab==="saisie"){const y2=S.year,m2=S.month;el.outerHTML=flKpi(y2,m2,monthStats(y2,m2))}});
+  return o}
+function flKpi(y,m,st){const v=flVentes(y,m),ids=flIds(),ach=Math.round(ids.reduce((t,id)=>t+((st.par||{})[id]||0),0)*100)/100;
+  const box=(val,d,cls)=>`<div class="kpi${cls?" "+cls:""}" id="flKpi" data-act="flcfg" style="cursor:pointer" title="Ventes du rayon FRUITS ET LEGUMES − achats des fournisseurs de fruits et légumes (sans les stocks). Cliquez pour choisir les fournisseurs."><span class="lbl">Marge fruits et légumes</span><span class="v">${val}</span><span class="d">${d}</span></div>`;
+  if(v.etat==="cours")return box("…","Lecture des ventes…");
+  if(v.etat==="err")return box("—",esc(/connect|G20/i.test(v.err)?"Ventes : connexion G20 nécessaire":"Ventes illisibles"));
+  if(!v.nj)return box("—","Pas de ventes ce mois");
+  if(!ids.length)return box("—","Cliquez pour choisir les fournisseurs");
+  const mg=v.ca-ach,tx=v.ca?mg/v.ca:null;
+  return box(`${pct(tx)} <span class="vm">(${eur.format(mg)})</span>`,`Ventes ${eur.format(v.ca)} · achats ${eur.format(ach)}`,tx!=null&&tx<0?"alert":"")}
+function flCfgOuvrir(){const y=S.year,m=S.month,st=monthStats(y,m),o=document.createElement("div");o.className="facov";o.id="flPop";
+  const fill=()=>{const ids=new Set(flIds()),L=S.fourn.filter(f=>!f.supprime&&!isParent(f)).sort((a,b)=>((st.par||{})[b.id]||0)-((st.par||{})[a.id]||0)||String(a.nom).localeCompare(String(b.nom)));
+    o.innerHTML=`<div class="facbox" style="max-width:520px"><div class="band" style="display:flex;justify-content:space-between;align-items:center">Marge fruits et légumes<button class="btn small" data-flx="1">Fermer</button></div><div style="padding:14px 16px">
+      <p class="sub" style="margin:0 0 10px">Ventes du rayon FRUITS ET LEGUMES (sans les fruits et légumes LS du rayon FRAIS) moins les achats des fournisseurs cochés, du mois affiché, en TTC. Les stocks ne sont pas comptés : un gros achat en fin de mois fait baisser le taux.</p>
+      <div class="sub" style="margin-bottom:6px"><b>Fournisseurs de fruits et légumes :</b></div>
+      <div class="scroll" style="max-height:50vh">${L.map(f=>`<label style="display:flex;gap:10px;align-items:center;padding:5px 0;cursor:pointer"><input type="checkbox" data-flf="${esc(f.id)}"${ids.has(f.id)?" checked":""}> <span style="flex:1">${esc(f.nom)}</span><span class="sub">${(st.par||{})[f.id]?eur.format(st.par[f.id])+" ce mois":""}</span></label>`).join("")}</div></div></div>`};
+  fill();
+  o.addEventListener("click",e=>{if(e.target===o||e.target.closest("[data-flx]"))o.remove()});
+  o.addEventListener("change",async e=>{const c=e.target.closest("[data-flf]");if(!c)return;const ids=new Set(flIds());if(c.checked)ids.add(c.dataset.flf);else ids.delete(c.dataset.flf);
+    for(const f of S.fourn){const w=ids.has(f.id);if(f.fl!==w){f.fl=w;await fUpdate(f.id,{fl:w})}}
+    render()});
+  document.getElementById("flPop")&&document.getElementById("flPop").remove();document.body.appendChild(o)}
+document.addEventListener("click",e=>{const b=e.target.closest('[data-act="flcfg"]');if(b){e.preventDefault();flCfgOuvrir()}});
 // ---- accès aux journées : caisse de ce PC (fichiers) ou base en ligne ----
 const vtLocal=()=>VT_API()&&typeof caCfg==="function"&&S.store===caCfg().mag;
 let VT_LIST=null;
