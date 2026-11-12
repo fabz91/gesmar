@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="189">
+<meta name="gm-version" content="190">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -308,7 +308,7 @@ nav.tabs button{line-height:1.4}
 }
 
 /* v58 : saisie compacte, tout le mois tient sur un écran */
-.dmclk{cursor:pointer}.dmclk:hover td{background:var(--hover,rgba(127,127,127,.07))}.dmtw{display:inline-block;width:14px;opacity:.7}.dmtag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:9px;background:rgba(220,38,38,.15);color:var(--red);margin-left:4px;white-space:nowrap}.dmin{font-size:12.5px}.dmin th,.dmin td{padding:4px 8px}.dmhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.dmhead h3{margin:0;font-size:16px}.dmrk{display:inline-block;min-width:22px;opacity:.55;font-weight:700}.dmbar{display:inline-block;height:8px;width:100%;max-width:100%;background:rgba(127,127,127,.12);border-radius:4px;overflow:hidden;vertical-align:middle}.dmbar i{display:block;height:100%}.grid.two.vtg{grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr))}.vt3{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}.dmhead .segm{grid-template-columns:repeat(4,auto);margin-top:0}.dmhead .segm button{min-width:0}.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpi .v .vm{font-size:15px;font-weight:600;opacity:.8;white-space:nowrap}.kpi .v:has(.vm){white-space:nowrap}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
+.dmclk{cursor:pointer}.dmclk:hover td{background:var(--hover,rgba(127,127,127,.07))}.dmtw{display:inline-block;width:14px;opacity:.7}.dmtag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:9px;background:rgba(220,38,38,.15);color:var(--red);margin-left:4px;white-space:nowrap}.dmin{font-size:12.5px}.dmin th,.dmin td{padding:4px 8px}.dmimp{display:flex;justify-content:space-between;align-items:center}.dmhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.dmhead h3{margin:0;font-size:16px}.dmrk{display:inline-block;min-width:22px;opacity:.55;font-weight:700}.dmbar{display:inline-block;height:8px;width:100%;max-width:100%;background:rgba(127,127,127,.12);border-radius:4px;overflow:hidden;vertical-align:middle}.dmbar i{display:block;height:100%}.grid.two.vtg{grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr))}.vt3{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}.dmhead .segm{grid-template-columns:repeat(4,auto);margin-top:0}.dmhead .segm button{min-width:0}.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpi .v .vm{font-size:15px;font-weight:600;opacity:.8;white-space:nowrap}.kpi .v:has(.vm){white-space:nowrap}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
 .sheet td{height:20px}
 .sheet td input{padding:1px 4px;font-size:12px}
 .sheet td.hasfac input{padding-right:17px}
@@ -520,7 +520,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=189;
+const APP_VERSION=190;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1105,7 +1105,7 @@ function vDemarque(y,m,doc,st){
   const L=(Array.isArray(doc.demarque)?doc.demarque:[]).map((x,i)=>({...x,i})).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   const t=todayISO();const def=t.startsWith(mkey(y,m))?t:dayISO(y,m,1);
   const parMotif={};L.forEach(x=>parMotif[x.motif]=(parMotif[x.motif]||0)+(+x.montant||0));
-  return `<div class="panel flush"><div class="band">Relevés de démarque — ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button></div>
+  return `<div class="panel flush"><div class="band">Relevés de démarque — ${esc(MOIS[m])} ${y}</div>
   <form id="demForm" class="row" style="padding:12px 14px;border-bottom:1px solid var(--line)">
     <input id="demDate" type="date" value="${def}" min="${dayISO(y,m,1)}" max="${dayISO(y,m,new Date(y,m+1,0).getDate())}" required aria-label="Date">
     <select id="demMotif" aria-label="Motif">${DEM_MOTIFS.map(x=>`<option>${x}</option>`).join("")}</select>
@@ -1198,38 +1198,45 @@ function demTauxHtml(fin,J){const W=Math.min(J,90),deb=vtAdd(fin,-(W-1)),V=demVe
   </tbody></table></div><div class="hist" style="padding:6px 14px 10px">${V.nj} jour${V.nj>1?"s":""} de caisse · produits jetés au moins 2 fois ou pour 10 € ou plus · classés du plus fort taux au plus faible.</div></div>`}
 function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=monthStats(y,m);demCharger();setTimeout(demDedoublonner,0);
   const t=todayISO(),finM=dayISO(y,m,new Date(y,m+1,0).getDate()),fin=finM<t?finM:t,J=S.demPer||90;
-  let h=periode("mois")+vDemarque(y,m,doc,st);
+  // v190 : ordre voulu par le gérant : bandeau d'import, période, 5 pastilles, les plus jetés (montant / souvent), 12 derniers mois (graphique), tous les relevés en bas
+  let h=periode("mois")+`<div class="panel flush"><div class="band dmimp"><span>Démarque Videor</span><button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button></div></div>`;
+  h+=`<div class="dmhead" style="margin-top:12px"><div class="segm">${[[30,"30 jours"],[90,"3 mois"],[182,"6 mois"],[365,"12 mois"]].map(([v,l])=>`<button data-dmper="${v}" aria-pressed="${J===v}">${l}</button>`).join("")}</div><span class="hist">jusqu'au ${frDate(fin)}</span></div>`;
   const nbRel=Object.keys(DEMD.rel||{}).length;
-  h+=`<div class="gap"></div><div class="dmhead"><h3>Analyse des produits jetés</h3><div class="segm">${[[30,"30 jours"],[90,"3 mois"],[182,"6 mois"],[365,"12 mois"]].map(([v,l])=>`<button data-dmper="${v}" aria-pressed="${J===v}">${l}</button>`).join("")}</div><span class="hist">jusqu'au ${frDate(fin)}</span></div>`;
-  if(DEMD.etat==="cours"&&!DEMD.rel)return h+`<div class="empty-state">Lecture du détail des relevés…</div>`;
-  if(DEMD.etat==="err"&&!nbRel)return h+`<div class="empty-state">Détail des produits indisponible : ${esc(/connect|G20|401|403/i.test(DEMD.err)?"connectez ce PC avec l'identifiant G20 (Réglages ⚙ → Compte).":DEMD.err)}</div>`;
-  if(!nbRel)return h+`<div class="empty-state">Pas encore de détail des produits.<br><small>Dans Videor : Casses et Démarques → sélectionner tout → Export, puis ici « 📥 Importer Videor ». Importez tout l'historique (2025 et 2026) : les relevés déjà comptés ne sont pas ajoutés deux fois, seul le détail des produits est enregistré.</small></div>`;
   const A=demAnalyse(fin,J),ev=(a,b)=>b?((a-b)/b):null,evs=(a,b)=>{const e=ev(a,b);return e==null?"":`<span style="color:${e>0?"var(--red)":"var(--green)"}">${e>0?"+":""}${pct(e)}</span>`};
   const nbP=A.P.filter(p=>p.rel.size).length,frq=p=>p.rel.size>1?"tous les "+Math.max(1,Math.round(J/p.rel.size))+" j":"";
+  const nRelP=demToutes().filter(x=>x.date>=A.deb&&x.date<=A.fin).length;
   h+=`<div class="grid kpis kpis-s" style="margin-top:8px">
     <div class="kpi alert"><span class="lbl">Démarque</span><span class="v">${eur.format(A.dem)}</span><span class="d">N-1 : ${A.demN1?eur.format(A.demN1)+" "+evs(A.dem,A.demN1):"—"}</span></div>
     <div class="kpi"><span class="lbl">Part du CA</span><span class="v">${A.ca?pct(A.dem/A.ca):"—"}</span><span class="d">N-1 : ${A.caN1&&A.demN1?pct(A.demN1/A.caN1):"—"}</span></div>
     <div class="kpi"><span class="lbl">Par jour</span><span class="v">${eur.format(A.dem/J)}</span><span class="d">Période d'avant : ${eur.format(A.demPrev/J)} ${evs(A.dem,A.demPrev)}</span></div>
-    <div class="kpi"><span class="lbl">Relevés</span><span class="v">${A.nrel}</span><span class="d">${A.nrel?"moyenne "+eur.format(A.tot/A.nrel):""}</span></div>
-    <div class="kpi"><span class="lbl">Produits jetés</span><span class="v">${nbP}</span><span class="d">${A.P.filter(p=>p.rel.size>=3).length} jetés 3 fois ou plus</span></div></div>`;
+    <div class="kpi"><span class="lbl">Relevés</span><span class="v">${nRelP}</span><span class="d">${nRelP?"moyenne "+eur.format(A.dem/nRelP):""}</span></div>
+    <div class="kpi"><span class="lbl">Produits jetés</span><span class="v">${nbRel?nbP:"—"}</span><span class="d">${nbRel?A.P.filter(p=>p.rel.size>=3).length+" jetés 3 fois ou plus":"détail à importer"}</span></div></div>`;
   const tab=(titre,sub,L,cols)=>`<div class="panel flush"><div class="band">${titre}${sub?` <span class="hist" style="color:inherit;opacity:.85">${sub}</span>`:""}</div><div class="scroll"><table><thead><tr><th class="l">Produit</th>${cols.map(c=>`<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${L.length?L.map((p,i)=>`<tr><td class="l" style="white-space:normal"><span class="dmrk">${i+1}</span>${esc(p.nom)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join("")}</tr>`).join(""):`<tr><td class="l hist" colspan="${cols.length+1}">Rien sur cette période</td></tr>`}</tbody></table></div></div>`;
-  const cur=A.P.filter(p=>p.rel.size);
-  const topM=cur.slice().sort((a,b)=>b.ttc-a.ttc).slice(0,20),topF=cur.slice().sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,20);
-  h+=`<div class="grid two vtg" style="margin-top:12px">${tab("Les plus jetés en montant","",topM,[["Fois",p=>p.rel.size],["Qté",p=>n2.format(p.q)],["Montant TTC",p=>eur2.format(p.ttc)],["Part",p=>pct(A.tot?p.ttc/A.tot:0)]])}
-    ${tab("Jetés le plus souvent","nombre de relevés",topF,[["Fois",p=>`<b>${p.rel.size}</b>`],["Rythme",p=>frq(p)],["Montant TTC",p=>eur2.format(p.ttc)],["Dernière",p=>frDate(p.last).slice(0,5)]])}</div>`;
-  // en hausse : comparé à la période d'avant de même durée ; nouveaux : jamais jetés avant, déjà 2 fois ou plus
-  const hausse=A.P.filter(p=>p.ttc-p.pttc>=5&&p.rel.size>=2&&p.prel.size).sort((a,b)=>(b.ttc-b.pttc)-(a.ttc-a.pttc)).slice(0,15);
-  const nouv=A.P.filter(p=>!p.prel.size&&p.rel.size>=2).sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,15);
-  const baisse=A.P.filter(p=>p.pttc-p.ttc>=5&&p.prel.size>=2).sort((a,b)=>(b.pttc-b.ttc)-(a.pttc-a.ttc)).slice(0,15);
-  h+=`<div class="grid vtg vt3" style="margin-top:12px">${tab("En hausse","vs les "+J+" jours d'avant",hausse,[["Avant",p=>eur.format(p.pttc)],["Maintenant",p=>eur.format(p.ttc)],["Écart",p=>`<span style="color:var(--red)">+${eur.format(p.ttc-p.pttc)}</span>`]])}
-    ${tab("Nouveaux à surveiller","pas jetés avant, déjà 2 fois",nouv,[["Fois",p=>p.rel.size],["Montant",p=>eur.format(p.ttc)]])}
-    ${tab("En baisse","bonne nouvelle",baisse,[["Avant",p=>eur.format(p.pttc)],["Maintenant",p=>eur.format(p.ttc)],["Écart",p=>`<span style="color:var(--green)">−${eur.format(p.pttc-p.ttc)}</span>`]])}</div>`;
-  // jour de la semaine + 12 derniers mois vs N-1
-  const W=[1,2,3,4,5,6,0],wn=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"],wmax=Math.max(...A.wd,1);
-  const mo=[];for(let i=11;i>=0;i--){const d=new Date(+fin.slice(0,4),+fin.slice(5,7)-1-i,1),k=mkey(d.getFullYear(),d.getMonth()),k1=mkey(d.getFullYear()-1,d.getMonth()),sm=kk=>{const dd=S.mois[kk];return(Array.isArray(dd&&dd.demarque)?dd.demarque:[]).reduce((t,x)=>t+(+x.montant||0),0)};mo.push([["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."][d.getMonth()]+" "+String(d.getFullYear()).slice(2),sm(k),sm(k1)])}
-  const mmax=Math.max(...mo.map(x=>Math.max(x[1],x[2])),1),bar=(v,mx,c)=>`<span class="dmbar"><i style="width:${(v/mx*100).toFixed(1)}%;background:${c}"></i></span>`;
-  h+=`<div class="vtg" style="margin-top:12px"><div class="panel flush"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">rouge : cette année · gris : N-1</span></div><table><tbody>${mo.map(x=>`<tr><td class="l" style="width:70px">${x[0]}</td><td class="l">${bar(x[1],mmax,"var(--red)")}<br>${bar(x[2],mmax,"var(--muted)")}</td><td style="width:110px">${eur.format(x[1])}<br><span class="hist">${x[2]?eur.format(x[2]):"—"}</span></td></tr>`).join("")}</tbody></table></div></div>`;
+  if(DEMD.etat==="cours"&&!DEMD.rel)h+=`<div class="empty-state">Lecture du détail des relevés…</div>`;
+  else if(DEMD.etat==="err"&&!nbRel)h+=`<div class="empty-state">Détail des produits indisponible : ${esc(/connect|G20|401|403/i.test(DEMD.err)?"connectez ce PC avec l'identifiant G20 (Réglages ⚙ → Compte).":DEMD.err)}</div>`;
+  else if(!nbRel)h+=`<div class="empty-state">Pas encore de détail des produits.<br><small>Dans Videor : Casses et Démarques → période du 01/01/2025 à aujourd'hui → sélectionner tout → Export, puis ici « 📥 Importer Videor ». Les relevés déjà comptés ne sont pas ajoutés deux fois, seul le détail des produits est enregistré.</small></div>`;
+  else{const cur=A.P.filter(p=>p.rel.size);
+    const topM=cur.slice().sort((a,b)=>b.ttc-a.ttc).slice(0,20),topF=cur.slice().sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,20);
+    h+=`<div class="grid two vtg" style="margin-top:12px">${tab("Les plus jetés en montant","",topM,[["Fois",p=>p.rel.size],["Qté",p=>n2.format(p.q)],["Montant TTC",p=>eur2.format(p.ttc)],["Part",p=>pct(A.tot?p.ttc/A.tot:0)]])}
+      ${tab("Jetés le plus souvent","nombre de relevés",topF,[["Fois",p=>`<b>${p.rel.size}</b>`],["Rythme",p=>frq(p)],["Montant TTC",p=>eur2.format(p.ttc)],["Dernière",p=>frDate(p.last).slice(0,5)]])}</div>`}
+  // 12 derniers mois vs N-1 : graphique en barres verticales (du bas vers le haut)
+  const mo=[];for(let i=11;i>=0;i--){const d=new Date(+fin.slice(0,4),+fin.slice(5,7)-1-i,1),k=mkey(d.getFullYear(),d.getMonth()),k1=mkey(d.getFullYear()-1,d.getMonth()),sm=kk=>{const dd=S.mois[kk];return(Array.isArray(dd&&dd.demarque)?dd.demarque:[]).reduce((t,x)=>t+(+x.montant||0),0)};
+    mo.push([["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."][d.getMonth()]+" "+String(d.getFullYear()).slice(2),sm(k),sm(k1),d.getMonth(),d.getFullYear()])}
+  const tA=mo.reduce((t,x)=>t+x[1],0),tB=mo.reduce((t,x)=>t+x[2],0);
+  h+=`<div class="panel flush vtg" style="margin-top:12px"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">total ${eur.format(tA)}${tB?" · N-1 "+eur.format(tB)+" ("+(tA>=tB?"+":"")+pct((tA-tB)/tB)+")":""}</span></div><div style="padding:12px 14px 8px">${demGraphe(mo)}</div></div>`;
+  // tous les relevés du mois, en bas, chacun avec son détail déroulant
+  h+=`<div class="vtg" style="margin-top:12px">${vDemarque(y,m,doc,st)}</div>`;
   return h}
+function demGraphe(mo){const W=1000,H=270,pl=46,pr=10,pt=26,pb=34,cw=(W-pl-pr)/mo.length,max=Math.max(...mo.map(x=>Math.max(x[1],x[2])),1);
+  const step=[50,100,200,250,500,1000,2000,2500,5000,10000].find(s=>max/s<=5)||Math.ceil(max/5),top=Math.ceil(max/step)*step,yy=v=>pt+(H-pt-pb)*(1-v/top),bw=Math.min(26,cw*0.32);
+  let g="";for(let v=0;v<=top;v+=step)g+=`<line x1="${pl}" x2="${W-pr}" y1="${yy(v)}" y2="${yy(v)}" stroke="currentColor" stroke-opacity="${v?0.1:0.3}"/><text x="${pl-6}" y="${yy(v)+4}" text-anchor="end" font-size="11" fill="currentColor" fill-opacity=".55">${v>=1000?(v/1000).toLocaleString("fr-FR")+" k":v}</text>`;
+  mo.forEach((x,i)=>{const cx=pl+cw*i+cw/2,a=x[1],b=x[2];
+    if(b)g+=`<rect x="${cx-bw-2}" y="${yy(b)}" width="${bw}" height="${Math.max(0,yy(0)-yy(b))}" rx="3" fill="currentColor" fill-opacity=".22"><title>${x[0].replace(/\d+$/,"")}${x[4]-1} : ${eur.format(b)}</title></rect>`;
+    g+=`<rect x="${cx+2}" y="${yy(a)}" width="${bw}" height="${Math.max(0,yy(0)-yy(a))}" rx="3" fill="var(--red)"><title>${x[0]} : ${eur.format(a)}</title></rect>`;
+    if(a)g+=`<text x="${cx+2+bw/2}" y="${yy(a)-6}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${a>=1000?(Math.round(a/100)/10).toLocaleString("fr-FR")+" k":Math.round(a)}</text>`;
+    g+=`<text x="${cx}" y="${H-pb+18}" text-anchor="middle" font-size="12" fill="currentColor" fill-opacity=".75">${x[0]}</text>`});
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;min-width:520px" role="img" aria-label="Démarque des 12 derniers mois">${g}</svg>
+  <div class="hist" style="display:flex;gap:16px;justify-content:center;margin-top:4px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);vertical-align:middle"></i> cette année</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:currentColor;opacity:.22;vertical-align:middle"></i> année d'avant</span></div>`}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-demopen],[data-dmper]");if(!b||e.target.closest("button[data-demask],button[data-demdel]"))return;
   if(b.dataset.dmper){S.demPer=+b.dataset.dmper;render();return}
   S.demOpen=S.demOpen===b.dataset.demopen?null:b.dataset.demopen;render()});
