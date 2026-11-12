@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="183">
+<meta name="gm-version" content="184">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -519,7 +519,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=183;
+const APP_VERSION=184;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1753,12 +1753,12 @@ async function facScan(silent){
     let n=0;const res=[];
     for(const f of aLire){n++;const c=C[f.rel];let r;
       const fm=S.fourn.find(x=>x.id===facFid(FAC.dossier(f.rel))),mod=fm&&fm.modele||null,sig=mod?JSON.stringify([mod.mt,mod.dt]):"";
-      const img=/\.(jpe?g|png)$/i.test(f.rel),cv=c&&(c.v>=173||(FAC.nk(FAC.dossier(f.rel))==="DIAPAR"&&!/(^|\/)AVOIR-/i.test(f.rel))); // v173 : relecture une fois des factures fournisseurs (virements, années, avoirs DIAPAR)
+      const img=/\.(jpe?g|png)$/i.test(f.rel),cv=c&&(c.v>=173||(FAC.nk(FAC.dossier(f.rel))==="DIAPAR"&&!/(^|\/)AVOIR-/i.test(f.rel)))&&!(c.r&&c.r.total==null&&(c.v||0)<183); // v183 : montant introuvable à l'ancienne lecture : relu (nouvelles étiquettes de montant) ; v173 : relecture une fois des factures fournisseurs (virements, années, avoirs DIAPAR)
       if(c&&cv&&c.size===f.size&&c.mtime===f.mtime&&(c.sig||"")===sig)r=c.r;
-      else if(img){r=FAC.analyser(f.rel,[]);C[f.rel]={size:f.size,mtime:f.mtime,r,sig,v:173}}
+      else if(img){r=FAC.analyser(f.rel,[]);C[f.rel]={size:f.size,mtime:f.mtime,r,sig,v:183}}
       else{S.fac.prog="Lecture des factures : "+n+" / "+aLire.length;facRender();
         try{r=FAC.analyser(f.rel,await facItems(f.rel),mod)}catch(e){console.error(e);r=FAC.analyser(f.rel,[]);r.verif=["PDF illisible ("+(e&&e.message||"erreur")+")"].concat(r.verif||[])}
-        delete r.texteBrut;C[f.rel]={size:f.size,mtime:f.mtime,r,sig,v:173}}
+        delete r.texteBrut;C[f.rel]={size:f.size,mtime:f.mtime,r,sig,v:183}}
       res.push(Object.assign({},r))}
     facCacheSave();
     // doublons : même fournisseur, même date, même montant qu'une facture déjà importée ou déjà dans la liste
