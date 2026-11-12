@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="190">
+<meta name="gm-version" content="191">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -520,7 +520,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=190;
+const APP_VERSION=191;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1105,7 +1105,7 @@ function vDemarque(y,m,doc,st){
   const L=(Array.isArray(doc.demarque)?doc.demarque:[]).map((x,i)=>({...x,i})).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   const t=todayISO();const def=t.startsWith(mkey(y,m))?t:dayISO(y,m,1);
   const parMotif={};L.forEach(x=>parMotif[x.motif]=(parMotif[x.motif]||0)+(+x.montant||0));
-  return `<div class="panel flush"><div class="band">Relevés de démarque — ${esc(MOIS[m])} ${y}</div>
+  return `<div class="panel flush"><div class="band">Relevés de démarque — ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button></div>
   <form id="demForm" class="row" style="padding:12px 14px;border-bottom:1px solid var(--line)">
     <input id="demDate" type="date" value="${def}" min="${dayISO(y,m,1)}" max="${dayISO(y,m,new Date(y,m+1,0).getDate())}" required aria-label="Date">
     <select id="demMotif" aria-label="Motif">${DEM_MOTIFS.map(x=>`<option>${x}</option>`).join("")}</select>
@@ -1199,8 +1199,8 @@ function demTauxHtml(fin,J){const W=Math.min(J,90),deb=vtAdd(fin,-(W-1)),V=demVe
 function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=monthStats(y,m);demCharger();setTimeout(demDedoublonner,0);
   const t=todayISO(),finM=dayISO(y,m,new Date(y,m+1,0).getDate()),fin=finM<t?finM:t,J=S.demPer||90;
   // v190 : ordre voulu par le gérant : bandeau d'import, période, 5 pastilles, les plus jetés (montant / souvent), 12 derniers mois (graphique), tous les relevés en bas
-  let h=periode("mois")+`<div class="panel flush"><div class="band dmimp"><span>Démarque Videor</span><button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button></div></div>`;
-  h+=`<div class="dmhead" style="margin-top:12px"><div class="segm">${[[30,"30 jours"],[90,"3 mois"],[182,"6 mois"],[365,"12 mois"]].map(([v,l])=>`<button data-dmper="${v}" aria-pressed="${J===v}">${l}</button>`).join("")}</div><span class="hist">jusqu'au ${frDate(fin)}</span></div>`;
+  let h=periode("mois"); // v191 : l'import Videor revient dans le bandeau des relevés (en bas)
+  h+=`<div class="dmhead"><div class="segm">${[[30,"30 jours"],[90,"3 mois"],[182,"6 mois"],[365,"12 mois"]].map(([v,l])=>`<button data-dmper="${v}" aria-pressed="${J===v}">${l}</button>`).join("")}</div><span class="hist">jusqu'au ${frDate(fin)}</span></div>`;
   const nbRel=Object.keys(DEMD.rel||{}).length;
   const A=demAnalyse(fin,J),ev=(a,b)=>b?((a-b)/b):null,evs=(a,b)=>{const e=ev(a,b);return e==null?"":`<span style="color:${e>0?"var(--red)":"var(--green)"}">${e>0?"+":""}${pct(e)}</span>`};
   const nbP=A.P.filter(p=>p.rel.size).length,frq=p=>p.rel.size>1?"tous les "+Math.max(1,Math.round(J/p.rel.size))+" j":"";
@@ -1214,7 +1214,7 @@ function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=mo
   const tab=(titre,sub,L,cols)=>`<div class="panel flush"><div class="band">${titre}${sub?` <span class="hist" style="color:inherit;opacity:.85">${sub}</span>`:""}</div><div class="scroll"><table><thead><tr><th class="l">Produit</th>${cols.map(c=>`<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${L.length?L.map((p,i)=>`<tr><td class="l" style="white-space:normal"><span class="dmrk">${i+1}</span>${esc(p.nom)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join("")}</tr>`).join(""):`<tr><td class="l hist" colspan="${cols.length+1}">Rien sur cette période</td></tr>`}</tbody></table></div></div>`;
   if(DEMD.etat==="cours"&&!DEMD.rel)h+=`<div class="empty-state">Lecture du détail des relevés…</div>`;
   else if(DEMD.etat==="err"&&!nbRel)h+=`<div class="empty-state">Détail des produits indisponible : ${esc(/connect|G20|401|403/i.test(DEMD.err)?"connectez ce PC avec l'identifiant G20 (Réglages ⚙ → Compte).":DEMD.err)}</div>`;
-  else if(!nbRel)h+=`<div class="empty-state">Pas encore de détail des produits.<br><small>Dans Videor : Casses et Démarques → période du 01/01/2025 à aujourd'hui → sélectionner tout → Export, puis ici « 📥 Importer Videor ». Les relevés déjà comptés ne sont pas ajoutés deux fois, seul le détail des produits est enregistré.</small></div>`;
+  else if(!nbRel)h+=`<div class="empty-state">Pas encore de détail des produits.<br><small>Dans Videor : Casses et Démarques → période du 01/01/2025 à aujourd'hui → sélectionner tout → Export, puis « 📥 Importer Videor » dans le bandeau des relevés, en bas. Les relevés déjà comptés ne sont pas ajoutés deux fois, seul le détail des produits est enregistré.</small></div>`;
   else{const cur=A.P.filter(p=>p.rel.size);
     const topM=cur.slice().sort((a,b)=>b.ttc-a.ttc).slice(0,20),topF=cur.slice().sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,20);
     h+=`<div class="grid two vtg" style="margin-top:12px">${tab("Les plus jetés en montant","",topM,[["Fois",p=>p.rel.size],["Qté",p=>n2.format(p.q)],["Montant TTC",p=>eur2.format(p.ttc)],["Part",p=>pct(A.tot?p.ttc/A.tot:0)]])}
