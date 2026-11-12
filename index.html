@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="186">
+<meta name="gm-version" content="187">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -520,7 +520,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=186;
+const APP_VERSION=187;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1160,6 +1160,35 @@ function demAnalyse(fin,jours){const deb=vtAdd(fin,-(jours-1)),dN=vtAdd(deb,-365
   const sum=(a,b)=>demToutes().filter(x=>x.date>=a&&x.date<=b).reduce((t,x)=>t+(+x.montant||0),0);
   const ca=(a,b)=>{let t=0;for(let d=a;d<=b;d=vtAdd(d,1)){const doc=S.mois[d.slice(0,7)],j=doc&&doc.jours&&doc.jours[d.slice(8,10)];t+=+(j&&j.ca)||0}return t};
   return{deb,fin,jours,P:Object.values(P),tot,totP,nl,nrel:rels.size,wd,dem:sum(deb,fin),demN1:sum(dN,fN),demPrev:sum(pDeb,pFin),ca:ca(deb,fin),caN1:ca(dN,fN)}}
+// v187 : TAUX DE PERTE par produit = quantité jetée ÷ (quantité vendue + quantité jetée), sur les mêmes jours.
+// Ventes : articles des journées de caisse envoyées par GESTAT (table gesmar_ventes, data.art = [code-barres, libellé, famille, qté, CA, au poids]).
+// Lien par code-barres. Fenêtre limitée à 90 jours (volume des journées de caisse).
+const DEMV={k:"",etat:"",Q:null,err:"",t:0};
+const demZ=s=>String(s||"").replace(/^0+/,"");
+function demVentes(deb,fin){const k=S.store+"|"+deb+"|"+fin;if(DEMV.k===k&&(DEMV.etat==="cours"||Date.now()-DEMV.t<10*60000))return DEMV;
+  Object.assign(DEMV,{k,etat:"cours",t:Date.now(),Q:null});
+  (async()=>{const Q={},days=new Set();let d=deb;while(d<=fin){const e=vtAdd(d,30)<fin?vtAdd(d,30):fin;
+      const rows=await vtSb("gesmar_ventes?magasin=eq."+encodeURIComponent(S.store)+"&jour=gte."+d+"&jour=lte."+e+"&select=jour,art:data->art")||[];
+      rows.forEach(r=>{days.add(r.jour);(r.art||[]).forEach(a=>{const z=demZ(a[0]);if(z)Q[z]=(Q[z]||0)+(+a[3]||0)})});d=vtAdd(e,1)}
+    return{Q,nj:days.size}})()
+    .then(r=>{if(DEMV.k===k)Object.assign(DEMV,{etat:"ok",Q:r.Q,nj:r.nj,t:Date.now()})})
+    .catch(e=>{if(DEMV.k===k)Object.assign(DEMV,{etat:"err",err:e.message||String(e),t:Date.now()})})
+    .finally(()=>{if(S.tab==="dem")render()});
+  return DEMV}
+function demTauxHtml(fin,J){const W=Math.min(J,90),deb=vtAdd(fin,-(W-1)),V=demVentes(deb,fin);
+  const expl=`<div class="hist" style="padding:8px 14px 10px;line-height:1.45;white-space:normal"><b>Taux de perte</b> = quantité jetée ÷ (quantité vendue + quantité jetée), sur les ${W} derniers jours. Exemple : 3 jetés et 27 vendus → 3 ÷ 30 = <b>10 %</b> : sur 10 produits mis en rayon, 1 finit à la poubelle. Plus il est haut, plus la commande est trop forte pour ce que les clients achètent : <b>au-dessus de 20 %, commander moins ou moins souvent</b> (ou changer le facing, l'emplacement, le prix). Un produit jeté sans aucune vente (100 %) est à revoir en priorité. Attention : « vendu 0 » peut aussi venir d'un code-barres différent à la caisse (produits au poids ou à la coupe, étiquettes magasin) : vérifier avant d'arrêter un produit. Ventes : journées de caisse envoyées par GESTAT, reliées par le code-barres.${J>90?" (Limité à 90 jours.)":""}</div>`;
+  const band=`<div class="band">Taux de perte <span class="hist" style="color:inherit;opacity:.85">jeté ÷ (vendu + jeté)</span></div>`;
+  if(V.etat==="cours")return `<div class="panel flush vtg" style="margin-top:12px">${band}<div class="empty-state" style="padding:14px">Lecture des ventes des ${W} derniers jours…</div></div>`;
+  if(V.etat==="err")return `<div class="panel flush vtg" style="margin-top:12px">${band}<div class="empty-state" style="padding:14px">Ventes indisponibles : ${esc(/connect|G20|401|403/i.test(V.err)?"connectez ce PC avec l'identifiant G20.":V.err)}</div>${expl}</div>`;
+  if(!V.nj)return `<div class="panel flush vtg" style="margin-top:12px">${band}<div class="empty-state" style="padding:14px">Pas de journées de caisse en ligne sur cette période (GESTAT les envoie depuis le PC de la caisse).</div>${expl}</div>`;
+  const P={};for(const r of Object.values(DEMD.rel||{})){if(r.date<deb||r.date>fin)continue;
+    for(const l of r.l||[]){const z=demZ(l[0]);if(!z)continue;const p=P[z]||(P[z]={nom:l[2],j:0,ttc:0,n:0});p.j+=l[3];p.ttc+=l[4];p.n++}}
+  const L=Object.entries(P).filter(([z,p])=>p.n>=2||p.ttc>=10).map(([z,p])=>{const v=V.Q[z]||0;return Object.assign(p,{v,tx:p.j/(v+p.j)})}).sort((a,b)=>b.tx-a.tx||b.ttc-a.ttc).slice(0,25);
+  const col=t=>t>=0.2?"var(--red)":t>=0.1?"#f59e0b":"var(--green)";
+  const allJ=Object.values(P).reduce((t,p)=>t+p.ttc,0);
+  return `<div class="panel flush vtg" style="margin-top:12px">${band}${expl}<div class="scroll"><table><thead><tr><th class="l">Produit</th><th>Jeté</th><th>Vendu</th><th class="l" style="width:26%">Taux de perte</th><th>Montant jeté</th><th class="l">Conseil</th></tr></thead><tbody>
+    ${L.length?L.map((p,i)=>`<tr><td class="l" style="white-space:normal"><span class="dmrk">${i+1}</span>${esc(p.nom)}</td><td>${n2.format(p.j)}</td><td>${p.v?n2.format(p.v):"<b style='color:var(--red)'>0</b>"}</td><td class="l"><span class="dmbar" style="max-width:120px"><i style="width:${(p.tx*100).toFixed(1)}%;background:${col(p.tx)}"></i></span> <b style="color:${col(p.tx)}">${pct(p.tx)}</b></td><td>${eur2.format(p.ttc)}</td><td class="l hist" style="white-space:normal">${!p.v?"Jamais vendu : arrêter ou changer":p.tx>=0.4?"Réduire fortement la commande":p.tx>=0.2?"Commander moins":p.tx>=0.1?"À surveiller":"Normal"}</td></tr>`).join(""):`<tr><td class="l hist" colspan="6">Aucun produit jeté plusieurs fois sur cette période</td></tr>`}
+  </tbody></table></div><div class="hist" style="padding:6px 14px 10px">${V.nj} jour${V.nj>1?"s":""} de caisse · produits jetés au moins 2 fois ou pour 10 € ou plus · classés du plus fort taux au plus faible.</div></div>`}
 function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=monthStats(y,m);demCharger();
   const t=todayISO(),finM=dayISO(y,m,new Date(y,m+1,0).getDate()),fin=finM<t?finM:t,J=S.demPer||90;
   let h=periode("mois")+vDemarque(y,m,doc,st);
@@ -1181,6 +1210,7 @@ function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=mo
   const topM=cur.slice().sort((a,b)=>b.ttc-a.ttc).slice(0,20),topF=cur.slice().sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,20);
   h+=`<div class="grid two vtg" style="margin-top:12px">${tab("Les plus jetés en montant","",topM,[["Fois",p=>p.rel.size],["Qté",p=>n2.format(p.q)],["Montant TTC",p=>eur2.format(p.ttc)],["Part",p=>pct(A.tot?p.ttc/A.tot:0)]])}
     ${tab("Jetés le plus souvent","nombre de relevés",topF,[["Fois",p=>`<b>${p.rel.size}</b>`],["Rythme",p=>frq(p)],["Montant TTC",p=>eur2.format(p.ttc)],["Dernière",p=>frDate(p.last).slice(0,5)]])}</div>`;
+  h+=demTauxHtml(fin,J); // v187
   // en hausse : comparé à la période d'avant de même durée ; nouveaux : jamais jetés avant, déjà 2 fois ou plus
   const hausse=A.P.filter(p=>p.ttc-p.pttc>=5&&p.rel.size>=2&&p.prel.size).sort((a,b)=>(b.ttc-b.pttc)-(a.ttc-a.pttc)).slice(0,15);
   const nouv=A.P.filter(p=>!p.prel.size&&p.rel.size>=2).sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,15);
