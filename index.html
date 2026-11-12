@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="187">
+<meta name="gm-version" content="188">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -308,7 +308,7 @@ nav.tabs button{line-height:1.4}
 }
 
 /* v58 : saisie compacte, tout le mois tient sur un écran */
-.dmclk{cursor:pointer}.dmclk:hover td{background:var(--hover,rgba(127,127,127,.07))}.dmtw{display:inline-block;width:14px;opacity:.7}.dmtag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:9px;background:rgba(220,38,38,.15);color:var(--red);margin-left:4px;white-space:nowrap}.dmin{font-size:12.5px}.dmin th,.dmin td{padding:4px 8px}.dmhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.dmhead h3{margin:0;font-size:16px}.dmrk{display:inline-block;min-width:22px;opacity:.55;font-weight:700}.dmbar{display:inline-block;height:8px;width:100%;max-width:340px;background:rgba(127,127,127,.12);border-radius:4px;overflow:hidden;vertical-align:middle}.dmbar i{display:block;height:100%}.grid.two.vtg{grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr))}.vt3{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}.dmhead .segm{grid-template-columns:repeat(4,auto);margin-top:0}.dmhead .segm button{min-width:0}.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpi .v .vm{font-size:15px;font-weight:600;opacity:.8;white-space:nowrap}.kpi .v:has(.vm){white-space:nowrap}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
+.dmclk{cursor:pointer}.dmclk:hover td{background:var(--hover,rgba(127,127,127,.07))}.dmtw{display:inline-block;width:14px;opacity:.7}.dmtag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:9px;background:rgba(220,38,38,.15);color:var(--red);margin-left:4px;white-space:nowrap}.dmin{font-size:12.5px}.dmin th,.dmin td{padding:4px 8px}.dmhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.dmhead h3{margin:0;font-size:16px}.dmrk{display:inline-block;min-width:22px;opacity:.55;font-weight:700}.dmbar{display:inline-block;height:8px;width:100%;max-width:100%;background:rgba(127,127,127,.12);border-radius:4px;overflow:hidden;vertical-align:middle}.dmbar i{display:block;height:100%}.grid.two.vtg{grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr))}.vt3{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}.dmhead .segm{grid-template-columns:repeat(4,auto);margin-top:0}.dmhead .segm button{min-width:0}.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpi .v .vm{font-size:15px;font-weight:600;opacity:.8;white-space:nowrap}.kpi .v:has(.vm){white-space:nowrap}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
 .sheet td{height:20px}
 .sheet td input{padding:1px 4px;font-size:12px}
 .sheet td.hasfac input{padding-right:17px}
@@ -520,7 +520,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=187;
+const APP_VERSION=188;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1113,7 +1113,7 @@ function vDemarque(y,m,doc,st){
     <input id="demMontant" inputmode="decimal" placeholder="Montant TTC (prix d'achat)" style="width:170px" required>
     <button class="btn red" type="submit">Ajouter</button></form>
   ${L.length?`<div class="scroll"><table><thead><tr><th class="l">Date</th><th class="l">Motif</th><th class="l">Détail</th><th>Montant TTC</th><th></th></tr></thead><tbody>
-    ${L.map(x=>{const R=x.videor&&DEMD.rel?DEMD.rel[x.videor]:null,op=R&&S.demOpen===x.videor,gros=demGros(x);return `<tr${R?` class="dmclk" data-demopen="${esc(x.videor)}" title="Voir les produits de ce relevé"`:""}${gros?' style="box-shadow:inset 3px 0 0 var(--red)"':""}><td class="l">${R?`<span class="dmtw">${op?"▾":"▸"}</span>`:""}${frDate(x.date)}</td><td class="l">${esc(x.motif)}</td><td class="l" style="white-space:normal">${esc(x.detail)}${R?` <span class="hist">· ${R.l.length} produit${R.l.length>1?"s":""}</span>`:""}${gros?` <span class="dmtag">inhabituel</span>`:""}</td><td>${eur2.format(+x.montant||0)}</td>
+    ${L.map(x=>{const R=x.videor&&DEMD.rel?DEMD.rel[x.videor]:null,op=R&&S.demOpen===x.videor;return `<tr${R?` class="dmclk" data-demopen="${esc(x.videor)}" title="Voir les produits de ce relevé"`:""}><td class="l">${R?`<span class="dmtw">${op?"▾":"▸"}</span>`:""}${frDate(x.date)}</td><td class="l">${esc(x.motif)}</td><td class="l" style="white-space:normal">${esc(x.detail)}${R?` <span class="hist">· ${R.l.length} produit${R.l.length>1?"s":""}</span>`:""}</td><td>${eur2.format(+x.montant||0)}</td>
       <td>${S.confirmDem===x.i?`<button class="btn small danger" data-demdel="${x.i}">Confirmer</button>`:`<button class="btn small" data-demask="${x.i}">Supprimer</button>`}</td></tr>${op?demLignesHtml(R):""}`}).join("")}
     <tr class="tot"><td class="l" colspan="3">Total ${Object.entries(parMotif).map(([k,v])=>`<span class="hist" style="font-weight:500">· ${esc(k)} ${eur.format(v)}</span>`).join(" ")}</td><td>${eur2.format(st.demarque)}</td><td></td></tr>
   </tbody></table></div>`:""}
@@ -1210,7 +1210,6 @@ function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=mo
   const topM=cur.slice().sort((a,b)=>b.ttc-a.ttc).slice(0,20),topF=cur.slice().sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,20);
   h+=`<div class="grid two vtg" style="margin-top:12px">${tab("Les plus jetés en montant","",topM,[["Fois",p=>p.rel.size],["Qté",p=>n2.format(p.q)],["Montant TTC",p=>eur2.format(p.ttc)],["Part",p=>pct(A.tot?p.ttc/A.tot:0)]])}
     ${tab("Jetés le plus souvent","nombre de relevés",topF,[["Fois",p=>`<b>${p.rel.size}</b>`],["Rythme",p=>frq(p)],["Montant TTC",p=>eur2.format(p.ttc)],["Dernière",p=>frDate(p.last).slice(0,5)]])}</div>`;
-  h+=demTauxHtml(fin,J); // v187
   // en hausse : comparé à la période d'avant de même durée ; nouveaux : jamais jetés avant, déjà 2 fois ou plus
   const hausse=A.P.filter(p=>p.ttc-p.pttc>=5&&p.rel.size>=2&&p.prel.size).sort((a,b)=>(b.ttc-b.pttc)-(a.ttc-a.pttc)).slice(0,15);
   const nouv=A.P.filter(p=>!p.prel.size&&p.rel.size>=2).sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,15);
@@ -1222,10 +1221,7 @@ function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=mo
   const W=[1,2,3,4,5,6,0],wn=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"],wmax=Math.max(...A.wd,1);
   const mo=[];for(let i=11;i>=0;i--){const d=new Date(+fin.slice(0,4),+fin.slice(5,7)-1-i,1),k=mkey(d.getFullYear(),d.getMonth()),k1=mkey(d.getFullYear()-1,d.getMonth()),sm=kk=>{const dd=S.mois[kk];return(Array.isArray(dd&&dd.demarque)?dd.demarque:[]).reduce((t,x)=>t+(+x.montant||0),0)};mo.push([["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."][d.getMonth()]+" "+String(d.getFullYear()).slice(2),sm(k),sm(k1)])}
   const mmax=Math.max(...mo.map(x=>Math.max(x[1],x[2])),1),bar=(v,mx,c)=>`<span class="dmbar"><i style="width:${(v/mx*100).toFixed(1)}%;background:${c}"></i></span>`;
-  h+=`<div class="grid two vtg" style="margin-top:12px;align-items:start"><div class="panel flush"><div class="band">Par jour du relevé</div><table><tbody>${W.map(d=>`<tr><td class="l" style="width:60px">${wn[d]}</td><td class="l">${bar(A.wd[d],wmax,"var(--red)")}</td><td style="width:110px">${eur.format(A.wd[d])}</td></tr>`).join("")}</tbody></table><div class="hist" style="padding:6px 14px 10px">Jour où le relevé est fait dans Videor.</div></div>
-    <div class="panel flush"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">rouge : cette année · gris : N-1</span></div><table><tbody>${mo.map(x=>`<tr><td class="l" style="width:70px">${x[0]}</td><td class="l">${bar(x[1],mmax,"var(--red)")}<br>${bar(x[2],mmax,"var(--muted)")}</td><td style="width:110px">${eur.format(x[1])}<br><span class="hist">${x[2]?eur.format(x[2]):"—"}</span></td></tr>`).join("")}</tbody></table></div></div>`;
-  const gros=demToutes().filter(x=>x.date>=A.deb&&x.date<=A.fin&&demGros(x)).sort((a,b)=>b.montant-a.montant);
-  if(gros.length)h+=`<div class="panel flush vtg" style="margin-top:12px"><div class="band">Relevés inhabituels <span class="hist" style="color:inherit;opacity:.85">au moins 3 fois le relevé habituel (panne de froid, casse…)</span></div><table><tbody>${gros.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(x.detail||x.motif)}</td><td>${eur2.format(+x.montant)}</td></tr>`).join("")}</tbody></table></div>`;
+  h+=`<div class="vtg" style="margin-top:12px"><div class="panel flush"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">rouge : cette année · gris : N-1</span></div><table><tbody>${mo.map(x=>`<tr><td class="l" style="width:70px">${x[0]}</td><td class="l">${bar(x[1],mmax,"var(--red)")}<br>${bar(x[2],mmax,"var(--muted)")}</td><td style="width:110px">${eur.format(x[1])}<br><span class="hist">${x[2]?eur.format(x[2]):"—"}</span></td></tr>`).join("")}</tbody></table></div></div>`;
   return h}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-demopen],[data-dmper]");if(!b||e.target.closest("button[data-demask],button[data-demdel]"))return;
   if(b.dataset.dmper){S.demPer=+b.dataset.dmper;render();return}
