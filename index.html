@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="185">
+<meta name="gm-version" content="186">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -308,7 +308,7 @@ nav.tabs button{line-height:1.4}
 }
 
 /* v58 : saisie compacte, tout le mois tient sur un écran */
-.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpi .v .vm{font-size:15px;font-weight:600;opacity:.8;white-space:nowrap}.kpi .v:has(.vm){white-space:nowrap}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
+.dmclk{cursor:pointer}.dmclk:hover td{background:var(--hover,rgba(127,127,127,.07))}.dmtw{display:inline-block;width:14px;opacity:.7}.dmtag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:9px;background:rgba(220,38,38,.15);color:var(--red);margin-left:4px;white-space:nowrap}.dmin{font-size:12.5px}.dmin th,.dmin td{padding:4px 8px}.dmhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.dmhead h3{margin:0;font-size:16px}.dmrk{display:inline-block;min-width:22px;opacity:.55;font-weight:700}.dmbar{display:inline-block;height:8px;width:100%;max-width:340px;background:rgba(127,127,127,.12);border-radius:4px;overflow:hidden;vertical-align:middle}.dmbar i{display:block;height:100%}.grid.two.vtg{grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr))}.vt3{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}.dmhead .segm{grid-template-columns:repeat(4,auto);margin-top:0}.dmhead .segm button{min-width:0}.kpis-s{gap:8px}.kpis-s .kpi{padding:6px 12px;gap:0}.kpis-s .kpi .lbl{font-size:10px}.kpis-s .kpi .v{font-size:19px;line-height:1.25}.kpis-s .kpi .d{font-size:11px}.kpi .v .vm{font-size:15px;font-weight:600;opacity:.8;white-space:nowrap}.kpi .v:has(.vm){white-space:nowrap}.kpis-s .kpi .v .vm{font-size:13px;font-weight:600;opacity:.8;white-space:nowrap} /* v142 : montant de la marge à côté du taux */
 .sheet td{height:20px}
 .sheet td input{padding:1px 4px;font-size:12px}
 .sheet td.hasfac input{padding-right:17px}
@@ -495,6 +495,7 @@ body.ph .chips{gap:6px}body.ph .chips .chip{padding:5px 10px;font-size:13px}
 </header>
 <nav class="tabs" role="tablist">
     <button role="tab" data-tab="saisie">Saisie</button>
+    <button role="tab" data-tab="dem">Démarque</button>
     <button role="tab" data-tab="avoirs">Avoirs<span class="cnt" id="avCnt" hidden></span><span class="avlate" id="avLate" hidden><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span></button>
     <button role="tab" data-tab="bord">Tableau de bord</button>
     <button role="tab" data-tab="fourn">Fournisseurs</button>
@@ -519,7 +520,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=185;
+const APP_VERSION=186;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -551,7 +552,7 @@ const $=s=>document.querySelector(s);
    Sur le téléphone : 3 onglets (Tableau de bord, Saisie, Avoirs), saisie d'un jour à la fois, avoirs en cartes. */
 const WEBM=!window.api;
 const PHW=()=>WEBM&&Math.min(window.innerWidth||9999,(screen&&screen.width)||9999)<=640;
-const PH_TABS=["bord","saisie","avoirs"];
+const PH_TABS=["bord","saisie","dem","avoirs"];
 function phApply(){const on=PHW();document.body.classList.toggle("ph",on);if(on&&!PH_TABS.includes(S.tab))S.tab="bord";if(on&&S.avVue==="auto")S.avVue="man";return on}
 let phW=window.innerWidth;window.addEventListener("resize",()=>{if(Math.abs(window.innerWidth-phW)<40)return;phW=window.innerWidth;const was=document.body.classList.contains("ph");if(phApply()!==was)render()});
 try{if(WEBM)localStorage.setItem("ges-app","gesmar")}catch(e){}
@@ -886,7 +887,7 @@ function render(){
   const active=document.activeElement&&document.activeElement.id;
   const ph=phApply();
   app.classList.toggle("wide",S.tab==="saisie"&&!ph);
-  app.innerHTML=(ph?{bord:vBord,saisie:vSaisiePh,avoirs:vAvoirsPh}:{bord:vBord,saisie:vSaisie,avoirs:vAvoirs,fourn:vFourn})[S.tab]?.()??vBord();
+  app.innerHTML=(ph?{bord:vBord,saisie:vSaisiePh,dem:vDem,avoirs:vAvoirsPh}:{bord:vBord,saisie:vSaisie,dem:vDem,avoirs:vAvoirs,fourn:vFourn})[S.tab]?.()??vBord();
   if(ph&&S.tab==="avoirs"&&S.edit&&!S._phEd){S._phEd=1;const f=$("#avForm");if(f)f.scrollIntoView({block:"start"})}if(!S.edit)S._phEd=0; // v77 : onglet Fournisseurs (simple) revenu
   if(active){const el=document.getElementById(active);if(el&&el.tagName!=="BUTTON"&&!el.closest("#modalRoot"))el.focus()}
   facBadge();if(S.fac&&S.fac.ouvert)facRender();
@@ -1097,15 +1098,14 @@ function vSaisie(){
   <div class="gap"></div>
   <label class="lbl" for="mnote">Note du mois</label>
   <textarea id="mnote" rows="2" style="width:100%;margin-top:4px" placeholder="Ex. facture en double, erreur du mois précédent…">${esc(doc.note||"")}</textarea>
-  <div class="gap"></div>
-  ${vDemarque(y,m,doc,st)}`;
+`; // v186 : démarque connue déplacée dans l'onglet DÉMARQUE
 }
 
 function vDemarque(y,m,doc,st){
   const L=(Array.isArray(doc.demarque)?doc.demarque:[]).map((x,i)=>({...x,i})).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   const t=todayISO();const def=t.startsWith(mkey(y,m))?t:dayISO(y,m,1);
   const parMotif={};L.forEach(x=>parMotif[x.motif]=(parMotif[x.motif]||0)+(+x.montant||0));
-  return `<div class="panel flush"><div class="band">Démarque connue — ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button></div>
+  return `<div class="panel flush"><div class="band">Relevés de démarque — ${esc(MOIS[m])} ${y}<button class="pillbtn" data-act="demVideor" title="Fichier CSV exporté de Videor (Casses et Démarques → Export)">📥 Importer Videor</button></div>
   <form id="demForm" class="row" style="padding:12px 14px;border-bottom:1px solid var(--line)">
     <input id="demDate" type="date" value="${def}" min="${dayISO(y,m,1)}" max="${dayISO(y,m,new Date(y,m+1,0).getDate())}" required aria-label="Date">
     <select id="demMotif" aria-label="Motif">${DEM_MOTIFS.map(x=>`<option>${x}</option>`).join("")}</select>
@@ -1113,13 +1113,93 @@ function vDemarque(y,m,doc,st){
     <input id="demMontant" inputmode="decimal" placeholder="Montant TTC (prix d'achat)" style="width:170px" required>
     <button class="btn red" type="submit">Ajouter</button></form>
   ${L.length?`<div class="scroll"><table><thead><tr><th class="l">Date</th><th class="l">Motif</th><th class="l">Détail</th><th>Montant TTC</th><th></th></tr></thead><tbody>
-    ${L.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(x.motif)}</td><td class="l" style="white-space:normal">${esc(x.detail)}</td><td>${eur2.format(+x.montant||0)}</td>
-      <td>${S.confirmDem===x.i?`<button class="btn small danger" data-demdel="${x.i}">Confirmer</button>`:`<button class="btn small" data-demask="${x.i}">Supprimer</button>`}</td></tr>`).join("")}
+    ${L.map(x=>{const R=x.videor&&DEMD.rel?DEMD.rel[x.videor]:null,op=R&&S.demOpen===x.videor,gros=demGros(x);return `<tr${R?` class="dmclk" data-demopen="${esc(x.videor)}" title="Voir les produits de ce relevé"`:""}${gros?' style="box-shadow:inset 3px 0 0 var(--red)"':""}><td class="l">${R?`<span class="dmtw">${op?"▾":"▸"}</span>`:""}${frDate(x.date)}</td><td class="l">${esc(x.motif)}</td><td class="l" style="white-space:normal">${esc(x.detail)}${R?` <span class="hist">· ${R.l.length} produit${R.l.length>1?"s":""}</span>`:""}${gros?` <span class="dmtag">inhabituel</span>`:""}</td><td>${eur2.format(+x.montant||0)}</td>
+      <td>${S.confirmDem===x.i?`<button class="btn small danger" data-demdel="${x.i}">Confirmer</button>`:`<button class="btn small" data-demask="${x.i}">Supprimer</button>`}</td></tr>${op?demLignesHtml(R):""}`}).join("")}
     <tr class="tot"><td class="l" colspan="3">Total ${Object.entries(parMotif).map(([k,v])=>`<span class="hist" style="font-weight:500">· ${esc(k)} ${eur.format(v)}</span>`).join(" ")}</td><td>${eur2.format(st.demarque)}</td><td></td></tr>
   </tbody></table></div>`:""}
   </div>`;
 }
 
+// ===== v186 : onglet DÉMARQUE (demande du gérant) =====
+// Relevés de démarque du mois (même tableau qu'avant sous la saisie) + analyses sur le DÉTAIL des produits des exports Videor « Casses et Démarques ».
+// Le détail n'alourdit pas la synchro de GESMAR : il est rangé dans la table en ligne gesmar_ventes (déjà réservée au compte G20),
+// une ligne par magasin et par mois : id « <magasin>.dem|AAAA-MM », magasin « <magasin>.dem », data {v:1,rel:{n°:{date,ttc,l:[[ean,code,libellé,qté,ttc]]}}}.
+const DEMD={k:"",t:0,etat:"",rel:null,err:""};
+async function demDetailEnvoyer(R){try{const mag=S.store,parM={};R.forEach(r=>{if(r.l.length)(parM[r.date.slice(0,7)]=parM[r.date.slice(0,7)]||[]).push(r)});
+    const ks=Object.keys(parM).sort(),old=await vtSb("gesmar_ventes?magasin=eq."+encodeURIComponent(mag+".dem")+"&jour=gte."+ks[0]+"-01&jour=lte."+ks[ks.length-1]+"-28&select=jour,data")||[],O={};
+    old.forEach(x=>O[String(x.jour).slice(0,7)]=x.data&&x.data.rel||{});
+    const rows=ks.map(k=>{const rel=Object.assign({},O[k]||{});parM[k].forEach(r=>rel[r.n]={date:r.date,ttc:r.ttc,l:r.l});return{id:mag+".dem|"+k,magasin:mag+".dem",jour:k+"-01",data:{v:1,rel},updated_at:new Date().toISOString()}});
+    for(let i=0;i<rows.length;i+=6)await vtSb("gesmar_ventes?on_conflict=id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(rows.slice(i,i+6))});
+    DEMD.k="";return{ok:true,n:R.reduce((t,r)=>t+r.l.length,0)}}
+  catch(e){console.error(e);return{err:/connect|G20|401|403/i.test(e.message||"")?"connexion G20 nécessaire":(e.message||"erreur")}}}
+function demCharger(){const k=S.store;if(DEMD.k===k&&(DEMD.etat==="cours"||Date.now()-DEMD.t<10*60000))return;
+  Object.assign(DEMD,{k,t:Date.now(),etat:"cours"});
+  vtSb("gesmar_ventes?magasin=eq."+encodeURIComponent(k+".dem")+"&select=jour,data&order=jour").then(rows=>{const rel={};(rows||[]).forEach(x=>Object.assign(rel,x.data&&x.data.rel||{}));Object.assign(DEMD,{etat:"ok",rel,t:Date.now()})})
+    .catch(e=>Object.assign(DEMD,{etat:"err",err:e.message||String(e),rel:DEMD.rel||{}}))
+    .finally(()=>{if(S.tab==="dem")render()})}
+// lignes de démarque de tous les mois (montants du relevé, sans détail)
+function demToutes(){const o=[];Object.values(S.mois).forEach(d=>(Array.isArray(d&&d.demarque)?d.demarque:[]).forEach(x=>{if(x&&x.date)o.push(x)}));return o}
+function demGros(x){if(!(+x.montant>0))return false;const v=demToutes().filter(y=>y.videor&&+y.montant>0).map(y=>+y.montant).sort((a,b)=>a-b);if(v.length<8)return false;const med=v[Math.floor(v.length/2)];return +x.montant>=Math.max(3*med,med+300)}
+function demLignesHtml(R){const L=R.l.slice().sort((a,b)=>b[4]-a[4]);
+  return `<tr class="dmdet"><td colspan="5" style="padding:4px 14px 12px 34px"><table class="dmin"><thead><tr><th class="l">Produit</th><th class="l">Code-barres</th><th>Qté</th><th>Montant TTC</th><th>Déjà jeté</th></tr></thead><tbody>
+    ${L.map(l=>{const P=demProduits(),k=demCle(l),p=P[k],n=p?p.rel.size:1;return `<tr><td class="l">${esc(l[2])}</td><td class="l hist">${esc(l[0]||l[1]||"")}</td><td>${n2.format(l[3])}</td><td>${eur2.format(l[4])}</td><td>${n>1?`<span class="dmtag" style="background:rgba(245,158,11,.18);color:var(--text)">${n} fois</span>`:"1re fois"}</td></tr>`}).join("")}</tbody></table></td></tr>`}
+const demCle=l=>l[0]||("c"+l[1])||l[2];
+let DEMP=null;
+function demProduits(){if(DEMP&&DEMP.src===DEMD.rel)return DEMP.P;const P={};
+  for(const[n,r]of Object.entries(DEMD.rel||{}))for(const l of r.l||[]){const k=demCle(l),p=P[k]||(P[k]={k,nom:l[2],ean:l[0],code:l[1],rel:new Set(),dates:[],q:0,ttc:0,last:""});
+    if(r.date>=p.last){p.last=r.date;p.nom=l[2]}p.rel.add(n);p.dates.push([r.date,l[3],l[4]]);p.q+=l[3];p.ttc+=l[4]}
+  DEMP={src:DEMD.rel,P};return P}
+// analyses sur une période qui finit au jour affiché (fin du mois affiché, ou aujourd'hui pour le mois en cours)
+function demAnalyse(fin,jours){const deb=vtAdd(fin,-(jours-1)),dN=vtAdd(deb,-365),fN=vtAdd(fin,-365),pDeb=vtAdd(deb,-jours),pFin=vtAdd(deb,-1);
+  const P={};let tot=0,totP=0,nl=0;const rels=new Set(),wd=[0,0,0,0,0,0,0];
+  for(const[n,r]of Object.entries(DEMD.rel||{})){const inP=r.date>=deb&&r.date<=fin,inPrev=r.date>=pDeb&&r.date<=pFin;if(!inP&&!inPrev)continue;
+    if(inP){rels.add(n);wd[new Date(r.date+"T12:00:00").getDay()]+=r.ttc||0}
+    for(const l of r.l||[]){const k=demCle(l),p=P[k]||(P[k]={k,nom:l[2],rel:new Set(),q:0,ttc:0,pq:0,pttc:0,prel:new Set(),last:""});
+      if(inP){p.rel.add(n);p.q+=l[3];p.ttc+=l[4];tot+=l[4];nl++;if(r.date>=p.last){p.last=r.date;p.nom=l[2]}}else{p.prel.add(n);p.pq+=l[3];p.pttc+=l[4];totP+=l[4]}}}
+  // montants du relevé (tous motifs, même sans détail) et CA de la période et de N-1
+  const sum=(a,b)=>demToutes().filter(x=>x.date>=a&&x.date<=b).reduce((t,x)=>t+(+x.montant||0),0);
+  const ca=(a,b)=>{let t=0;for(let d=a;d<=b;d=vtAdd(d,1)){const doc=S.mois[d.slice(0,7)],j=doc&&doc.jours&&doc.jours[d.slice(8,10)];t+=+(j&&j.ca)||0}return t};
+  return{deb,fin,jours,P:Object.values(P),tot,totP,nl,nrel:rels.size,wd,dem:sum(deb,fin),demN1:sum(dN,fN),demPrev:sum(pDeb,pFin),ca:ca(deb,fin),caN1:ca(dN,fN)}}
+function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=monthStats(y,m);demCharger();
+  const t=todayISO(),finM=dayISO(y,m,new Date(y,m+1,0).getDate()),fin=finM<t?finM:t,J=S.demPer||90;
+  let h=periode("mois")+vDemarque(y,m,doc,st);
+  const nbRel=Object.keys(DEMD.rel||{}).length;
+  h+=`<div class="gap"></div><div class="dmhead"><h3>Analyse des produits jetés</h3><div class="segm">${[[30,"30 jours"],[90,"3 mois"],[182,"6 mois"],[365,"12 mois"]].map(([v,l])=>`<button data-dmper="${v}" aria-pressed="${J===v}">${l}</button>`).join("")}</div><span class="hist">jusqu'au ${frDate(fin)}</span></div>`;
+  if(DEMD.etat==="cours"&&!DEMD.rel)return h+`<div class="empty-state">Lecture du détail des relevés…</div>`;
+  if(DEMD.etat==="err"&&!nbRel)return h+`<div class="empty-state">Détail des produits indisponible : ${esc(/connect|G20|401|403/i.test(DEMD.err)?"connectez ce PC avec l'identifiant G20 (Réglages ⚙ → Compte).":DEMD.err)}</div>`;
+  if(!nbRel)return h+`<div class="empty-state">Pas encore de détail des produits.<br><small>Dans Videor : Casses et Démarques → sélectionner tout → Export, puis ici « 📥 Importer Videor ». Importez tout l'historique (2025 et 2026) : les relevés déjà comptés ne sont pas ajoutés deux fois, seul le détail des produits est enregistré.</small></div>`;
+  const A=demAnalyse(fin,J),ev=(a,b)=>b?((a-b)/b):null,evs=(a,b)=>{const e=ev(a,b);return e==null?"":`<span style="color:${e>0?"var(--red)":"var(--green)"}">${e>0?"+":""}${pct(e)}</span>`};
+  const nbP=A.P.filter(p=>p.rel.size).length,frq=p=>p.rel.size>1?"tous les "+Math.max(1,Math.round(J/p.rel.size))+" j":"";
+  h+=`<div class="grid kpis kpis-s" style="margin-top:8px">
+    <div class="kpi alert"><span class="lbl">Démarque</span><span class="v">${eur.format(A.dem)}</span><span class="d">N-1 : ${A.demN1?eur.format(A.demN1)+" "+evs(A.dem,A.demN1):"—"}</span></div>
+    <div class="kpi"><span class="lbl">Part du CA</span><span class="v">${A.ca?pct(A.dem/A.ca):"—"}</span><span class="d">N-1 : ${A.caN1&&A.demN1?pct(A.demN1/A.caN1):"—"}</span></div>
+    <div class="kpi"><span class="lbl">Par jour</span><span class="v">${eur.format(A.dem/J)}</span><span class="d">Période d'avant : ${eur.format(A.demPrev/J)} ${evs(A.dem,A.demPrev)}</span></div>
+    <div class="kpi"><span class="lbl">Relevés</span><span class="v">${A.nrel}</span><span class="d">${A.nrel?"moyenne "+eur.format(A.tot/A.nrel):""}</span></div>
+    <div class="kpi"><span class="lbl">Produits jetés</span><span class="v">${nbP}</span><span class="d">${A.P.filter(p=>p.rel.size>=3).length} jetés 3 fois ou plus</span></div></div>`;
+  const tab=(titre,sub,L,cols)=>`<div class="panel flush"><div class="band">${titre}${sub?` <span class="hist" style="color:inherit;opacity:.85">${sub}</span>`:""}</div><div class="scroll"><table><thead><tr><th class="l">Produit</th>${cols.map(c=>`<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${L.length?L.map((p,i)=>`<tr><td class="l" style="white-space:normal"><span class="dmrk">${i+1}</span>${esc(p.nom)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join("")}</tr>`).join(""):`<tr><td class="l hist" colspan="${cols.length+1}">Rien sur cette période</td></tr>`}</tbody></table></div></div>`;
+  const cur=A.P.filter(p=>p.rel.size);
+  const topM=cur.slice().sort((a,b)=>b.ttc-a.ttc).slice(0,20),topF=cur.slice().sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,20);
+  h+=`<div class="grid two vtg" style="margin-top:12px">${tab("Les plus jetés en montant","",topM,[["Fois",p=>p.rel.size],["Qté",p=>n2.format(p.q)],["Montant TTC",p=>eur2.format(p.ttc)],["Part",p=>pct(A.tot?p.ttc/A.tot:0)]])}
+    ${tab("Jetés le plus souvent","nombre de relevés",topF,[["Fois",p=>`<b>${p.rel.size}</b>`],["Rythme",p=>frq(p)],["Montant TTC",p=>eur2.format(p.ttc)],["Dernière",p=>frDate(p.last).slice(0,5)]])}</div>`;
+  // en hausse : comparé à la période d'avant de même durée ; nouveaux : jamais jetés avant, déjà 2 fois ou plus
+  const hausse=A.P.filter(p=>p.ttc-p.pttc>=5&&p.rel.size>=2&&p.prel.size).sort((a,b)=>(b.ttc-b.pttc)-(a.ttc-a.pttc)).slice(0,15);
+  const nouv=A.P.filter(p=>!p.prel.size&&p.rel.size>=2).sort((a,b)=>b.rel.size-a.rel.size||b.ttc-a.ttc).slice(0,15);
+  const baisse=A.P.filter(p=>p.pttc-p.ttc>=5&&p.prel.size>=2).sort((a,b)=>(b.pttc-b.ttc)-(a.pttc-a.ttc)).slice(0,15);
+  h+=`<div class="grid vtg vt3" style="margin-top:12px">${tab("En hausse","vs les "+J+" jours d'avant",hausse,[["Avant",p=>eur.format(p.pttc)],["Maintenant",p=>eur.format(p.ttc)],["Écart",p=>`<span style="color:var(--red)">+${eur.format(p.ttc-p.pttc)}</span>`]])}
+    ${tab("Nouveaux à surveiller","pas jetés avant, déjà 2 fois",nouv,[["Fois",p=>p.rel.size],["Montant",p=>eur.format(p.ttc)]])}
+    ${tab("En baisse","bonne nouvelle",baisse,[["Avant",p=>eur.format(p.pttc)],["Maintenant",p=>eur.format(p.ttc)],["Écart",p=>`<span style="color:var(--green)">−${eur.format(p.pttc-p.ttc)}</span>`]])}</div>`;
+  // jour de la semaine + 12 derniers mois vs N-1
+  const W=[1,2,3,4,5,6,0],wn=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"],wmax=Math.max(...A.wd,1);
+  const mo=[];for(let i=11;i>=0;i--){const d=new Date(+fin.slice(0,4),+fin.slice(5,7)-1-i,1),k=mkey(d.getFullYear(),d.getMonth()),k1=mkey(d.getFullYear()-1,d.getMonth()),sm=kk=>{const dd=S.mois[kk];return(Array.isArray(dd&&dd.demarque)?dd.demarque:[]).reduce((t,x)=>t+(+x.montant||0),0)};mo.push([["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."][d.getMonth()]+" "+String(d.getFullYear()).slice(2),sm(k),sm(k1)])}
+  const mmax=Math.max(...mo.map(x=>Math.max(x[1],x[2])),1),bar=(v,mx,c)=>`<span class="dmbar"><i style="width:${(v/mx*100).toFixed(1)}%;background:${c}"></i></span>`;
+  h+=`<div class="grid two vtg" style="margin-top:12px;align-items:start"><div class="panel flush"><div class="band">Par jour du relevé</div><table><tbody>${W.map(d=>`<tr><td class="l" style="width:60px">${wn[d]}</td><td class="l">${bar(A.wd[d],wmax,"var(--red)")}</td><td style="width:110px">${eur.format(A.wd[d])}</td></tr>`).join("")}</tbody></table><div class="hist" style="padding:6px 14px 10px">Jour où le relevé est fait dans Videor.</div></div>
+    <div class="panel flush"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">rouge : cette année · gris : N-1</span></div><table><tbody>${mo.map(x=>`<tr><td class="l" style="width:70px">${x[0]}</td><td class="l">${bar(x[1],mmax,"var(--red)")}<br>${bar(x[2],mmax,"var(--muted)")}</td><td style="width:110px">${eur.format(x[1])}<br><span class="hist">${x[2]?eur.format(x[2]):"—"}</span></td></tr>`).join("")}</tbody></table></div></div>`;
+  const gros=demToutes().filter(x=>x.date>=A.deb&&x.date<=A.fin&&demGros(x)).sort((a,b)=>b.montant-a.montant);
+  if(gros.length)h+=`<div class="panel flush vtg" style="margin-top:12px"><div class="band">Relevés inhabituels <span class="hist" style="color:inherit;opacity:.85">au moins 3 fois le relevé habituel (panne de froid, casse…)</span></div><table><tbody>${gros.map(x=>`<tr><td class="l">${frDate(x.date)}</td><td class="l">${esc(x.detail||x.motif)}</td><td>${eur2.format(+x.montant)}</td></tr>`).join("")}</tbody></table></div>`;
+  return h}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-demopen],[data-dmper]");if(!b||e.target.closest("button[data-demask],button[data-demdel]"))return;
+  if(b.dataset.dmper){S.demPer=+b.dataset.dmper;render();return}
+  S.demOpen=S.demOpen===b.dataset.demopen?null:b.dataset.demopen;render()});
 // v42 : fournisseurs des avoirs : d'abord ceux de la saisie, puis ceux des colonnes retirées (doublons de nom écartés)
 function avFourn(sel){const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),ord=(a,b)=>(a.ordre??99)-(b.ordre??99)||String(a.nom).localeCompare(String(b.nom));
   const kNow=todayISO().slice(0,7),mcN=monthCols(kNow),uy=usedInYear(kNow.slice(0,4)),inSaisie=f=>mcN.includes(f.id)||S.fourn.some(x=>x.groupe===f.id&&mcN.includes(x.id)); /* v74 : affichés dans la saisie du mois en cours */
@@ -1291,9 +1371,13 @@ function demVideorChoisir(){const inp=document.createElement("input");inp.type="
 function demVideorLire(t){const L=String(t).replace(/^\ufeff/,"").split(/\r?\n/).filter(x=>x.trim());if(!L.length)return null;
   const H=L[0].split(";").map(x=>x.trim().toUpperCase()),ix=n=>H.indexOf(n);
   const iN=ix("NODOC"),iD=ix("DATE_DOC"),iT=ix("TOT_TTC"),iH=ix("TOT_HT"),iR=ix("RAISOC"),iTy=ix("TYPDOC");if(iN<0||iD<0||iT<0)return null;
+  const iE=ix("EAN"),iC=ix("CODE"),iL=ix("DESIG_LIG"),iQ=ix("QTE_CDE"),iTL=ix("TOT_TTC_LIGNE"),iPU=ix("PX_UNIT_TTC"),nb=x=>{const v=parseFloat(String(x||"").replace(",","."));return isFinite(v)?v:0},LG={}; // v186 : détail produit par relevé
   const R={};for(const l of L.slice(1)){const c=l.split(";");const n=(c[iN]||"").trim();if(!n)continue;if(iTy>=0&&c[iTy]&&c[iTy].trim()&&c[iTy].trim()!=="Q")continue;
     const m=(c[iD]||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(!m)continue;const ttc=parseFloat(String(c[iT]).replace(",","."));if(!isFinite(ttc))continue;
-    R[n]={n,date:m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"),ttc:Math.round(ttc*100)/100,ht:iH>=0?parseFloat(String(c[iH]).replace(",",".")):null,raisoc:iR>=0?(c[iR]||"").trim():""}}
+    R[n]={n,date:m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"),ttc:Math.round(ttc*100)/100,ht:iH>=0?parseFloat(String(c[iH]).replace(",",".")):null,raisoc:iR>=0?(c[iR]||"").trim():""};
+    const des=iL>=0?(c[iL]||"").trim():"";if(des){const q=iQ>=0?nb(c[iQ]):0,tl=iTL>=0&&String(c[iTL]||"").trim()!==""?nb(c[iTL]):Math.round(q*(iPU>=0?nb(c[iPU]):0)*100)/100;
+      (LG[n]=LG[n]||[]).push([iE>=0?(c[iE]||"").trim().replace(/^0+(?=\d{8})/,""):"",iC>=0?String(+(c[iC]||"").trim()||(c[iC]||"").trim()):"",des,Math.round(q*1000)/1000,Math.round(tl*100)/100])}}
+  Object.values(R).forEach(r=>r.l=LG[r.n]||[]);
   return Object.values(R).sort((a,b)=>a.date.localeCompare(b.date)||a.n.localeCompare(b.n))}
 async function demVideorImporter(t){const R=demVideorLire(t);if(!R){toast("Ce fichier n'est pas un export « Casses et Démarques » de Videor (colonnes NODOC, DATE_DOC, TOT_TTC)");return}
   if(!R.length){toast("Aucun relevé dans ce fichier");return}
@@ -1303,7 +1387,8 @@ async function demVideorImporter(t){const R=demVideorLire(t);if(!R){toast("Ce fi
   // où est déjà chaque relevé (tous les mois du magasin)
   const ou={};Object.entries(S.mois).forEach(([k,d])=>{(Array.isArray(d&&d.demarque)?d.demarque:[]).forEach((x,i)=>{if(x&&x.videor)ou[x.videor]={k,i,x}})});
   const nouv=R.filter(r=>!ou[r.n]),modif=R.filter(r=>ou[r.n]&&(ou[r.n].x.date!==r.date||Math.abs((+ou[r.n].x.montant||0)-r.ttc)>0.004));
-  if(!nouv.length&&!modif.length){toast("Démarque Videor déjà à jour ("+R.length+" relevé(s) déjà importé(s))");return}
+  const dt=R.some(r=>r.l.length)?await demDetailEnvoyer(R):null; // v186 : détail des produits (table en ligne, à part)
+  if(!nouv.length&&!modif.length){toast("Démarque Videor déjà à jour ("+R.length+" relevé(s) déjà importé(s))"+(dt&&dt.ok?" · détail des produits enregistré ("+dt.n+" lignes)":dt&&dt.err?" · détail des produits non enregistré : "+dt.err:""));render();return}
   const tot=nouv.reduce((s,r)=>s+r.ttc,0),mois=[...new Set(nouv.concat(modif).map(r=>r.date.slice(0,7)))].sort().map(k=>MOIS[+k.slice(5)-1].toLowerCase()+" "+k.slice(0,4));
   if(!await askConfirm("Importer la démarque Videor dans "+storeNom()+" ?\n\n"+nouv.length+" nouveau(x) relevé(s) : "+eur2.format(tot)+" TTC"+(modif.length?"\n"+modif.length+" relevé(s) modifié(s) dans Videor : corrigé(s)":"")+(R.length-nouv.length-modif.length?"\n"+(R.length-nouv.length-modif.length)+" déjà importé(s) : ignoré(s)":"")+"\n\nMois : "+mois.join(", ")))return;
   const parMois={};const get=k=>parMois[k]||(parMois[k]=(Array.isArray(S.mois[k]&&S.mois[k].demarque)?S.mois[k].demarque:[]).slice());
@@ -1368,7 +1453,7 @@ document.addEventListener("click",async e=>{
   if(t.dataset.tab){S.tab=t.dataset.tab;S.edit=null;try{localStorage.setItem("gesmar.tab",S.tab)}catch(_){}render();return}
   if(t.dataset.tabGo){e.preventDefault();S.tab=t.dataset.tabGo;render();return}
   if(t.dataset.goto!=null){e.preventDefault();S.month=+t.dataset.goto;S.tab="saisie";render();return}
-  if(t.dataset.per){const d=+t.dataset.per;if(S.tab==="saisie"){S.month+=d;if(S.month<0){S.month=11;S.year--}if(S.month>11){S.month=0;S.year++}}else S.year+=d;render();return}
+  if(t.dataset.per){const d=+t.dataset.per;if(S.tab==="saisie"||S.tab==="dem"){S.month+=d;if(S.month<0){S.month=11;S.year--}if(S.month>11){S.month=0;S.year++}}else S.year+=d;render();return}
   if(t.id==="houseBtn"){toggleStoreMenu();return}
   if(t.id==="gearBtn"){S.modal=!S.modal;S.modalPanel=null;closeMenu();render();return}
   if(t.id==="undoBtn"){undo();return}
