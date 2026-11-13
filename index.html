@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="191">
+<meta name="gm-version" content="192">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -520,7 +520,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=191;
+const APP_VERSION=192;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1126,12 +1126,18 @@ function vDemarque(y,m,doc,st){
 // une ligne par magasin et par mois : id « <magasin>.dem|AAAA-MM », magasin « <magasin>.dem », data {v:1,rel:{n°:{date,ttc,l:[[ean,code,libellé,qté,ttc]]}}}.
 const DEMD={k:"",t:0,etat:"",rel:null,err:""};
 const demNo=n=>String(n==null?"":n).trim().replace(/^0+(?=\d)/,""); // v189 : n° de relevé sans les zéros de l'export brut
-// v189 : un même relevé importé deux fois (n° « 0000000339 » puis « 339 ») : on n'en garde qu'un, dans chaque mois (une fois par magasin et par session)
+// v189/v192 : un même relevé importé deux fois (n° « 0000000339 » puis « 339 ») : on n'en garde qu'un, dans chaque mois (une fois par magasin et par session)
 async function demDedoublonner(){const k0=S.store;if(!k0||(S._demDd||{})[k0]||!Object.keys(S.mois).length)return;(S._demDd=S._demDd||{})[k0]=1;let n=0;
-  for(const[k,d]of Object.entries(S.mois)){const a=Array.isArray(d&&d.demarque)?d.demarque:[];if(!a.some(x=>x&&x.videor))continue;
-    const vus=new Set(),b=a.filter(x=>{if(!x||!x.videor)return true;const z=demNo(x.videor);if(vus.has(z))return false;vus.add(z);return true});
-    if(b.length<a.length){n+=a.length-b.length;try{HIST.lastT=Date.now();await S.db.doc(P("mois/"+k)).update({demarque:b})}catch(e){console.error(e)}}}
-  if(n)toast(n+" relevé"+(n>1?"s":"")+" de démarque en double retiré"+(n>1?"s":""))}
+  const M={};for(const[k,d]of Object.entries(S.mois)){const a=Array.isArray(d&&d.demarque)?d.demarque:[];
+    const vus=new Set();M[k]={a,b:a.filter(x=>{if(!x||!x.videor)return true;const z=demNo(x.videor);if(vus.has(z))return false;vus.add(z);return true})}}
+  // v192 : démarque saisie à la main avant l'import Videor (sans détail, même jour ou à 1 jour près, montant à 5 € près d'un relevé Videor) = doublon : on garde le relevé
+  const jr=d=>Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10))/864e5,V=[],H=[];
+  Object.values(M).forEach(o=>o.b.forEach(x=>{if(!x||!x.date)return;if(x.videor)V.push(x);else if(!String(x.detail||"").trim()&&+x.montant>0)H.push(x)}));
+  const C=[];H.forEach(h=>V.forEach(v=>{const dj=Math.abs(jr(v.date)-jr(h.date)),dm=Math.abs((+v.montant||0)-(+h.montant||0));if(dj<=1&&dm<=5.005)C.push({h,v,s:dj*10+dm})}));
+  C.sort((a,b)=>a.s-b.s);const pH=new Set(),pV=new Set();C.forEach(c=>{if(pH.has(c.h)||pV.has(c.v))return;pH.add(c.h);pV.add(c.v)});
+  for(const[k,o]of Object.entries(M)){const b=o.b.filter(x=>!pH.has(x));
+    if(b.length<o.a.length){n+=o.a.length-b.length;try{HIST.lastT=Date.now();await S.db.doc(P("mois/"+k)).update({demarque:b})}catch(e){console.error(e)}}}
+  if(n)toast(n+" ligne"+(n>1?"s":"")+" de démarque en double retirée"+(n>1?"s":""))}
 async function demDetailEnvoyer(R){try{const mag=S.store,parM={};R.forEach(r=>{if(r.l.length)(parM[r.date.slice(0,7)]=parM[r.date.slice(0,7)]||[]).push(r)});
     const ks=Object.keys(parM).sort(),old=await vtSb("gesmar_ventes?magasin=eq."+encodeURIComponent(mag+".dem")+"&jour=gte."+ks[0]+"-01&jour=lte."+ks[ks.length-1]+"-28&select=jour,data")||[],O={};
     old.forEach(x=>O[String(x.jour).slice(0,7)]=x.data&&x.data.rel||{});
