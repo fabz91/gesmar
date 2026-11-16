@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="193">
+<meta name="gm-version" content="194">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -405,7 +405,7 @@ body:has(#modalRoot > *, .facov) > div[style*="2147483645"]{display:none!importa
 .vtnav button{font:700 13px var(--body);border:0;background:transparent;color:var(--muted);border-radius:7px;padding:7px 13px;cursor:pointer}
 .vtnav button:hover{color:var(--fg)}.vtnav button.on{background:var(--green);color:#fff}
 .vtup{font-size:12px;color:var(--muted);margin:-6px 0 8px;min-height:0}.vtup:empty{display:none}
-.dm12{display:grid;gap:5px}.dm12r{display:grid;grid-template-columns:62px 1fr 128px;align-items:center;gap:8px;font-size:12.5px}.dm12l{opacity:.75;white-space:nowrap}.dm12b{display:flex;flex-direction:column;gap:2px}.dm12b i{display:block;border-radius:3px;min-width:1px}.dm12b i.a{height:11px;background:var(--red)}.dm12b i.b{height:4px;background:currentColor;opacity:.25}.dm12v{text-align:right;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.dm12v small{font-weight:600;font-size:11px}.dm12g{align-items:start}@media(max-width:640px){.dmtp{display:none}}
+.dm12{display:grid;gap:5px}.dm12r{display:grid;grid-template-columns:62px 1fr 128px;align-items:center;gap:8px;font-size:12.5px}.dm12l{opacity:.75;white-space:nowrap}.dm12b{display:flex;flex-direction:column;gap:2px}.dm12b i{display:block;border-radius:3px;min-width:1px}.dm12b i.a{height:11px;background:var(--red)}.dm12b i.b{height:4px;background:currentColor;opacity:.25}.dm12v{text-align:right;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.dm12v small{font-weight:600;font-size:11px}.dm12g{align-items:stretch}.dm12g>.panel{display:flex;flex-direction:column}.dm12g .dm12w{flex:1;display:flex;flex-direction:column}.dm12g .dm12{flex:1;align-content:space-between}@media(max-width:640px){.dmtp{display:none}}
 .vtg{margin-top:14px}.vt3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .vtk .kpi .lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .vtbar{display:inline-block;vertical-align:middle;width:calc(100% - 66px);max-width:260px;height:10px;background:var(--sunk);border-radius:5px;overflow:hidden}.vtbar i{display:block;height:100%;background:var(--green);border-radius:5px}
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=193;
+const APP_VERSION=194;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1231,7 +1231,7 @@ function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=mo
     mo.push([["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."][d.getMonth()]+" "+String(d.getFullYear()).slice(2),sm(k),sm(k1),d.getMonth(),d.getFullYear()])}
   const tA=mo.reduce((t,x)=>t+x[1],0),tB=mo.reduce((t,x)=>t+x[2],0);
   // v193 : 12 derniers mois en barres horizontales (demi-largeur) + à côté, top 10 des produits les plus jetés de l'année du mois affiché
-  h+=`<div class="grid two vtg dm12g" style="margin-top:12px"><div class="panel flush"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">total ${eur.format(tA)}${tB?" · N-1 "+eur.format(tB)+" ("+(tA>=tB?"+":"")+pct((tA-tB)/tB)+")":""}</span></div><div style="padding:10px 14px 8px">${demMoisBarres(mo)}</div></div>${demTopAnnee(y,nbRel)}</div>`;
+  h+=`<div class="grid two vtg dm12g" style="margin-top:12px"><div class="panel flush"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">total ${eur.format(tA)}${tB?" · N-1 "+eur.format(tB)+" ("+(tA>=tB?"+":"")+pct((tA-tB)/tB)+")":""}</span></div><div class="dm12w" style="padding:10px 14px 8px">${demMoisBarres(mo)}</div></div>${demTopAnnee(y,nbRel)}</div>`;
   // tous les relevés du mois, en bas, chacun avec son détail déroulant
   h+=`<div class="vtg" style="margin-top:12px">${vDemarque(y,m,doc,st)}</div>`;
   return h}
