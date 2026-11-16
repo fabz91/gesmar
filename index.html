@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="194">
+<meta name="gm-version" content="195">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=194;
+const APP_VERSION=195;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -2506,17 +2506,19 @@ function flVentes(y,m){const a=y+"-"+String(m+1).padStart(2,"0")+"-01",t=todayIS
     .finally(()=>{const el=document.getElementById("flKpi");if(el&&S.tab==="saisie"){const y2=S.year,m2=S.month;el.outerHTML=flKpi(y2,m2,monthStats(y2,m2))}});
   return o}
 function flKpi(y,m,st){const v=flVentes(y,m),ids=flIds(),ach=Math.round(ids.reduce((t,id)=>t+((st.par||{})[id]||0),0)*100)/100;
-  const box=(val,d,cls)=>`<div class="kpi${cls?" "+cls:""}" id="flKpi" data-act="flcfg" style="cursor:pointer" title="Ventes du rayon FRUITS ET LEGUMES − achats des fournisseurs de fruits et légumes (sans les stocks). Cliquez pour choisir les fournisseurs."><span class="lbl">Marge fruits et légumes</span><span class="v">${val}</span><span class="d">${d}</span></div>`;
+  const box=(val,d,cls)=>`<div class="kpi${cls?" "+cls:""}" id="flKpi" data-act="flcfg" style="cursor:pointer" title="Ventes du rayon FRUITS ET LEGUMES − achats des fournisseurs de fruits et légumes − 3 % des ventes jetés (démarque), sans les stocks. Cliquez pour choisir les fournisseurs."><span class="lbl">Marge fruits et légumes</span><span class="v">${val}</span><span class="d">${d}</span></div>`;
   if(v.etat==="cours")return box("…","Lecture des ventes…");
   if(v.etat==="err")return box("—",esc(/connect|G20/i.test(v.err)?"Ventes : connexion G20 nécessaire":"Ventes illisibles"));
   if(!v.nj)return box("—","Pas de ventes ce mois");
   if(!ids.length)return box("—","Cliquez pour choisir les fournisseurs");
-  const mg=v.ca-ach,tx=v.ca?mg/v.ca:null;
-  return box(`${pct(tx)} <span class="vm">(${eur.format(mg)})</span>`,`Ventes ${eur.format(v.ca)} · achats ${eur.format(ach)}`,tx!=null&&tx<0?"alert":"")}
+  // v195 : 3 % des ventes jetés (démarque fruits et légumes, demande du gérant) retirés de la marge
+  const mg=v.ca-ach-v.ca*FL_DEM,tx=v.ca?mg/v.ca:null;
+  return box(`${pct(tx)} <span class="vm">(−3 % démarque)</span>`,`Ventes ${eur.format(v.ca)} · achats ${eur.format(ach)}`,tx!=null&&tx<0?"alert":"")}
+const FL_DEM=0.03;
 function flCfgOuvrir(){const y=S.year,m=S.month,st=monthStats(y,m),o=document.createElement("div");o.className="facov";o.id="flPop";
   const fill=()=>{const ids=new Set(flIds()),L=S.fourn.filter(f=>!f.supprime&&!isParent(f)).sort((a,b)=>((st.par||{})[b.id]||0)-((st.par||{})[a.id]||0)||String(a.nom).localeCompare(String(b.nom)));
     o.innerHTML=`<div class="facbox" style="max-width:520px"><div class="band" style="display:flex;justify-content:space-between;align-items:center">Marge fruits et légumes<button class="btn small" data-flx="1">Fermer</button></div><div style="padding:14px 16px">
-      <p class="sub" style="margin:0 0 10px">Ventes du rayon FRUITS ET LEGUMES (sans les fruits et légumes LS du rayon FRAIS) moins les achats des fournisseurs cochés, du mois affiché, en TTC. Les stocks ne sont pas comptés : un gros achat en fin de mois fait baisser le taux.</p>
+      <p class="sub" style="margin:0 0 10px">Ventes du rayon FRUITS ET LEGUMES (sans les fruits et légumes LS du rayon FRAIS) moins les achats des fournisseurs cochés, moins 3 % des ventes pour la démarque (produits jetés), du mois affiché, en TTC. Les stocks ne sont pas comptés : un gros achat en fin de mois fait baisser le taux.</p>
       <div class="sub" style="margin-bottom:6px"><b>Fournisseurs de fruits et légumes :</b></div>
       <div class="scroll" style="max-height:50vh">${L.map(f=>`<label style="display:flex;gap:10px;align-items:center;padding:5px 0;cursor:pointer"><input type="checkbox" data-flf="${esc(f.id)}"${ids.has(f.id)?" checked":""}> <span style="flex:1">${esc(f.nom)}</span><span class="sub">${(st.par||{})[f.id]?eur.format(st.par[f.id])+" ce mois":""}</span></label>`).join("")}</div></div></div>`};
   fill();
