@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="196">
+<meta name="gm-version" content="197">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=196;
+const APP_VERSION=197;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1230,8 +1230,8 @@ function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=mo
   const mo=[];for(let i=11;i>=0;i--){const d=new Date(+fin.slice(0,4),+fin.slice(5,7)-1-i,1),k=mkey(d.getFullYear(),d.getMonth()),k1=mkey(d.getFullYear()-1,d.getMonth()),sm=kk=>{const dd=S.mois[kk];return(Array.isArray(dd&&dd.demarque)?dd.demarque:[]).reduce((t,x)=>t+(+x.montant||0),0)};
     mo.push([["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."][d.getMonth()]+" "+String(d.getFullYear()).slice(2),sm(k),sm(k1),d.getMonth(),d.getFullYear()])}
   const tA=mo.reduce((t,x)=>t+x[1],0),tB=mo.reduce((t,x)=>t+x[2],0);
-  // v193 : 12 derniers mois en barres horizontales (demi-largeur) + à côté, top 10 des produits les plus jetés de l'année du mois affiché
-  h+=`<div class="grid two vtg dm12g" style="margin-top:12px"><div class="panel flush"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">total ${eur.format(tA)}${tB?" · N-1 "+eur.format(tB)+" ("+(tA>=tB?"+":"")+pct((tA-tB)/tB)+")":""}</span></div><div class="dm12w" style="padding:10px 14px 8px">${demMoisBarres(mo)}</div></div>${demTopAnnee(y,nbRel)}</div>`;
+  // v197 : retour au grand graphique des 12 derniers mois sur toute la largeur, sans le top 10 de l'année (demande du gérant ; demMoisBarres / demTopAnnee gardés, non appelés)
+  h+=`<div class="panel flush vtg" style="margin-top:12px"><div class="band">12 derniers mois <span class="hist" style="color:inherit;opacity:.85">total ${eur.format(tA)}${tB?" · N-1 "+eur.format(tB)+" ("+(tA>=tB?"+":"")+pct((tA-tB)/tB)+")":""}</span></div><div style="padding:12px 14px 8px">${demGraphe(mo)}</div></div>`;
   // tous les relevés du mois, en bas, chacun avec son détail déroulant
   h+=`<div class="vtg" style="margin-top:12px">${vDemarque(y,m,doc,st)}</div>`;
   return h}
