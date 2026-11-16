@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="195">
+<meta name="gm-version" content="196">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=195;
+const APP_VERSION=196;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -744,7 +744,7 @@ async function mailTester(){const v=id=>(document.getElementById(id)||{}).value|
   try{await window.api.mailRegler(R);
     const t=await window.api.mailTester();const manque=R.dossiers.map(x=>x.trim().toUpperCase()).filter(x=>x&&!t.dossiers.includes(x));
     MAILX.msg="✓ Connexion réussie. Dossiers lus : "+esc(t.dossiers.join(", "))+(manque.length?"<br>⚠️ Introuvable dans la boîte : "+esc(manque.join(", "))+" (dossiers existants : "+esc(t.tous.join(", "))+")":"");
-    MAILX.busy=false;await mailCharger();if(MAILX.info&&MAILX.info.actif)mailRelever();return}
+    MAILX.busy=false;await mailCharger();if(MAILX.info&&MAILX.info.actif&&!manque.length)mailRelever();return} /* v196 : dossier introuvable → on garde le message (avant : effacé par « Relève faite ») */
   catch(e){MAILX.msg="⚠️ "+esc(String(e.message||"Connexion impossible").replace(/^Error invoking remote method '[^']*': (Error: )?/,"")+(/non réglé/.test(e.message||"")?" : tapez le mot de passe pour logiciels dans la case (le texte gris n'est qu'un exemple).":""))}MAILX.busy=false;MAILX.force=true;await mailCharger()}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-mail]");if(!b)return;const k=b.dataset.mail;
   if(k==="ouvrir"){S.modal=false;render();mailOuvrir()}else if(k==="exp"){MAILX.exp=true;MAILX.fx=MAILX.fx||"todo";MAILX.force=true;mailExpRender()}else if(k==="expx"){MAILX.exp=false;mailExpRender()}else if(k==="fermer"){MAILX.exp=false;mailExpRender();mailFermer()}else if(k==="tester")mailTester();else if(k==="relever")mailRelever();else if(k==="dossier")window.api.mailOuvrirDossier()});
