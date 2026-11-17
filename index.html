@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=197;
+const APP_VERSION=198;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1950,6 +1950,10 @@ async function facScan(silent){
       if(r.decoupe){r.remplacer=true;if(r.etatSaisie==="vide"){const pt=facPeriodeTapee(r,(r.lignes||[]).map(l=>({date:l.date,col:l.col||r.fid})));
         if(pt.length){r.etatSaisie="diff";r.dejaAutre=pt.map(x=>{const v=S.mois[x.date.slice(0,7)].jours[x.date.slice(8,10)].achats[x.col];return frDate(x.date)+" : "+n2.format(v)+" €"});
           r.anom=pt.map(x=>{const v=S.mois[x.date.slice(0,7)].jours[x.date.slice(8,10)].achats[x.col];return frDate(x.date)+" : "+n2.format(v)+" € saisi un jour sans livraison sur la facture"})}}}
+      // v198 (17/11/2026, demande du gérant) : la facture (dossier de la comptable OU boîte mail) PRÉVAUT toujours sur ce qui est tapé à la main.
+      // Montant différent (ou tapé un autre jour de la période pour Saint Prim / CDPO) : la facture remplace la saisie toute seule, PDF accroché.
+      // Remplace la règle v119-v121 (« Factures à traiter » avec Valider / Refuser). Les cumuls de la v127 (« ajout ») ne changent pas.
+      if(r.etatSaisie==="diff"&&r.type!=="avoir"){r.etatSaisie="remplace";r.remplacer=true}
       if(!old&&r.etatSaisie==="diff")r.ok=false;
       r.deja=(r.lignes||[]).map(l=>{const col=l.col||r.fid,doc=S.mois[String(l.date).slice(0,7)],v=col&&doc&&doc.jours&&doc.jours[String(l.date).slice(8,10)]&&doc.jours[String(l.date).slice(8,10)].achats&&doc.jours[String(l.date).slice(8,10)].achats[col];return v?frDate(l.date)+" : "+n2.format(v)+" €":null}).filter(Boolean);
       if(r.dejaAutre)r.deja=(r.deja||[]).concat(r.dejaAutre);
@@ -2117,7 +2121,7 @@ async function facImporter(auto,only){
   const sans=L.filter(r=>r.lignes&&!r.lignes.length&&r.saisi==null);if(sans.length){toast("Montant ou date manquant pour "+sans.length+" facture(s) : complétez ou décochez");return}}
   const nf=[...new Set(L.filter(r=>r.choix==="__new__").map(r=>r.dossier))];
   if(!auto&&!only&&!await askConfirm("Importer "+L.length+" facture(s) dans "+storeNom()+" ?"+(nf.length?"\n\nNouveau(x) fournisseur(s) créé(s) : "+nf.join(", "):"")+"\n\nLes montants s'ajoutent aux cases de la saisie (jour de la facture, ou jour de livraison pour les factures regroupées)."))return;
-  HIST.lastT=Date.now();let nOk=0,nAv=0,nDeja=0;const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{}),crees={};S.fac.imp=true;
+  HIST.lastT=Date.now();let nOk=0,nAv=0,nDeja=0,nRep=0;const ecrits=new Set();const liens=Object.assign({},(S.facReg&&S.facReg.liens)||{}),crees={};S.fac.imp=true;
   try{
     for(const r of L){let fid=r.choix;
       if(fid==="__new__"){const k=FAC.nk(r.dossier);fid=crees[k]||(crees[k]=await facCreerFourn(r.dossier))}
@@ -2128,7 +2132,11 @@ async function facImporter(auto,only){
       const dejaSaisie=r.etatSaisie==="egal"&&r.saisi==null&&!only; // v92 : déjà dans la saisie : rien à écrire
       // v98 : facture regroupée : on efface d'abord ce qui a été tapé à la main pour ce fournisseur sur toute la période (le jour tapé n'est pas toujours celui du bon de livraison)
       const efface=r.decoupe&&r.saisi==null&&!dejaSaisie?facPeriodeTapee(r,lignes):[];
-      if(r.type==="avoir"){/* v124 : avoir séparé : rien dans la saisie */}else if(dejaSaisie){nDeja++;if(efface.length)await facEcrire(efface,true)}else await facEcrire(lignes.concat(efface),!!r.remplacer||efface.length>0);
+      // v198 : deux factures du même passage pour une même case remplie à la main : la 1re remplace, la suivante s'ajoute (pas d'écrasement)
+      const rep=r.etatSaisie==="remplace"&&!only;let remp=!!r.remplacer||efface.length>0;
+      if(rep&&!r.decoupe&&lignes.every(l=>ecrits.has(l.date+"|"+l.col)))remp=false;
+      if(r.type==="avoir"){/* v124 : avoir séparé : rien dans la saisie */}else if(dejaSaisie){nDeja++;if(efface.length)await facEcrire(efface,true)}else{await facEcrire(lignes.concat(efface),remp);if(rep)nRep++}
+      for(const l of lignes)ecrits.add(l.date+"|"+l.col);
       const total=lignes.reduce((s,l)=>s+l.montant,0);
       await S.db.doc(P("factures/"+r.key)).set({dj:dejaSaisie?1:0,s:"i",av:r.type==="avoir"?2:0,id:facIdent(Object.assign({},r,{total:r.saisi!=null?(r.type==="avoir"?-Math.abs(r.saisi):r.saisi):r.total})),f:fid,d:r.date||"",m:Math.round(total*100)/100,n:r.nom,r:r.rel,j:r.type==="avoir"?[]:[...new Set(lignes.map(l=>l.date+"|"+l.col))],le:todayISO()});
       // avoirs lus : document d'avoir, ou partie « avoirs » d'une facture DIAPAR (déjà déduite du total)
@@ -2141,7 +2149,7 @@ async function facImporter(auto,only){
       nOk++}
     const ref=S.db.doc(P("reglages/factures"));if(S.facReg)await ref.update({liens});else await ref.set({depart:facDepart()||todayISO(),liens});
     const done=new Set(L.map(r=>r.rel));S.fac.liste=S.fac.liste.filter(r=>!done.has(r.rel));
-    const msg=(nOk-nDeja)+" facture(s) importée(s)"+(auto?" automatiquement":"")+(nDeja?", "+nDeja+" déjà dans la saisie":"")+(nAv?", "+nAv+" avoir(s) lu(s)":"")+(Object.keys(crees).length?", "+Object.keys(crees).length+" fournisseur(s) créé(s)":"");
+    const msg=(nOk-nDeja)+" facture(s) importée(s)"+(auto?" automatiquement":"")+(nRep?" (dont "+nRep+" à la place de montants tapés à la main)":"")(nDeja?", "+nDeja+" déjà dans la saisie":"")+(nAv?", "+nAv+" avoir(s) lu(s)":"")+(Object.keys(crees).length?", "+Object.keys(crees).length+" fournisseur(s) créé(s)":"");
     S.fac.dernierImport={le:new Date().toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}),msg};
     toast(msg);facRender();facBadge();render()}
   catch(e){fail(e)}
