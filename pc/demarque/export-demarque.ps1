@@ -1,13 +1,13 @@
 ﻿# GES - export automatique de la demarque Videor (LECTURE SEULE de la base SQL Server de Videor)
 # Lit les releves "Casses et Demarques" (table DOCUMENTS, TYPDOC = 'Q') et leurs produits (LIGNES_DOCUMENT),
 # puis ecrit :
-#  - C:\transfert\demarque\demarque.csv (meme format que l'export Videor, pour controle)
+#  - Documents\CLAUDE CODE\DEMARQUE\demarque.csv (meme format que l'export Videor, pour controle)
 #  - demarque-videor.json dans le dossier des donnees de GESMAR (lu automatiquement par GESMAR)
 # Aucune ecriture dans la base : seulement des SELECT, sans verrou (READ UNCOMMITTED), connexion en lecture seule.
 param([int]$Jours = 62, [string]$Depuis = '')
 $ErrorActionPreference = 'Stop'
 $inv = [Globalization.CultureInfo]::InvariantCulture
-$dossier = 'C:\transfert\demarque'
+$dossier = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'CLAUDE CODE\DEMARQUE'  # hors des dossiers de Videor
 New-Item -ItemType Directory -Force -Path $dossier | Out-Null
 $log = Join-Path $dossier 'export-demarque.log'
 function Log($m) { $l = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') + '  ' + $m; Add-Content -Path $log -Value $l -Encoding UTF8; Write-Host $l }
