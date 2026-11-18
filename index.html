@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="201">
+<meta name="gm-version" content="202">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=201;
+const APP_VERSION=202;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1439,23 +1439,36 @@ function demVideorLire(t){const L=String(t).replace(/^\ufeff/,"").split(/\r?\n/)
       (LG[n]=LG[n]||[]).push([iE>=0?(c[iE]||"").trim().replace(/^0+(?=\d{8})/,""):"",iC>=0?String(+(c[iC]||"").trim()||(c[iC]||"").trim()):"",des,Math.round(q*1000)/1000,Math.round(tl*100)/100])}}
   Object.values(R).forEach(r=>r.l=LG[r.n]||[]);
   return Object.values(R).sort((a,b)=>a.date.localeCompare(b.date)||a.n.localeCompare(b.n))}
-async function demVideorImporter(t){const R=demVideorLire(t);if(!R){toast("Ce fichier n'est pas un export « Casses et Démarques » de Videor (colonnes NODOC, DATE_DOC, TOT_TTC)");return}
-  if(!R.length){toast("Aucun relevé dans ce fichier");return}
+async function demVideorImporter(t,auto){const R=demVideorLire(t);if(!R){if(auto)return;toast("Ce fichier n'est pas un export « Casses et Démarques » de Videor (colonnes NODOC, DATE_DOC, TOT_TTC)");return}
+  if(!R.length){if(!auto)toast("Aucun relevé dans ce fichier");return}
   const mags=[...new Set(R.map(r=>FAC.magasin(r.raisoc||"")).filter(Boolean))];
+  if(auto&&(mags.length>1||(mags.length&&mags[0]!==S.store)))return; /* v202 : lecture automatique : seulement le magasin ouvert */
   if(mags.length>1){toast("Ce fichier mélange plusieurs magasins : exportez-les séparément");return}
   if(mags.length&&mags[0]!==S.store){const g=S.magasins.find(x=>x.id===mags[0]);toast("Ce fichier concerne "+(g?g.nom:mags[0])+" : changez de magasin (maison) puis réimportez");return}
   // où est déjà chaque relevé (tous les mois du magasin)
   const ou={};Object.entries(S.mois).forEach(([k,d])=>{(Array.isArray(d&&d.demarque)?d.demarque:[]).forEach((x,i)=>{if(x&&x.videor)ou[demNo(x.videor)]={k,i,x}})});
   const nouv=R.filter(r=>!ou[demNo(r.n)]),modif=R.filter(r=>{const o=ou[demNo(r.n)];return o&&(o.x.date!==r.date||Math.abs((+o.x.montant||0)-r.ttc)>0.004)}); // v189 : « 0000000339 » = « 339 »
-  const dt=R.some(r=>r.l.length)?await demDetailEnvoyer(R):null; // v186 : détail des produits (table en ligne, à part)
+  if(auto&&!nouv.length&&!modif.length)return true;
+  const RD=auto?nouv.concat(modif):R; /* v202 : en automatique, détail envoyé seulement pour les relevés nouveaux ou modifiés */
+  const dt=RD.some(r=>r.l.length)?await demDetailEnvoyer(RD):null; // v186 : détail des produits (table en ligne, à part)
   if(!nouv.length&&!modif.length){toast("Démarque Videor déjà à jour ("+R.length+" relevé(s) déjà importé(s))"+(dt&&dt.ok?" · détail des produits enregistré ("+dt.n+" lignes)":dt&&dt.err?" · détail des produits non enregistré : "+dt.err:""));render();return}
   const tot=nouv.reduce((s,r)=>s+r.ttc,0),mois=[...new Set(nouv.concat(modif).map(r=>r.date.slice(0,7)))].sort().map(k=>MOIS[+k.slice(5)-1].toLowerCase()+" "+k.slice(0,4));
-  if(!await askConfirm("Importer la démarque Videor dans "+storeNom()+" ?\n\n"+nouv.length+" nouveau(x) relevé(s) : "+eur2.format(tot)+" TTC"+(modif.length?"\n"+modif.length+" relevé(s) modifié(s) dans Videor : corrigé(s)":"")+(R.length-nouv.length-modif.length?"\n"+(R.length-nouv.length-modif.length)+" déjà importé(s) : ignoré(s)":"")+"\n\nMois : "+mois.join(", ")))return;
+  if(!auto&&!await askConfirm("Importer la démarque Videor dans "+storeNom()+" ?\n\n"+nouv.length+" nouveau(x) relevé(s) : "+eur2.format(tot)+" TTC"+(modif.length?"\n"+modif.length+" relevé(s) modifié(s) dans Videor : corrigé(s)":"")+(R.length-nouv.length-modif.length?"\n"+(R.length-nouv.length-modif.length)+" déjà importé(s) : ignoré(s)":"")+"\n\nMois : "+mois.join(", ")))return;
   const parMois={};const get=k=>parMois[k]||(parMois[k]=(Array.isArray(S.mois[k]&&S.mois[k].demarque)?S.mois[k].demarque:[]).slice());
   for(const r of modif){const o=ou[demNo(r.n)],a=get(o.k);const i=a.findIndex(x=>x&&demNo(x.videor)===demNo(r.n));if(i>=0)a.splice(i,1)}
   for(const r of nouv.concat(modif))get(r.date.slice(0,7)).push({date:r.date,motif:"Videor",detail:"Relevé n° "+String(+r.n||r.n),montant:r.ttc,videor:r.n});
   try{HIST.lastT=Date.now();for(const[k,a]of Object.entries(parMois)){const ref=S.db.doc(P("mois/"+k));if(S.mois[k])await ref.update({demarque:a});else await ref.set({annee:+k.slice(0,4),mois:+k.slice(5,7),jours:{},demarque:a})}
-    toast("Démarque Videor : "+nouv.length+" relevé(s) ajouté(s)"+(modif.length?", "+modif.length+" corrigé(s)":""));render()}catch(e){fail(e)}}
+    toast("Démarque Videor"+(auto?" (lue automatiquement)":"")+" : "+nouv.length+" relevé(s) ajouté(s)"+(modif.length?", "+modif.length+" corrigé(s)":""));render();return true}catch(e){fail(e)}}
+/* v202 : démarque Videor lue AUTOMATIQUEMENT. Une tâche Windows (GES-demarque-Videor : export-demarque.ps1, lecture seule de la base SQL Server de Videor,
+   tables DOCUMENTS TYPDOC='Q' + LIGNES_DOCUMENT) écrit toutes les heures le fichier « demarque-videor.json » dans le dossier des données de GESMAR
+   ({v, quand, base, mag, depuis, nb, csv} ; csv = même format que l'export « Casses et Démarques »). GESMAR le lit (window.api.load, sans réinstallation)
+   et l'importe sans question pour le magasin ouvert : relevés nouveaux ajoutés, modifiés corrigés, jamais en double (n° de relevé). */
+let DEMA_BUSY=false;
+async function demAuto(){if(DEMA_BUSY||!PC||!S.db||!S.store||S.avOk!==S.store||!S.fourn.length)return;let t=null;try{t=window.api.load("demarque-videor")}catch(e){return}if(!t)return;
+  let o;try{o=JSON.parse(t)}catch(e){return}if(!o||!o.csv||!o.quand||(o.mag&&o.mag!==S.store))return;
+  const cle="gesmar-dem-auto-"+S.store;if(rawLoad(cle)===String(o.quand))return;
+  DEMA_BUSY=true;try{if(await demVideorImporter(o.csv,true))rawSave(cle,String(o.quand))}catch(e){console.error(e)}finally{DEMA_BUSY=false}}
+if(window.api&&typeof window.api.load==="function"){setTimeout(demAuto,30000);setInterval(demAuto,10*60000)}
 async function addDemarque(){
   const v=parseNum($("#demMontant").value);if(!(v>0)){toast("Montant illisible : par ex. 12,50");return}
   const date=$("#demDate").value;if(!date){toast("Choisissez une date");return}
