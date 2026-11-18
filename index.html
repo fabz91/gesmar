@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="199">
+<meta name="gm-version" content="200">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=199;
+const APP_VERSION=200;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1021,12 +1021,12 @@ function vInventaires(y){
   const lastInv=inv[inv.length-1];const today=todayISO();
   const cur=lastInv&&lastInv.date<today?periodStats(lastInv.date,today):null;
   const curT=cur&&cur.ca?(cur.ca-cur.achats+cur.avoirs)/cur.ca:null;
-  return `<div class="panel flush"><div class="band">Inventaires et marge réelle<button class="pillbtn" data-act="focusInv">+ Inventaire</button></div>
+  return `<div class="panel flush"><div class="band">Inventaires et marge réelle<button class="pillbtn" data-act="focusInv">+ Inventaire</button><button class="pillbtn" data-act="invVideor" title="Lire un fichier d'inventaire exporté de Videor (CSV)">📂 Importer un inventaire Videor</button></div>
   <div style="padding:14px 16px 4px">
     <form id="invForm" class="row" style="margin-bottom:12px">
       <label class="lbl" for="invDate">Date</label><input id="invDate" type="date" value="${esc(S.invDraft&&S.invDraft.date||"")}" required>
-      <label class="lbl" for="invVal">Stock TTC (€)</label><input id="invVal" inputmode="decimal" placeholder="Ex. 185 000" style="width:130px" required>
-      <input id="invNote" placeholder="Note (facultatif)" style="flex:1;min-width:140px">
+      <label class="lbl" for="invVal">Stock TTC (€)</label><input id="invVal" inputmode="decimal" placeholder="Ex. 185 000" style="width:130px" value="${esc(S.invDraft&&S.invDraft.valeur||"")}" required>
+      <input id="invNote" placeholder="Note (facultatif)" style="flex:1;min-width:140px" value="${esc(S.invDraft&&S.invDraft.note||"")}">
       <button class="btn red" type="submit">Enregistrer l'inventaire</button></form>
   </div>
   ${inv.length?`<div class="scroll"><table>
@@ -1038,6 +1038,7 @@ function vInventaires(y){
       ${cur?`<tr class="muted"><td class="l">${frDate(lastInv.date)} → aujourd'hui</td><td>${eur.format(+lastInv.valeur||0)}</td><td>?</td><td>—</td><td>${eur.format(cur.ca)}</td><td>${eur.format(cur.achats)}</td><td>${pct(curT)}</td><td>au prochain inventaire</td><td>${cur.demarque?eur.format(cur.demarque):"—"}</td><td>—</td><td></td></tr>`:""}
     </tbody></table></div>
     <div class="foot">Inventaires saisis : ${inv.map(i=>`<span style="white-space:nowrap">${frDate(i.date)} = <b>${eur.format(+i.valeur||0)}</b>${i.note?` (${esc(i.note)})`:""} ${S.confirmInv===i.id?`<button class="btn small danger" data-invdel="${esc(i.id)}">Confirmer</button>`:`<button class="btn small" data-invask="${esc(i.id)}" aria-label="Supprimer l'inventaire du ${frDate(i.date)}">×</button>`}</span>`).join(" · ")}${inv.length===1?" — saisissez le prochain inventaire pour obtenir la marge réelle de la période.":""}</div>`
+  +invRayonsHtml(inv)
   :`<div class="foot" style="padding-bottom:14px">Aucun inventaire saisi. Commencez par le dernier inventaire annuel (ou le stock à l'ouverture), puis ajoutez chaque nouvel inventaire.</div>`}
   </div>`;
 }
@@ -1473,8 +1474,37 @@ async function addInventaire(){
   const date=$("#invDate").value,v=parseNum($("#invVal").value);
   if(!date){toast("Choisissez la date de l'inventaire");return}
   if(v==null||Number.isNaN(v)||v<0){toast("Valeur illisible : par ex. 185000 ou 185 000,00");return}
-  try{await S.db.doc(P("inventaires/"+date)).set({date,valeur:v,note:$("#invNote").value.trim()});toast("Inventaire du "+frDate(date)+" enregistré")}catch(e){fail(e)}
+  const body={date,valeur:v,note:$("#invNote").value.trim()},X=S.invImport;
+  if(X&&Math.abs(X.ttc-v)<0.01)Object.assign(body,{source:"videor",ht:X.ht,tva:X.tva,articles:X.n,rayons:X.rayons}); /* v200 : détail du fichier Videor gardé */
+  try{await S.db.doc(P("inventaires/"+date)).set(body);S.invImport=null;S.invDraft=null;toast("Inventaire du "+frDate(date)+" enregistré pour "+storeNom());render()}catch(e){fail(e)}
 }
+/* v200 : import d'un inventaire exporté de Videor (CSV « Code Four.;Dpt;Ray.;…;Montant TVA;Qté;Anomalie;P.Achat;TOTAL P.Achat », une ligne par article).
+   Valeur du stock = TTC au prix d'achat = somme(TOTAL P.Achat + Montant TVA), comme les achats de GESMAR (TTC). Le fichier n'a ni date ni magasin :
+   le formulaire est rempli (date = 31/12 de l'année du nom du fichier, ex. inventaire_2024.csv → 31/12/2024 : inventaire compté au début de l'année suivante),
+   le gérant vérifie puis « Enregistrer l'inventaire » (magasin ouvert). Détail par rayon gardé (rayons). */
+function invVideorLire(t){const L=String(t).replace(/^\ufeff/,"").split(/\r?\n/).filter(x=>x.trim());if(L.length<2)return null;
+  const H=L[0].split(";").map(x=>x.trim().toUpperCase()),ix=n=>H.indexOf(n),iT=ix("TOTAL P.ACHAT"),iV=ix("MONTANT TVA"),iR=ix("RAY."),iQ=ix("QTÉ")>=0?ix("QTÉ"):ix("QTE");
+  if(iT<0||iV<0)return null;const nb=x=>{const v=parseFloat(String(x||"").replace(",","."));return isFinite(v)?v:0};
+  const r={ht:0,tva:0,n:0,rayons:{}};
+  for(const l of L.slice(1)){const c=l.split(";"),ht=nb(c[iT]),tv=nb(c[iV]);if(!ht&&!tv)continue;r.ht+=ht;r.tva+=tv;if(iQ<0||nb(c[iQ]))r.n++;
+    const k=(iR>=0?(c[iR]||"").trim():"")||"AUTRES";r.rayons[k]=(r.rayons[k]||0)+ht+tv}
+  const R2=v=>Math.round(v*100)/100;r.ht=R2(r.ht);r.tva=R2(r.tva);r.ttc=R2(r.ht+r.tva);for(const k in r.rayons)r.rayons[k]=R2(r.rayons[k]);return r}
+function invVideorChoisir(){const inp=document.createElement("input");inp.type="file";inp.accept=".csv,text/csv,.txt";
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;
+    try{const buf=await f.arrayBuffer();let t;try{t=new TextDecoder("utf-8",{fatal:true}).decode(buf)}catch(_){t=new TextDecoder("windows-1252").decode(buf)}
+      const r=invVideorLire(t);if(!r){toast("Ce fichier n'est pas un inventaire Videor (colonnes « TOTAL P.Achat » et « Montant TVA » introuvables)");return}
+      const an=(String(f.name).match(/(20\d\d)/)||[])[1],d=an?an+"-12-31":(S.invDraft&&S.invDraft.date)||"";
+      S.invImport=r;S.invDraft={date:d,valeur:n2.format(r.ttc),note:"Inventaire Videor "+(an||"")+" ("+r.n+" articles, "+n2.format(r.ht)+" € HT)"};render();
+      toast("Inventaire lu : "+eur2.format(r.ttc)+" TTC au prix d'achat. Vérifiez la date puis « Enregistrer l'inventaire » ("+storeNom()+").");
+      const i=$("#invDate");i&&i.scrollIntoView({block:"center"})}
+    catch(e){console.error(e);toast("Lecture du fichier impossible")}};inp.click()}
+function invRayonsHtml(inv){const L=inv.filter(i=>i.rayons&&Object.keys(i.rayons).length).slice(-3);if(!L.length)return "";
+  const ks=[...new Set(L.flatMap(i=>Object.keys(i.rayons)))].sort((a,b)=>(L[L.length-1].rayons[b]||0)-(L[L.length-1].rayons[a]||0));
+  const nm=k=>String(k).replace(/^\d+\s*-\s*/,""),two=L.length>=2,a=L[L.length-2],b=L[L.length-1];
+  return `<details class="foot" style="padding-top:0"><summary style="cursor:pointer"><b>Détail par rayon</b> (inventaires Videor, TTC prix d'achat)</summary><div class="scroll"><table>
+    <thead><tr><th class="l">Rayon</th>${L.map(i=>`<th>${frDate(i.date)}</th>`).join("")}${two?"<th>Variation</th>":""}</tr></thead>
+    <tbody>${ks.map(k=>{const d=two?(b.rayons[k]||0)-(a.rayons[k]||0):0;return `<tr><td class="l">${esc(nm(k))}</td>${L.map(i=>`<td>${i.rayons[k]?eur.format(i.rayons[k]):"—"}</td>`).join("")}${two?`<td class="${d>=0?"pos":"neg"}">${(d>=0?"+":"")+eur.format(d)}</td>`:""}</tr>`}).join("")}
+    <tr class="tot"><td class="l">Total</td>${L.map(i=>`<td>${eur.format(+i.valeur||0)}</td>`).join("")}${two?`<td>${((b.valeur-a.valeur)>=0?"+":"")+eur.format((+b.valeur||0)-(+a.valeur||0))}</td>`:""}</tr></tbody></table></div></details>`}
 // v77 : « + Fournisseur » : on choisit un fournisseur de l'onglet Fournisseurs (on ne crée plus de fournisseur depuis la saisie)
 // v117 : « + Fournisseur » : liste à cocher de TOUS les fournisseurs actifs (coché = colonne dans la saisie du mois).
 // Tout cocher / Tout décocher ; un fournisseur qui a des montants ce mois reste coché (grisé). Épicerie, A/A, Frais restent toujours.
@@ -1568,6 +1598,7 @@ document.addEventListener("click",async e=>{
   if(act==="focusDem"){const i=$("#demMontant");i&&i.focus()}
   if(act==="demVideor")demVideorChoisir();
   if(act==="focusInv"){const i=$("#invDate");i&&i.focus()}
+  if(act==="invVideor")invVideorChoisir(); /* v200 */
   if(act==="recap")copyRecap();
   if(act==="showN1"){S.showN1=true;render()}
 });
