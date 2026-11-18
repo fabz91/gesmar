@@ -186,8 +186,9 @@ function textes(bs) {
     if (!Array.isArray(b)) return;
     if (Array.isArray(b[0])) { for (let i = 0; i < b.length && Array.isArray(b[i]); i++) visite(b[i], (num ? num + '.' : '') + (i + 1)); return; }
     const type = String(b[0] || '').toLowerCase(), sous = String(b[1] || '').toLowerCase();
+    if (type === 'message' && sous === 'rfc822') { const c = b[8]; if (Array.isArray(c)) visite(c, Array.isArray(c[0]) ? (num || '1') : (num || '1') + '.1'); return; } // mail transféré « en pièce jointe »
     if (type !== 'text' || (sous !== 'plain' && sous !== 'html')) return;
-    for (const x of b.slice(7)) if (Array.isArray(x) && /^attachment$/i.test(String(x[0] || ''))) return; // pièce jointe .txt / .html : pas le texte du mail
+    for (const x of b.slice(7)) if (Array.isArray(x) && /^attachment$/i.test(String(x[0] || ''))) return;
     out.push({ num: num || '1', sous, enc: String(b[5] || '').toLowerCase(), cs: kvl(b[2]).charset || '' });
   };
   visite(bs, '');
@@ -205,6 +206,13 @@ function texteDe(v, p) {
       .replace(/&([a-z]+);/gi, (m, n) => ENT[n] != null ? ENT[n] : m);
   }
   return t.replace(/\r/g, '').replace(/[ \t ]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+}
+// Sujets des mails transférés « en pièce jointe » (message/rfc822 : enveloppe en champ 8)
+function sujetsJoints(bs) {
+  const out = [];
+  const visite = (b) => { if (!Array.isArray(b)) return; if (Array.isArray(b[0])) { for (let i = 0; i < b.length && Array.isArray(b[i]); i++) visite(b[i]); return; }
+    if (/^message$/i.test(String(b[0] || '')) && /^rfc822$/i.test(String(b[1] || ''))) { if (Array.isArray(b[7])) out.push(mime2(txt(b[7][1]))); visite(b[8]); } };
+  visite(bs); return out;
 }
 // Sujet → type de mail de retour DIAPAR + n° de reprise (null si ce n'est pas un mail de retour)
 //   « Confirmation de votre demande de reprise - N » (noreply@diapar.com) : produits, DLC, motif, unités
@@ -258,4 +266,4 @@ const MOIS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oc
 function dateImap(iso) { const [y, m, d] = String(iso).split('-'); return (+d) + '-' + MOIS[+m - 1] + '-' + y; }
 function isoDe(internal) { const m = /(\d{1,2})-(\w{3})-(\d{4})/.exec(internal || ''); if (!m) return ''; return m[3] + '-' + String(MOIS.indexOf(m[2]) + 1).padStart(2, '0') + '-' + m[1].padStart(2, '0'); }
 
-module.exports = { ImapLecture, parse, expediteur, sujet, pdfs, decoder, dateImap, isoDe, mime2, textes, texteDe, retourType, retourDiapar };
+module.exports = { ImapLecture, parse, expediteur, sujet, pdfs, decoder, dateImap, isoDe, mime2, textes, texteDe, retourType, retourDiapar, sujetsJoints };

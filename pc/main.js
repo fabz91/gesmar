@@ -189,8 +189,9 @@ function mailChoix(L, c) {
 // 1.7.0 : retours DIAPAR faits sur internet. Le texte des mails « demande de reprise / Réexpédition Marchandise / Produits Repris »
 // est lu (BODY.PEEK, lecture seule) quel que soit l'expéditeur (même « Ignorer »), et rangé dans mail.json (retours) ; la page en fait des déclarations d'avoir.
 function retourMag(env, c) {
-  const adr = [5, 6].map(i => (env && env[i]) || []).flat().map(a => Array.isArray(a) ? MAIL.mime2(String(a[2] || '') + '@' + String(a[3] || '')) : '').join(' ') + ' ' + (c.user || '');
-  return /clamart/i.test(adr) ? 'clamart' : /bredis/i.test(adr) ? 'bredis' : '';
+  // d'abord l'adresse de la boîte lue (un même mail envoyé aux deux magasins va à chacun), puis les destinataires
+  const mag = (t) => /clamart/i.test(t) ? 'clamart' : /bredis/i.test(t) ? 'bredis' : '';
+  return mag(c.user || '') || mag([5, 6].map(i => (env && env[i]) || []).flat().map(a => Array.isArray(a) ? String(a[2] || '') + '@' + String(a[3] || '') : '').join(' '));
 }
 async function retourLire(m, h, rt, su, iso, c, retours) {
   let r = null;
@@ -228,7 +229,9 @@ async function mailReleve(prog) {
         if (prog) prog({ dossier: d.lib, n: uids.length });
         const H = await m.entetes(uids);
         for (const h of H) {
-          const k = pre + h.uid, deja = faits[k], su = MAIL.sujet(h.env), rt = MAIL.retourType(su), iso = MAIL.isoDe(h.date);
+          const k = pre + h.uid, deja = faits[k], iso = MAIL.isoDe(h.date);
+          let su = MAIL.sujet(h.env), rt = MAIL.retourType(su);
+          if (!rt) for (const sj of MAIL.sujetsJoints(h.bs)) { const t = MAIL.retourType(sj); if (t) { su = sj; rt = t; break; } } // retour transféré « en pièce jointe »
           if (rt) { // retour DIAPAR : texte lu, pas de PDF téléchargé (bon de réexpédition), pas dans la liste des expéditeurs
             if (!rfaits[k]) { try { await retourLire(m, h, rt, su, iso, c, retours); rfaits[k] = 1; faits[k] = 1; res.retours++; } catch (er) { console.error(er); } }
             else faits[k] = 1;
