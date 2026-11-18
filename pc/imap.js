@@ -1,5 +1,6 @@
 'use strict';
 // GESMAR 1.6.0 - factures reçues par mail : lecture d'une boîte mail en IMAP, LECTURE SEULE.
+// GESMAR 1.7.0 - et le texte des mails de retour DIAPAR (demandes de reprise faites sur internet).
 // - Les dossiers sont ouverts avec EXAMINE (lecture seule pour le serveur) et les pièces jointes lues avec BODY.PEEK
 //   (le mail n'est pas marqué comme lu). Liste blanche de commandes : rien d'autre ne peut partir vers le serveur
 //   (pas de STORE, COPY, MOVE, EXPUNGE, DELETE, APPEND…) : impossible de supprimer, déplacer ou modifier un mail.
@@ -177,8 +178,84 @@ function decoder(v, enc) {
   if (enc === 'quoted-printable') return Buffer.from(b.toString('latin1').replace(/=\r?\n/g, '').replace(/=([0-9A-F]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16))), 'latin1');
   return b;
 }
+// ===== 1.7.0 : retours de marchandise DIAPAR faits sur internet (mails sans facture) =====
+// Parties texte du mail (text/plain, text/html), hors pièces jointes : [{num, sous, enc, cs}]
+function textes(bs) {
+  const out = [];
+  const visite = (b, num) => {
+    if (!Array.isArray(b)) return;
+    if (Array.isArray(b[0])) { for (let i = 0; i < b.length && Array.isArray(b[i]); i++) visite(b[i], (num ? num + '.' : '') + (i + 1)); return; }
+    const type = String(b[0] || '').toLowerCase(), sous = String(b[1] || '').toLowerCase();
+    if (type !== 'text' || (sous !== 'plain' && sous !== 'html')) return;
+    for (const x of b.slice(7)) if (Array.isArray(x) && /^attachment$/i.test(String(x[0] || ''))) return; // pièce jointe .txt / .html : pas le texte du mail
+    out.push({ num: num || '1', sous, enc: String(b[5] || '').toLowerCase(), cs: kvl(b[2]).charset || '' });
+  };
+  visite(bs, '');
+  return out.sort((a, b) => (a.sous === 'plain' ? 0 : 1) - (b.sous === 'plain' ? 0 : 1));
+}
+const ENT = { nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", eacute: 'é', egrave: 'è', ecirc: 'ê', agrave: 'à', acirc: 'â', ccedil: 'ç', ocirc: 'ô', ucirc: 'û', ugrave: 'ù', icirc: 'î', iuml: 'ï', euml: 'ë', Eacute: 'É', Egrave: 'È', laquo: '«', raquo: '»', rsquo: '’', lsquo: '‘', hellip: '…', euro: '€', deg: '°' };
+// Texte lisible d'une partie (décodée, jeu de caractères, HTML retiré)
+function texteDe(v, p) {
+  const b = decoder(v, p.enc);
+  let t = /utf-?8/i.test(p.cs) || !p.cs ? b.toString('utf8') : b.toString('latin1');
+  if (!p.cs && /�/.test(t)) t = b.toString('latin1');
+  if (p.sous === 'html') {
+    t = t.replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>|<\/(p|div|li|tr|h\d|table)>|<li[^>]*>/gi, '\n').replace(/<[^>]+>/g, ' ')
+      .replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/&#x([0-9a-f]+);/gi, (m, n) => String.fromCharCode(parseInt(n, 16)))
+      .replace(/&([a-z]+);/gi, (m, n) => ENT[n] != null ? ENT[n] : m);
+  }
+  return t.replace(/\r/g, '').replace(/[ \t ]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+}
+// Sujet → type de mail de retour DIAPAR + n° de reprise (null si ce n'est pas un mail de retour)
+//   « Confirmation de votre demande de reprise - N » (noreply@diapar.com) : produits, DLC, motif, unités
+//   « Confirmation de Réexpédition Marchandise - N » (palletexpress) : quantité acceptée sur demandée
+//   « Notification de Réexpédition Marchandise - N » : « ne peut être traitée en ligne » → appeler le service client
+//   « Produits Repris - N » : récupérés par le chauffeur
+function retourType(sujet) {
+  const s = String(sujet || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+  let m;
+  if ((m = /demande de reprise\s*[-–:]\s*(\d{6,})/i.exec(s))) return { type: 'demande', num: m[1] };
+  if ((m = /Confirmation de Reexpedition Marchandise\s*[-–:]\s*(\d{6,})/i.exec(s))) return { type: 'confirme', num: m[1] };
+  if ((m = /Notification de Reexpedition Marchandise\s*[-–:]\s*(\d{6,})/i.exec(s))) return { type: 'notif', num: m[1] };
+  if ((m = /Produits Repris\s*[-–:]\s*(\d{6,})/i.exec(s))) return { type: 'repris', num: m[1] };
+  return null;
+}
+const dlcIso = (s) => { const m = /(\d{2})\/(\d{2})\/(\d{4})/.exec(s || ''); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
+// Lecture du texte : {type, num, produits:[{code, nom, dlc, motif, unites, acceptee, demandee}], horsLigne}
+function retourDiapar(sujet, texte) {
+  const r = retourType(sujet); if (!r) return null;
+  const T = String(texte || '').replace(/\s+/g, ' ');
+  r.produits = []; r.horsLigne = r.type === 'notif' && /ne peut (pas )?[eê]tre trait[ée]e en ligne|contacter le service client/i.test(T);
+  if (r.type === 'demande') {
+    // « PLIG: 678193 (nom) - Date de péremption: 25/06/2027 - Motif: Erreur de Commande - Unités: 72 », un bloc par produit
+    const B = T.split(/\bPLIG\s*:\s*/i).slice(1);
+    for (const b of B) {
+      const c = /^(\d{4,8})/.exec(b); if (!c) continue;
+      const nom = (/^\d+\s*\(([^)]*)\)/.exec(b) || [])[1] || '';
+      const fin = b.search(/Merci de v[ée]rifier|Cordialement|Si vous constatez/i), x = fin > 0 ? b.slice(0, fin) : b;
+      const motif = ((/Motif\s*:\s*(.+?)(?=\s*-?\s*(Unit[ée]s|Quantit|Date de p|$))/i.exec(x) || [])[1] || '').trim();
+      const un = (/Unit[ée]s\s*:\s*(\d+)/i.exec(x) || [])[1];
+      r.produits.push({ code: c[1], nom: nom.trim(), dlc: dlcIso((/p[ée]remption\s*:\s*([\d/]+)/i.exec(x) || [])[1]), motif, unites: un ? +un : null });
+    }
+  } else if (r.type === 'confirme' || r.type === 'repris') {
+    // « Récapitulatif des produits acceptés pour réexpédition : - 678193 - , DLC : 25/06/2027. Motif: Erreur de Commande Quantité acceptée : 72 sur 72 demandés »
+    const i = T.search(/R[ée]capitulatif des produits/i), z = i >= 0 ? T.slice(i) : T;
+    const fin = z.search(/Ce mail confirme|Votre commercial|Cordialement|Nous vous remercions/i), y = fin > 0 ? z.slice(0, fin) : z;
+    const re = /(?:^|[\s:,.\-])(\d{6})(?=\s*-)/g; const pos = []; let m;
+    while ((m = re.exec(y))) pos.push({ code: m[1], i: m.index });
+    pos.forEach((p, k) => {
+      const x = y.slice(p.i, k + 1 < pos.length ? pos[k + 1].i : y.length);
+      const nom = ((/^\D*\d{6}\s*-\s*([^,]*?)\s*,/.exec(x) || [])[1] || '').trim();
+      const q = /Quantit[ée] accept[ée]e\s*:\s*(\d+)\s*sur\s*(\d+)/i.exec(x);
+      const motif = ((/Motif\s*:\s*(.+?)(?=\s*(Quantit|$))/i.exec(x) || [])[1] || '').replace(/[.\s]+$/, '').trim();
+      r.produits.push({ code: p.code, nom, dlc: dlcIso((/DLC\s*:\s*([\d/]+)/i.exec(x) || [])[1]), motif, acceptee: q ? +q[1] : null, demandee: q ? +q[2] : null });
+    });
+  }
+  return r;
+}
+
 const MOIS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function dateImap(iso) { const [y, m, d] = String(iso).split('-'); return (+d) + '-' + MOIS[+m - 1] + '-' + y; }
 function isoDe(internal) { const m = /(\d{1,2})-(\w{3})-(\d{4})/.exec(internal || ''); if (!m) return ''; return m[3] + '-' + String(MOIS.indexOf(m[2]) + 1).padStart(2, '0') + '-' + m[1].padStart(2, '0'); }
 
-module.exports = { ImapLecture, parse, expediteur, sujet, pdfs, decoder, dateImap, isoDe, mime2 };
+module.exports = { ImapLecture, parse, expediteur, sujet, pdfs, decoder, dateImap, isoDe, mime2, textes, texteDe, retourType, retourDiapar };

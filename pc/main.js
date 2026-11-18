@@ -186,25 +186,58 @@ function mailChoix(L, c) {
   for (const n of (c.dossiers || [])) add(L.find(d => fin(d) === String(n).trim().toUpperCase()), String(n).trim().toUpperCase());
   return out;
 }
+// 1.7.0 : retours DIAPAR faits sur internet. Le texte des mails « demande de reprise / Réexpédition Marchandise / Produits Repris »
+// est lu (BODY.PEEK, lecture seule) quel que soit l'expéditeur (même « Ignorer »), et rangé dans mail.json (retours) ; la page en fait des déclarations d'avoir.
+function retourMag(env, c) {
+  const adr = [5, 6].map(i => (env && env[i]) || []).flat().map(a => Array.isArray(a) ? MAIL.mime2(String(a[2] || '') + '@' + String(a[3] || '')) : '').join(' ') + ' ' + (c.user || '');
+  return /clamart/i.test(adr) ? 'clamart' : /bredis/i.test(adr) ? 'bredis' : '';
+}
+async function retourLire(m, h, rt, su, iso, c, retours) {
+  let r = null;
+  for (const p of MAIL.textes(h.bs)) {
+    const v = await m.partie(h.uid, p.num); if (v == null) continue;
+    r = MAIL.retourDiapar(su, MAIL.texteDe(v, p));
+    if (r && (r.produits.length || r.horsLigne)) break;
+  }
+  if (!r) r = { type: rt.type, num: rt.num, produits: [] };
+  const R = retours[r.num] || (retours[r.num] = { num: r.num, mag: '', etapes: {}, produits: {} });
+  if (!R.etapes[r.type] || (iso && iso < R.etapes[r.type])) R.etapes[r.type] = iso || new Date().toISOString().slice(0, 10);
+  if (r.horsLigne) R.horsLigne = R.etapes[r.type];
+  R.mag = R.mag || retourMag(h.env, c);
+  for (const p of r.produits) {
+    const P = R.produits[p.code] || (R.produits[p.code] = { code: p.code });
+    for (const k of ['nom', 'dlc', 'unites', 'acceptee', 'demandee']) if (p[k] != null && p[k] !== '') P[k] = p[k];
+    if (p.motif && (r.type === 'demande' || !P.motif)) P.motif = p.motif; // le motif choisi à la demande prévaut
+  }
+  R.maj = Date.now();
+}
 const mailNom = (s) => String(s || '').replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120) || 'facture.pdf';
 async function mailReleve(prog) {
   if (MAIL_EN_COURS) return MAIL_EN_COURS;
   MAIL_EN_COURS = (async () => {
     const c = mailCfg(); if (!c.actif) return { ok: false, erreur: 'Boîte mail non activée' };
     const depuis = c.depuis || new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
-    const exp = c.exp || {}, faits = c.faits || {}, res = { ok: true, mails: 0, pdf: 0, nouveaux: 0, attente: 0, dossiers: [] };
+    const exp = c.exp || {}, faits = c.faits || {}, rfaits = c.rfaits || {}, retours = c.retours || {}, res = { ok: true, mails: 0, pdf: 0, nouveaux: 0, attente: 0, retours: 0, dossiers: [] };
     const m = await mailOuvrir(c);
     try {
       const L = await m.dossiers(), D = mailChoix(L, c);
       res.dossiers = D.map(d => d.lib);
       for (const d of D) {
         const uv = await m.examiner(d.nom); const pre = d.nom + '|' + uv + '|';
-        const uids = (await m.chercher(MAIL.dateImap(depuis))).filter(u => !faits[pre + u]);
+        const uids = (await m.chercher(MAIL.dateImap(depuis))).filter(u => !faits[pre + u] || !rfaits[pre + u]); // 1.7.0 : les mails déjà vus sont relus une fois pour les retours DIAPAR
         if (prog) prog({ dossier: d.lib, n: uids.length });
         const H = await m.entetes(uids);
         for (const h of H) {
+          const k = pre + h.uid, deja = faits[k], su = MAIL.sujet(h.env), rt = MAIL.retourType(su), iso = MAIL.isoDe(h.date);
+          if (rt) { // retour DIAPAR : texte lu, pas de PDF téléchargé (bon de réexpédition), pas dans la liste des expéditeurs
+            if (!rfaits[k]) { try { await retourLire(m, h, rt, su, iso, c, retours); rfaits[k] = 1; faits[k] = 1; res.retours++; } catch (er) { console.error(er); } }
+            else faits[k] = 1;
+            continue;
+          }
+          rfaits[k] = 1;
+          if (deja) continue;
           res.mails++;
-          const e = MAIL.expediteur(h.env), P = MAIL.pdfs(h.bs), iso = MAIL.isoDe(h.date);
+          const e = MAIL.expediteur(h.env), P = MAIL.pdfs(h.bs);
           if (!P.length) { faits[pre + h.uid] = 1; continue; }
           res.pdf += P.length;
           const x = exp[e.adresse] || (exp[e.adresse] = { nom: e.nom, n: 0 });
@@ -229,7 +262,8 @@ async function mailReleve(prog) {
         }
       }
     } finally { m.fermer(); }
-    const c2 = mailCfg(); c2.exp = exp; c2.faits = faits; c2.etat = { quand: Date.now(), ok: true, mails: res.mails, nouveaux: res.nouveaux, attente: res.attente, dossiers: res.dossiers }; mailSave(c2);
+    const ks = Object.keys(retours).sort((a, b) => (retours[b].maj || 0) - (retours[a].maj || 0)); ks.slice(300).forEach(x => delete retours[x]); // 300 derniers retours gardés
+    const c2 = mailCfg(); c2.exp = exp; c2.faits = faits; c2.rfaits = rfaits; c2.retours = retours; c2.etat = { quand: Date.now(), ok: true, mails: res.mails, nouveaux: res.nouveaux, attente: res.attente, retours: res.retours, dossiers: res.dossiers }; mailSave(c2);
     return res;
   })().catch((e) => { const c2 = mailCfg(); c2.etat = { quand: Date.now(), ok: false, erreur: e.message }; mailSave(c2); return { ok: false, erreur: e.message }; })
     .finally(() => { MAIL_EN_COURS = null; });
@@ -245,7 +279,7 @@ ipcMain.handle('gm:mailRegler', async (e, o) => {
     else { c.mdp = Buffer.from(String(o.pass), 'utf8').toString('base64'); c.chiffre = false; }
   }
   if (Array.isArray(o.dossiers)) c.dossiers = o.dossiers.map(x => String(x).trim()).filter(Boolean).slice(0, 10);
-  if (o.depuis != null && /^\d{4}-\d{2}-\d{2}$/.test(o.depuis)) { if (c.depuis !== o.depuis) c.faits = {}; c.depuis = o.depuis; }
+  if (o.depuis != null && /^\d{4}-\d{2}-\d{2}$/.test(o.depuis)) { if (c.depuis !== o.depuis) { c.faits = {}; c.rfaits = {}; } c.depuis = o.depuis; }
   if (o.actif != null) c.actif = !!o.actif;
   mailSave(c); return mailInfos();
 });
@@ -256,6 +290,9 @@ ipcMain.handle('gm:mailTester', async () => {
   finally { m.fermer(); }
 });
 ipcMain.handle('gm:mailReleve', async () => mailReleve((p) => { try { if (win) win.webContents.send('gm:mailProg', p); } catch (_) {} }));
+// 1.7.0 : retours DIAPAR lus dans les mails ; « pris » = déjà transformés en déclaration par la page (jamais recréés, même supprimés)
+ipcMain.handle('gm:mailRetours', async () => { const c = mailCfg(); return { retours: c.retours || {}, pris: c.rpris || {} }; });
+ipcMain.handle('gm:mailRetourPris', async (e, cles) => { const c = mailCfg(); c.rpris = c.rpris || {}; for (const k of [].concat(cles || [])) c.rpris[String(k)] = Date.now(); mailSave(c); return true; });
 ipcMain.handle('gm:mailOuvrirDossier', async () => { fs.mkdirSync(mailRoot(), { recursive: true }); return shell.openPath(mailRoot()); });
 // Relève automatique : 1 minute après l'ouverture, puis toutes les 15 minutes
 setTimeout(() => { if (mailCfg().actif) mailReleve().catch(() => {}); }, 60000);

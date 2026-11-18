@@ -33,6 +33,9 @@ contextBridge.exposeInMainWorld('api', {
   mailTester: () => ipcRenderer.invoke('gm:mailTester'),
   mailReleve: () => ipcRenderer.invoke('gm:mailReleve'),
   mailOuvrirDossier: () => ipcRenderer.invoke('gm:mailOuvrirDossier'),
+  // 1.7.0 : retours DIAPAR (déclarations d'avoir automatiques)
+  mailRetours: () => ipcRenderer.invoke('gm:mailRetours'),
+  mailRetourPris: (cles) => ipcRenderer.invoke('gm:mailRetourPris', cles),
   onMailProg: (f) => { ipcRenderer.removeAllListeners('gm:mailProg'); ipcRenderer.on('gm:mailProg', (e, p) => f(p)); }
 });
 contextBridge.exposeInMainWorld('SYNC', { updateUrl: cfg.updateUrl || '', url: cfg.supabaseUrl || '', key: cfg.supabaseKey || '' });
