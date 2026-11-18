@@ -218,14 +218,14 @@ async function mailReleve(prog) {
   MAIL_EN_COURS = (async () => {
     const c = mailCfg(); if (!c.actif) return { ok: false, erreur: 'Boîte mail non activée' };
     const depuis = c.depuis || new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
-    const exp = c.exp || {}, faits = c.faits || {}, rfaits = c.rfaits || {}, retours = c.retours || {}, res = { ok: true, mails: 0, pdf: 0, nouveaux: 0, attente: 0, retours: 0, dossiers: [] };
+    const exp = c.exp || {}, faits = c.faits || {}, rfaits = c.rfaits || {}, lfaits = c.lfaits || {}, lessais = c.lessais || {}, retours = c.retours || {}, res = { ok: true, mails: 0, pdf: 0, nouveaux: 0, attente: 0, retours: 0, dossiers: [] };
     const m = await mailOuvrir(c);
     try {
       const L = await m.dossiers(), D = mailChoix(L, c);
       res.dossiers = D.map(d => d.lib);
       for (const d of D) {
         const uv = await m.examiner(d.nom); const pre = d.nom + '|' + uv + '|';
-        const uids = (await m.chercher(MAIL.dateImap(depuis))).filter(u => !faits[pre + u] || !rfaits[pre + u]); // 1.7.0 : les mails déjà vus sont relus une fois pour les retours DIAPAR
+        const uids = (await m.chercher(MAIL.dateImap(depuis))).filter(u => !faits[pre + u] || !rfaits[pre + u] || !lfaits[pre + u]); // 1.7.0 : les mails déjà vus sont relus une fois pour les retours DIAPAR
         if (prog) prog({ dossier: d.lib, n: uids.length });
         const H = await m.entetes(uids);
         for (const h of H) {
@@ -238,22 +238,42 @@ async function mailReleve(prog) {
             continue;
           }
           rfaits[k] = 1;
-          if (deja) continue;
+          // 1.8.0 : facture sans PDF joint mais avec un lien « Télécharger » (FDG, plateforme @GP atgpedi.net) : le lien est suivi
+          let P = MAIL.pdfs(h.bs), L = [];
+          if (!P.length && !lfaits[k] && /factur|invoice/i.test(su)) {
+            try { for (const p of MAIL.textes(h.bs)) { const v = await m.partie(h.uid, p.num); if (v == null) continue; L = MAIL.liensFactures(MAIL.brut(v, p)); if (L.length) break; } } catch (er) { console.error(er); }
+          }
+          lfaits[k] = 1;
+          if (deja && !(L.length && !lessais[k + '|ok'])) continue;
           res.mails++;
-          const e = MAIL.expediteur(h.env), P = MAIL.pdfs(h.bs);
-          if (!P.length) { faits[pre + h.uid] = 1; continue; }
+          const e = MAIL.expediteur(h.env);
+          if (!P.length && !L.length) { faits[pre + h.uid] = 1; continue; }
+          if (L.length) P = L.map((u, i) => ({ lien: u, nom: '' }));
           res.pdf += P.length;
           const x = exp[e.adresse] || (exp[e.adresse] = { nom: e.nom, n: 0 });
           x.nom = x.nom || e.nom; x.dernier = iso > (x.dernier || '') ? iso : x.dernier; x.sujet = MAIL.sujet(h.env).slice(0, 120);
           x.vus = x.vus || {}; if (!x.vus[pre + h.uid]) { x.vus[pre + h.uid] = 1; x.n++; }
-          if (x.f === undefined || x.f === null || x.f === '') { res.attente++; continue; } // expéditeur pas encore associé : on garde le mail pour plus tard
+          if (x.f === undefined || x.f === null || x.f === '') { res.attente++; lfaits[k] = 0; continue; } // expéditeur pas encore associé : on garde le mail pour plus tard
           if (x.f === '-') { faits[pre + h.uid] = 1; continue; } // ignoré
           const an = (iso || depuis).slice(0, 4);
           const dir = String(x.f).toUpperCase() === 'DIAPAR' ? path.join(mailRoot(), an, 'DIAPAR') : path.join(mailRoot(), an, 'FOURNISSEURS', mailNom(x.f));
           fs.mkdirSync(dir, { recursive: true });
+          let rate = false;
           for (const p of P) {
-            const v = await m.partie(h.uid, p.num); if (v == null) continue;
-            const b = MAIL.decoder(v, p.enc); if (b.length < 100 || b.subarray(0, 5).toString('latin1') !== '%PDF-') continue;
+            let b;
+            if (p.lien) { // 1.8.0 : téléchargement par le lien du mail (le lien reste valable 60 jours : nouvel essai à la relève suivante si ça échoue, 20 fois au plus)
+              try {
+                const r = await net.fetch(p.lien, { redirect: 'follow' });
+                b = r.ok ? Buffer.from(await r.arrayBuffer()) : Buffer.alloc(0);
+                const cd = String(r.headers.get('content-disposition') || ''), mn = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
+                p.nom = mn ? decodeURIComponent(mn[1]) : '';
+              } catch (er) { b = Buffer.alloc(0); }
+              if (b.length < 100 || b.subarray(0, 5).toString('latin1') !== '%PDF-') { rate = true; continue; }
+              if (!p.nom) p.nom = (MAIL.sujet(h.env).match(/\b([A-Z]{2,}\d{6,})\b/) || [])[1] || ('facture_' + h.uid);
+            } else {
+              const v = await m.partie(h.uid, p.num); if (v == null) continue;
+              b = MAIL.decoder(v, p.enc); if (b.length < 100 || b.subarray(0, 5).toString('latin1') !== '%PDF-') continue;
+            }
             let nom = mailNom(p.nom); if (!/\.pdf$/i.test(nom)) nom += '.pdf';
             let f = path.join(dir, nom);
             if (fs.existsSync(f)) { if (fs.statSync(f).size === b.length) continue; f = path.join(dir, nom.replace(/\.pdf$/i, '') + '_' + h.uid + '.pdf'); if (fs.existsSync(f)) continue; }
@@ -261,12 +281,14 @@ async function mailReleve(prog) {
             if (iso) { try { const t = new Date(iso + 'T12:00:00'); fs.utimesSync(f, t, t); } catch (_) {} }
             res.nouveaux++;
           }
+          if (rate) { lessais[k] = (lessais[k] || 0) + 1; res.liensRates = (res.liensRates || 0) + 1; if (lessais[k] < 20) { lfaits[k] = 0; faits[k] = 0; continue; } }
+          else if (L.length) lessais[k + '|ok'] = 1;
           faits[pre + h.uid] = 1;
         }
       }
     } finally { m.fermer(); }
     const ks = Object.keys(retours).sort((a, b) => (retours[b].maj || 0) - (retours[a].maj || 0)); ks.slice(300).forEach(x => delete retours[x]); // 300 derniers retours gardés
-    const c2 = mailCfg(); c2.exp = exp; c2.faits = faits; c2.rfaits = rfaits; c2.retours = retours; c2.etat = { quand: Date.now(), ok: true, mails: res.mails, nouveaux: res.nouveaux, attente: res.attente, retours: res.retours, dossiers: res.dossiers }; mailSave(c2);
+    const c2 = mailCfg(); c2.exp = exp; c2.faits = faits; c2.rfaits = rfaits; c2.lfaits = lfaits; c2.lessais = lessais; c2.retours = retours; c2.etat = { quand: Date.now(), ok: true, mails: res.mails, nouveaux: res.nouveaux, attente: res.attente, retours: res.retours, liensRates: res.liensRates || 0, dossiers: res.dossiers }; mailSave(c2);
     return res;
   })().catch((e) => { const c2 = mailCfg(); c2.etat = { quand: Date.now(), ok: false, erreur: e.message }; mailSave(c2); return { ok: false, erreur: e.message }; })
     .finally(() => { MAIL_EN_COURS = null; });
@@ -282,7 +304,7 @@ ipcMain.handle('gm:mailRegler', async (e, o) => {
     else { c.mdp = Buffer.from(String(o.pass), 'utf8').toString('base64'); c.chiffre = false; }
   }
   if (Array.isArray(o.dossiers)) c.dossiers = o.dossiers.map(x => String(x).trim()).filter(Boolean).slice(0, 10);
-  if (o.depuis != null && /^\d{4}-\d{2}-\d{2}$/.test(o.depuis)) { if (c.depuis !== o.depuis) { c.faits = {}; c.rfaits = {}; } c.depuis = o.depuis; }
+  if (o.depuis != null && /^\d{4}-\d{2}-\d{2}$/.test(o.depuis)) { if (c.depuis !== o.depuis) { c.faits = {}; c.rfaits = {}; c.lfaits = {}; c.lessais = {}; } c.depuis = o.depuis; }
   if (o.actif != null) c.actif = !!o.actif;
   mailSave(c); return mailInfos();
 });

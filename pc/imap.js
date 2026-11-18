@@ -194,6 +194,20 @@ function textes(bs) {
   visite(bs, '');
   return out.sort((a, b) => (a.sous === 'plain' ? 0 : 1) - (b.sous === 'plain' ? 0 : 1));
 }
+// 1.8.0 : texte brut d'une partie (décodée, sans retirer le HTML) et liens de téléchargement de factures qu'il contient
+function brut(v, p) { const b = decoder(v, p.enc); return /utf-?8/i.test(p.cs) || !p.cs ? b.toString('utf8') : b.toString('latin1'); }
+// Plateformes de factures dont on suit le lien « Télécharger » (liste fermée : jamais d'autre adresse)
+const LIENS_OK = /^https:\/\/([a-z0-9-]+\.)*atgpedi\.net\//i;
+function liensFactures(t) {
+  const out = [], vu = new Set(), re = /https:\/\/[^\s"'<>()]+/gi; let m;
+  const s = String(t || '').replace(/=\r?\n/g, '');
+  while ((m = re.exec(s))) {
+    const u = m[0].replace(/&amp;/gi, '&').replace(/[.,;]+$/, '');
+    if (!LIENS_OK.test(u) || !/telecharg|download/i.test(u) || vu.has(u)) continue;
+    vu.add(u); out.push(u);
+  }
+  return out;
+}
 const ENT = { nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", eacute: 'é', egrave: 'è', ecirc: 'ê', agrave: 'à', acirc: 'â', ccedil: 'ç', ocirc: 'ô', ucirc: 'û', ugrave: 'ù', icirc: 'î', iuml: 'ï', euml: 'ë', Eacute: 'É', Egrave: 'È', laquo: '«', raquo: '»', rsquo: '’', lsquo: '‘', hellip: '…', euro: '€', deg: '°' };
 // Texte lisible d'une partie (décodée, jeu de caractères, HTML retiré)
 function texteDe(v, p) {
@@ -266,4 +280,4 @@ const MOIS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oc
 function dateImap(iso) { const [y, m, d] = String(iso).split('-'); return (+d) + '-' + MOIS[+m - 1] + '-' + y; }
 function isoDe(internal) { const m = /(\d{1,2})-(\w{3})-(\d{4})/.exec(internal || ''); if (!m) return ''; return m[3] + '-' + String(MOIS.indexOf(m[2]) + 1).padStart(2, '0') + '-' + m[1].padStart(2, '0'); }
 
-module.exports = { ImapLecture, parse, expediteur, sujet, pdfs, decoder, dateImap, isoDe, mime2, textes, texteDe, retourType, retourDiapar, sujetsJoints };
+module.exports = { ImapLecture, parse, expediteur, sujet, pdfs, decoder, dateImap, isoDe, mime2, textes, texteDe, retourType, retourDiapar, sujetsJoints, brut, liensFactures };
