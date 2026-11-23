@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="202">
+<meta name="gm-version" content="203">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=202;
+const APP_VERSION=203;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -1205,10 +1205,10 @@ function demTauxHtml(fin,J){const W=Math.min(J,90),deb=vtAdd(fin,-(W-1)),V=demVe
     ${L.length?L.map((p,i)=>`<tr><td class="l" style="white-space:normal"><span class="dmrk">${i+1}</span>${esc(p.nom)}</td><td>${n2.format(p.j)}</td><td>${p.v?n2.format(p.v):"<b style='color:var(--red)'>0</b>"}</td><td class="l"><span class="dmbar" style="max-width:120px"><i style="width:${(p.tx*100).toFixed(1)}%;background:${col(p.tx)}"></i></span> <b style="color:${col(p.tx)}">${pct(p.tx)}</b></td><td>${eur2.format(p.ttc)}</td><td class="l hist" style="white-space:normal">${!p.v?"Jamais vendu : arrêter ou changer":p.tx>=0.4?"Réduire fortement la commande":p.tx>=0.2?"Commander moins":p.tx>=0.1?"À surveiller":"Normal"}</td></tr>`).join(""):`<tr><td class="l hist" colspan="6">Aucun produit jeté plusieurs fois sur cette période</td></tr>`}
   </tbody></table></div><div class="hist" style="padding:6px 14px 10px">${V.nj} jour${V.nj>1?"s":""} de caisse · produits jetés au moins 2 fois ou pour 10 € ou plus · classés du plus fort taux au plus faible.</div></div>`}
 function vDem(){const y=S.year,m=S.month,key=mkey(y,m),doc=S.mois[key]||{},st=monthStats(y,m);demCharger();setTimeout(demDedoublonner,0);
-  const t=todayISO(),finM=dayISO(y,m,new Date(y,m+1,0).getDate()),fin=finM<t?finM:t,J=S.demPer||90;
+  const t=todayISO(),finM=dayISO(y,m,new Date(y,m+1,0).getDate()),fin=finM<t?finM:t,PER=S.demPer||90,J=PER==="m"?+fin.slice(8,10):PER; // v203 : « Mois en cours » (du 1er du mois affiché à aujourd'hui ou à la fin du mois) à la place de « 30 jours »
   // v190 : ordre voulu par le gérant : bandeau d'import, période, 5 pastilles, les plus jetés (montant / souvent), 12 derniers mois (graphique), tous les relevés en bas
   let h=periode("mois"); // v191 : l'import Videor revient dans le bandeau des relevés (en bas)
-  h+=`<div class="dmhead"><div class="segm">${[[30,"30 jours"],[90,"3 mois"],[182,"6 mois"],[365,"12 mois"]].map(([v,l])=>`<button data-dmper="${v}" aria-pressed="${J===v}">${l}</button>`).join("")}</div><span class="hist">jusqu'au ${frDate(fin)}</span></div>`;
+  h+=`<div class="dmhead"><div class="segm">${[["m","Mois en cours"],[90,"3 mois"],[182,"6 mois"],[365,"12 mois"]].map(([v,l])=>`<button data-dmper="${v}" aria-pressed="${PER===v}">${l}</button>`).join("")}</div><span class="hist">jusqu'au ${frDate(fin)}</span></div>`;
   const nbRel=Object.keys(DEMD.rel||{}).length;
   const A=demAnalyse(fin,J),ev=(a,b)=>b?((a-b)/b):null,evs=(a,b)=>{const e=ev(a,b);return e==null?"":`<span style="color:${e>0?"var(--red)":"var(--green)"}">${e>0?"+":""}${pct(e)}</span>`};
   const nbP=A.P.filter(p=>p.rel.size).length,frq=p=>p.rel.size>1?"tous les "+Math.max(1,Math.round(J/p.rel.size))+" j":"";
@@ -1258,7 +1258,7 @@ function demGraphe(mo){const W=1000,H=270,pl=46,pr=10,pt=26,pb=34,cw=(W-pl-pr)/m
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;min-width:520px" role="img" aria-label="Démarque des 12 derniers mois">${g}</svg>
   <div class="hist" style="display:flex;gap:16px;justify-content:center;margin-top:4px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);vertical-align:middle"></i> cette année</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:currentColor;opacity:.22;vertical-align:middle"></i> année d'avant</span></div>`}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-demopen],[data-dmper]");if(!b||e.target.closest("button[data-demask],button[data-demdel]"))return;
-  if(b.dataset.dmper){S.demPer=+b.dataset.dmper;render();return}
+  if(b.dataset.dmper){S.demPer=b.dataset.dmper==="m"?"m":+b.dataset.dmper;render();return}
   S.demOpen=S.demOpen===b.dataset.demopen?null:b.dataset.demopen;render()});
 // v42 : fournisseurs des avoirs : d'abord ceux de la saisie, puis ceux des colonnes retirées (doublons de nom écartés)
 function avFourn(sel){const nk=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),ord=(a,b)=>(a.ordre??99)-(b.ordre??99)||String(a.nom).localeCompare(String(b.nom));
