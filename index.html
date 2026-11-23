@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="204">
+<meta name="gm-version" content="205">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=204;
+const APP_VERSION=205;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -685,16 +685,25 @@ function vAvoirsPh(){
    sont rangés dans Documents\GES\FACTURES-MAIL\<année>\FOURNISSEURS\<fournisseur> et lus comme ceux du dossier de la comptable
    (même facture dans les deux = « Déjà importée »). Le mot de passe reste chiffré par Windows sur ce PC. */
 const MAILX={ouvert:false,info:null,msg:"",busy:false,prog:""};
-async function mailCharger(){try{MAILX.info=await window.api.mailInfos()}catch(e){MAILX.msg="⚠️ "+e.message}mailRender()}
+async function mailCharger(){try{MAILX.info=await window.api.mailInfos()}catch(e){MAILX.msg="⚠️ "+e.message}try{if(window.api.mailRetours)MAILX.ret=await window.api.mailRetours()}catch(e){}mailRender()}
 function mailOuvrir(){MAILX.ouvert=true;MAILX.msg="";mailCharger();if(window.api.onMailProg)window.api.onMailProg(p=>{MAILX.prog=p&&p.dossier?"Lecture : "+p.dossier+" ("+p.n+" nouveaux mails)":"";mailRender()})}
 function mailFermer(){MAILX.ouvert=false;const o=document.getElementById("mailRoot");if(o)o.remove()}
+// v205 : retours DIAPAR déjà lus par la relève, avec ce qu'est devenue chaque déclaration (pour vérifier qu'un mail de retour a bien été vu)
+function mailRetHtml(){const X=MAILX.ret||{},L=Object.values(X.retours||{}).sort((a,b)=>(b.maj||0)-(a.maj||0)).slice(0,8),pris=X.pris||{};
+  const nm=id=>(S.magasins.find(m=>m.id===id)||{}).nom||id||"?";
+  if(!L.length)return `<br>Retours DIAPAR lus : aucun pour l'instant.`;
+  return `<br><b>Retours DIAPAR lus</b> (les plus récents) :`+L.map(R=>{const P=Object.values(R.produits||{});
+    const et=Object.entries(R.etapes||{}).sort((a,b)=>a[1].localeCompare(b[1])).map(([k,d])=>({demande:"demande",confirme:"confirmation",notif:"notification",repris:"repris"}[k]||k)+" "+frDate(d).slice(0,5)).join(", ");
+    const pr=P.length?P.map(p=>{const a=S.avoirs.find(z=>z.reprise===R.num&&String(z.code||"").replace(/^0+/,"")===p.code);
+      return esc(p.code)+" → "+(a?"déclaration présente ("+esc(SLABEL[a.statut]||a.statut)+", "+esc(frDate(a.date))+")":pris[R.num+"|"+p.code]?"déjà traité (déclaration supprimée)":R.mag&&R.mag!==S.store?"pour "+esc(nm(R.mag)):"pas encore créée")}).join(" · "):"<span style='color:var(--red-2)'>aucun produit lu dans le mail</span>";
+    return `<br>• n° ${esc(R.num)} · ${esc(nm(R.mag))} · ${esc(et)} · ${pr}`}).join("")}
 function mailRender(){if(!MAILX.ouvert)return;let o=document.getElementById("mailRoot");
   if(!o){o=document.createElement("div");o.id="mailRoot";o.className="facov";document.body.appendChild(o)}
   const a=document.activeElement;if(a&&o.contains(a)&&/INPUT/.test(a.tagName)&&!MAILX.force)return;MAILX.force=false;
   const I=MAILX.info||{},E=I.etat||{},X=Object.entries(I.exp||{}).sort((u,w)=>(!!u[1].f-!!w[1].f)||String(w[1].dernier||"").localeCompare(String(u[1].dernier||"")));
   const four=S.fourn.filter(f=>!f.groupe&&!isParent(f)).map(f=>String(f.nom)).filter(Boolean).sort((u,w)=>u.localeCompare(w));
   const opts=v=>`<option value="" ${!v?"selected":""}>— à choisir —</option><option value="-" ${v==="-"?"selected":""}>Ignorer (pas des factures)</option><option value="DIAPAR" ${v==="DIAPAR"?"selected":""}>DIAPAR</option>${four.filter(n=>FAC.nk(n)!=="DIAPAR").map(n=>`<option value="${esc(n)}" ${v===n?"selected":""}>${esc(n)}</option>`).join("")}${v&&v!=="-"&&v!=="DIAPAR"&&!four.includes(v)?`<option value="${esc(v)}" selected>${esc(v)}</option>`:""}`;
-  const etat=MAILX.busy?(MAILX.prog||"Relève en cours…"):E.quand?(E.ok?`Dernière relève : ${new Date(E.quand).toLocaleString("fr-FR")} · ${E.mails||0} mails lus · ${E.nouveaux||0} PDF récupérés${E.attente?` · <b>${E.attente} en attente</b> (expéditeur à associer ci-dessous)`:""}<br>Dossiers lus : ${esc((E.dossiers||[]).join(", "))}`:`⚠️ ${esc(E.erreur||"Relève impossible")}`):"Pas encore relevée.";
+  const etat=MAILX.busy?(MAILX.prog||"Relève en cours…"):E.quand?(E.ok?`Dernière relève : ${new Date(E.quand).toLocaleString("fr-FR")} · ${E.mails||0} mails lus · ${E.nouveaux||0} PDF récupérés${E.attente?` · <b>${E.attente} en attente</b> (expéditeur à associer ci-dessous)`:""}${E.retours?` · <b>${E.retours} mail${E.retours>1?"s":""} de retour DIAPAR</b>`:""}<br>Dossiers lus : ${esc((E.dossiers||[]).join(", "))}${mailRetHtml()}`:`⚠️ ${esc(E.erreur||"Relève impossible")}`):"Pas encore relevée.";
   const body=`<p class="sub" style="margin:0 0 10px">GESMAR lit la boîte mail <b>en lecture seule</b> (il ne marque rien comme lu, ne déplace et ne supprime rien) toutes les 15 minutes : boîte de réception, corbeille et les dossiers indiqués. Les PDF des expéditeurs associés à un fournisseur sont rangés dans <b>${esc(I.racine||"Documents\\GES\\FACTURES-MAIL")}</b>, puis lus comme les factures de la comptable (une facture présente aux deux endroits n'est importée qu'une fois).</p>
     <div class="facreg">
     <div class="row"><label style="min-width:170px" for="mlU"><b>Adresse de la boîte</b></label><input id="mlU" type="email" value="${esc(I.user||"")}" placeholder="g20.clamart@orange.fr" autocomplete="off" style="min-width:260px"></div>
