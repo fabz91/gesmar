@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=205;
+const APP_VERSION=206;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -3328,5 +3328,8 @@ document.addEventListener("click",e=>{if(e.target.dataset&&e.target.dataset.act=
 render();
 })();
 </script>
+<style id="ges-nobarre">html.ges-ico body>div[style*="2147483645"]{display:none!important}</style>
+<script>/* 24/11/2026 : pas de bandeau GES « Changer de logiciel » quand on fait défiler la page ; on change de logiciel par l'icône du titre. Le bandeau reste seulement sur une page sans icône (écran de connexion). */
+(function(){var q='header.top .appico, .top .brand .bi, header .brand .bi';function f(){var h=false;try{document.querySelectorAll(q).forEach(function(i){var r=i.getBoundingClientRect();if(r.width>=4&&r.height>=4)h=true;});}catch(e){}document.documentElement.classList.toggle('ges-ico',h);}document.addEventListener('scroll',f,true);addEventListener('resize',f);setInterval(f,400);f();})();</script>
 </body>
 </html>
