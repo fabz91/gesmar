@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=206;
+const APP_VERSION=207;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -671,7 +671,7 @@ function vAvoirsPh(){
       ${a.code||a.facture?`<div class="m">${a.code?"Code "+esc(a.code):""}${a.code&&a.facture?" · ":""}${a.facture?"Facture "+esc(a.facture):""}</div>`:""}
       ${a.infos?`<div class="m">${esc(a.infos)}</div>`:""}${retHtml(a).replace(/class="hist"/g,'class="m"')}
       <div class="m"><span class="mt">${a.montant?eur2.format(a.montant)+" HT":`<span class="pill s-a_reclamer">à chiffrer</span>`}</span> · ${late?"⚠️ ":""}dernière action ${frDate(la)}${ds!=null&&enc?` (${ds} j)`:""}${(a.relances||[]).length?` · ${a.relances.length} relance${a.relances.length>1?"s":""}`:""}</div>
-      <div class="acts">${enc?`<button class="btn small" data-relance="${a.id}">Relancer</button><button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></div>`};
+      <div class="acts">${enc?`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepter</button><button class="btn small" data-relance="${a.id}">Relancer</button><button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button></div></div>`};
   return `<div class="row" style="margin-bottom:10px;gap:8px"><select id="fFourn" aria-label="Fournisseur" style="flex:1;min-width:0"><option value="">Tous les fournisseurs</option>${avOptsMois(S.fFourn)}</select><button class="btn red" data-act="new">+ Nouveau</button></div>
   <div class="chips">${chip("en_cours","En cours")}${STATUTS.map(([k,l])=>chip(k,l)).join("")}${chip("tous","Tous")}</div>
   <div class="gap"></div>
@@ -1305,7 +1305,7 @@ function vAvoirs(){S.fText=""; /* v43 : recherche retirée ; v53 : le choix du f
       <td>${a.montant?eur2.format(a.montant):`<span class="pill s-a_reclamer">à chiffrer</span>`}</td>
       <td class="l">${EN_COURS.includes(a.statut)&&avDetBtn(a)||`<span class="pill s-${a.statut}">${SLABEL[a.statut]||a.statut}</span>`}</td>
       <td class="l ${late?"late":""}">${late?`<span class="avlate" title="Sans nouvelle depuis ${ds} jours"><svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 1.4 21h21.2z" fill="#f5a524" stroke="#b45309" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 9v5.5" stroke="#1d2433" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.35" fill="#1d2433"/></svg></span> `:""}${frDate(la)}${ds!=null&&EN_COURS.includes(a.statut)?` · ${ds} j`:""}${(a.relances||[]).length?`<div class="hist">${a.relances.length} relance${a.relances.length>1?"s":""}</div>`:""}</td>
-      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${EN_COURS.includes(a.statut)?`<button class="btn small" data-relance="${a.id}">Relancer</button><button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="btn small" data-mail="${a.id}" title="Envoyer cet avoir par mail (Outlook)" aria-label="Envoyer cet avoir par mail (Outlook)" style="padding:2px 7px">✉️</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div>${a.avoirAuto&&(S.avoirsAuto||[]).some(x=>x.id===a.avoirAuto)?`<div class="avsfw"><button class="avsf" data-avsf="${a.id}" title="Voir l'avoir retrouvé sur la facture">✓ Avoir sur facture</button></div>`:""}</td></tr>`}).join("")
+      <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${EN_COURS.includes(a.statut)?`<button class="btn small" data-setst="accepte" data-id="${a.id}">Accepter</button><button class="btn small" data-relance="${a.id}">Relancer</button><button class="btn small" data-setst="refuse" data-id="${a.id}">Refusé</button>`:""}<button class="btn small" data-edit="${a.id}">Modifier</button><button class="btn small" data-mail="${a.id}" title="Envoyer cet avoir par mail (Outlook)" aria-label="Envoyer cet avoir par mail (Outlook)" style="padding:2px 7px">✉️</button><button class="fx" data-del="${a.id}" title="Supprimer cet avoir" aria-label="Supprimer cet avoir" style="margin-left:2px;width:26px;height:26px">✕</button></div>${a.avoirAuto&&(S.avoirsAuto||[]).some(x=>x.id===a.avoirAuto)?`<div class="avsfw"><button class="avsf" data-avsf="${a.id}" title="Voir l'avoir retrouvé sur la facture">✓ Avoir sur facture</button></div>`:""}</td></tr>`}).join("")
       :`<tr><td colspan="9" class="l"><div class="empty-state">Aucun avoir dans ce filtre. Cliquez sur « Nouveau » pour en créer un.</div></td></tr>`}</tbody>
   </table></div></div>`;
 }
@@ -1419,7 +1419,17 @@ function avMail(id){const a=S.avoirs.find(x=>x.id===id);if(!a)return;
   const url="https://outlook.live.com/mail/0/deeplink/compose?to="+encodeURIComponent(to)+"&subject="+encodeURIComponent(objet)+"&body="+encodeURIComponent(corps);
   window.open(url,"_blank");toast("Outlook s'ouvre avec le mail prêt : relisez puis cliquez sur Envoyer")}
 async function setStatut(id,st){const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=todayISO();
-  try{await S.db.doc(P("avoirs/"+id)).update({statut:st,dateStatut:t,majLe:t});toast(st==="accepte"?"Avoir accepté : compté dans « Avoirs »":"Avoir refusé")}catch(e){fail(e)}}
+  /* v207 (demande du gérant, 24/11) : bouton « Accepter » remis dans Déclaration. Une déclaration acceptée à la main (accMain) est reliée toute seule
+     à son avoir sur facture, sans « À valider » (ligne verte « Accepté dans déclaration »). Le montant compte une seule fois : par l'avoir sur facture (règle v159). */
+  try{const acc=st==="accepte";await S.db.doc(P("avoirs/"+id)).update(acc?{statut:st,dateStatut:t,majLe:t,accMain:true}:{statut:st,dateStatut:t,majLe:t});
+    if(acc){a.statut="accepte";a.accMain=true;const n=await avAccLier();toast(n||a.avoirAuto?"Avoir accepté : relié à l'avoir sur facture":"Avoir accepté : il passera en vert dans « Avoir sur facture » dès qu'il y sera lu")}
+    else toast("Avoir refusé")}catch(e){fail(e)}}
+let AVACC=false;
+async function avAccLier(){if(AVACC||!S.db||!S.store||S.avOk!==S.store||typeof facPourDecl!=="function")return 0;AVACC=true;let n=0;
+  try{for(let k=0;k<50;k++){const M=facPourDecl(),id=Object.keys(M).find(i=>{const a=S.avoirs.find(z=>z.id===i);return a&&a.accMain&&a.statut==="accepte"&&!a.avoirAuto});
+      if(!id)break;await facLier(M[id].x.id,id,true);n++}}catch(e){console.error(e)}finally{AVACC=false}
+  return n}
+setInterval(avAccLier,5000);
 async function relancer(id){
   const a=S.avoirs.find(x=>x.id===id);if(!a)return;const t=todayISO();
   const patch={statut:"relance",relances:[...(a.relances||[]),t],majLe:t}; // v157 : Relancer = Relancé (Accepté est terminé, plus de bouton Relancer)
@@ -2907,11 +2917,11 @@ function vAvoirsAuto(){const T=(S.avoirsAuto||[]),fns=[...new Set(T.map(x=>x.fou
     return l.slice(0,4).map(a=>`<div>${a.code?`<span class="hist" style="display:inline">${esc(a.code)}</span> `:""}${esc(a.libelle||"")}${a.ht!=null?` <span class="hist" style="display:inline">· ${eur2.format(a.ht)} HT</span>`:""}</div>`).join("")+(l.length>4?`<div class="hist">+ ${l.length-4} autre(s)</div>`:"")};
   const rap=x=>{const lies=avLies(x).map(id=>S.avoirs.find(z=>z.id===id)).filter(Boolean),PR=facPourDecl();
     const props=Object.entries(PR).filter(([id,p])=>p.x.id===x.id).map(([id,p])=>({a:S.avoirs.find(z=>z.id===id),raison:p.raison})).filter(p=>p.a);
-    let h=lies.map(a=>`<button class="avsf" data-avsf="${esc(a.id)}" title="Voir la déclaration et l'avoir sur facture">Déclaration : ${esc(a.produit||"")}</button><div class="hist">Déclarée le ${frDate(a.date)} · ${SLABEL[a.statut]||a.statut}</div>`).join("");
+    let h=lies.map(a=>`<button class="avsf" data-avsf="${esc(a.id)}" title="Voir la déclaration et l'avoir sur facture">Déclaration : ${esc(a.produit||"")}</button><div class="hist">Déclarée le ${frDate(a.date)} · ${a.accMain&&a.statut==="accepte"?"Accepté dans déclaration":SLABEL[a.statut]||a.statut}</div>`).join("");
     h+=props.map(p=>`<button class="avsf prop" data-avsf="${esc(p.a.id)}" title="Vérifier et valider">À valider : ${esc(p.a.produit||"")}</button><div class="hist">Déclarée le ${frDate(p.a.date)} · ${esc(p.raison)}</div>`).join("");
     return h||`<span class="hist">Aucune déclaration correspondante</span>`};
   /* v162 : facture de décade (Saint Prim) : un bloc par avoir (n° + BL, produit, montant HT, déclarations de ce bon) */
-  const decl=(a,raison,lie)=>lie?`<button class="avsf" data-avsf="${esc(a.id)}" title="Voir la déclaration et l'avoir">✓ ${esc(a.produit||"")}</button><div class="hist">${a.montant?eur2.format(a.montant)+" HT · ":""}${SLABEL[a.statut]||a.statut}</div>`
+  const decl=(a,raison,lie)=>lie?`<button class="avsf" data-avsf="${esc(a.id)}" title="Voir la déclaration et l'avoir">✓ ${esc(a.produit||"")}</button><div class="hist">${a.montant?eur2.format(a.montant)+" HT · ":""}${a.accMain&&a.statut==="accepte"?"Accepté dans déclaration":SLABEL[a.statut]||a.statut}</div>`
     :`<button class="avsf prop" data-avsf="${esc(a.id)}" title="Vérifier et valider">À valider : ${esc(a.produit||"")}</button><div class="hist">${a.montant?eur2.format(a.montant)+" HT · ":""}${esc(raison||"")}</div>`;
   const decade=x=>{const PR=facPourDecl(),lies=avLies(x).map(id=>S.avoirs.find(z=>z.id===id)).filter(Boolean),props=Object.entries(PR).filter(([id,p])=>p.x.id===x.id).map(([id,p])=>({a:S.avoirs.find(z=>z.id===id),raison:p.raison})).filter(p=>p.a);
     const pris=new Set();const pour=i=>{const f=[refN(i.bl),refN(i.n)].filter(Boolean),ok=a=>f.includes(refN(a.facture));
