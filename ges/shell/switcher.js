@@ -89,8 +89,9 @@ module.exports = function (ipc) {
     });
     badge(); setTimeout(badge, 1500); setTimeout(badge, 5000);
   });
-  // Bandeau GES en haut de l'écran quand l'icône du logiciel n'est pas visible
+  // Bandeau GES en haut de l'écran seulement quand la page n'a pas d'icône du logiciel
   // (écran de connexion ou de verrouillage, par ex. GESCOUNT) : boutons directs vers les autres logiciels.
+  // Jamais quand on fait défiler la page vers le bas (GES 1.0.8).
   let barre = null;
   function iconeVisible() {
     if (barre) barre.style.display = 'none'; // le bandeau lui-même ne doit pas cacher l'icône pendant la vérification
@@ -98,7 +99,9 @@ module.exports = function (ipc) {
   }
   function iconeVue() {
     for (const ic of document.querySelectorAll(SEL)) {
-      const r = ic.getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight) continue;
+      // GES 1.0.8 : l'icône sortie de l'écran en faisant défiler la page compte comme présente (pas de bandeau) :
+      // on change de logiciel uniquement par l'icône du titre (demande du gérant, 24/11).
+      const r = ic.getBoundingClientRect(); if (r.width < 4 || r.height < 4) continue;
       return true; // GES 1.0.3 : icône dans l'écran = pas de bandeau, même si une fenêtre (réglages…) la recouvre (demande du gérant)
       const x = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       if (x && (x === ic || ic.contains(x) || (x.closest && x.closest('.ges-bi') && x.closest('.ges-bi').contains(ic)))) return true;
