@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="209">
+<meta name="gm-version" content="210">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=209;
+const APP_VERSION=210;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -2483,6 +2483,8 @@ function facRelLocal(rel,V){const l=String(rel||"").replace(/\\/g,"/").toLowerCa
   return null}
 async function facOuvrirPdf(rel){const V=await facRelsLocaux(),loc=facRelLocal(rel,V);
   if(!loc){let dos="";try{dos=await window.api.facDossier()}catch(e){}
+    const mg=String(storeNom()||""),nz=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/gi,"").toUpperCase(),autre=dos&&mg&&!nz(dos).includes(nz(mg));
+    if(autre){toast("Ce PDF est dans le cloud de "+mg+" : ce PC n'a que le dossier des factures « "+dos+" ». Ouvrez-le depuis un PC de "+mg+".",15000);return}
     toast((String(rel).startsWith("@mail/")?"Ce PDF a été reçu par mail sur un autre PC : ouvrez-le depuis ce PC-là.":"PDF introuvable sur ce PC.")+" Fichier : "+rel+" — Dossier des factures de ce PC : "+(dos||"aucun")+" ("+V.length+" fichiers)",15000);return}
   let err="";try{err=await window.api.facOuvrir(loc)}catch(e){err=String(e&&e.message||e).replace(/^.*Error:\s*/,"")}
   if(err)toast("Ouverture du PDF impossible : "+err)}
