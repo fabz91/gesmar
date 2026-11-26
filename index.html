@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="208">
+<meta name="gm-version" content="209">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=208;
+const APP_VERSION=209;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -818,7 +818,7 @@ async function majPc(){if(S.majBusy)return;S.majSeenV=S.majNew||0;majFlag();S.ma
   S.majBusy=false;render()}
 async function majReset(){try{await window.api.updateReset()}catch(e){toast("Retour impossible")}}
 
-function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200)}
+function toast(msg,ms){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,ms||2200)}
 function fail(e){console.error(e);toast(e&&e.code==="invalid_argument"?"Enregistrement refusé : vous n'avez pas le droit de modifier ces données.":e&&e.code==="quota_exceeded"?"La base est pleine : supprimez d'anciens avoirs.":"Enregistrement impossible pour le moment. Réessayez.")}
 
 /* ---------- calculs ---------- */
@@ -2482,7 +2482,8 @@ function facRelLocal(rel,V){const l=String(rel||"").replace(/\\/g,"/").toLowerCa
     if(c.length===1)return c[0][0];if(c.length>1)return null}
   return null}
 async function facOuvrirPdf(rel){const V=await facRelsLocaux(),loc=facRelLocal(rel,V);
-  if(!loc){toast(String(rel).startsWith("@mail/")?"Ce PDF a été reçu par mail sur un autre PC : ouvrez-le depuis ce PC-là.":"PDF introuvable sur ce PC : il a été déplacé, renommé ou supprimé, ou le dossier des factures de ce PC n'est pas le même. Relancez la lecture des factures.");return}
+  if(!loc){let dos="";try{dos=await window.api.facDossier()}catch(e){}
+    toast((String(rel).startsWith("@mail/")?"Ce PDF a été reçu par mail sur un autre PC : ouvrez-le depuis ce PC-là.":"PDF introuvable sur ce PC.")+" Fichier : "+rel+" — Dossier des factures de ce PC : "+(dos||"aucun")+" ("+V.length+" fichiers)",15000);return}
   let err="";try{err=await window.api.facOuvrir(loc)}catch(e){err=String(e&&e.message||e).replace(/^.*Error:\s*/,"")}
   if(err)toast("Ouverture du PDF impossible : "+err)}
 function facRelDe(k,x){return (x&&x.r)||(S.fac&&S.fac.rels&&S.fac.rels[k])||Object.keys(facCache()).find(rel=>facKey(rel)===k)||""}

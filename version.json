@@ -1,1 +1,1 @@
-{"version": 208, "note": "Avoirs : le bouton PDF retrouve le fichier sur chaque PC (chemin du dossier des factures different d'un PC a l'autre) et affiche l'erreur de Windows"}
+{"version": 209, "note": "Bouton PDF introuvable : le message affiche le chemin du fichier et le dossier des factures du PC (15 s)"}
