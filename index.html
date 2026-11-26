@@ -7,7 +7,7 @@
 <script>/* version web : réglages Supabase dans config.js (à côté de index.html). Programme PC : fournis par le programme. Sur fabz91.github.io : code d'accès GT1 de GESTIME Web (même adresse). */if(!window.api&&!/github\.io$/.test(location.hostname))document.write('<script src="config.js"><\/script>')</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="GES"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="ges-icon.png"><link rel="manifest" href="manifest.webmanifest">
-<meta name="gm-version" content="207">
+<meta name="gm-version" content="208">
 <style>
 /* Layout (repris de GESTIME) : bandeau blanc [icône + titre + magasin ⌂] [logo] [⚙], rangée de 4 grands onglets verts, sélecteur de période, puis cartes coiffées d'un bandeau rouge. */
 :root{
@@ -521,7 +521,7 @@ const avNorm=()=>S.avoirs.forEach(a=>{if(a.statut==="a_reclamer"||a.statut==="re
 const EN_COURS=["declare","relance"];
 const OBTENU=["accepte","deduit"];
 const MOTIFS=["Manquant","Invendable","Inversion","Non commandé","DLC courte","Erreur de prix","Double facturation","Erreur de quantité","Autre"];
-const APP_VERSION=207;
+const APP_VERSION=208;
 const RELANCE_JOURS=7;
 const TVA_AVOIRS=1.055; // v70 : avoirs = alimentaire, TVA 5,5 % (par défaut)
 const avTva=a=>a&&+a.tva===20?1.2:TVA_AVOIRS; // v158 : TVA de la déclaration ; v160 : case retirée (la déclaration ne compte plus), 5,5 % sauf anciennes fiches à 20 % — sert seulement au rapprochement « montant proche »
@@ -2469,9 +2469,22 @@ function facPopBtns(){const R=Object.values(S.facImp||{}),ni=R.filter(x=>x&&x.s=
   const b=(k,ic,t,n)=>`<button class="facpopbtn" data-facpop="${k}"${n?"":" disabled"}><span class="ic">${ic}</span><span class="t">${t}</span><span class="n">${n}</span><span class="chev">›</span></button>`;
   return `<div class="facpops">${b("imp","📥","Dernières factures importées",ni)}${b("ign","🚫","Factures ignorées",nx)}</div>`}
 // v126 : PDF plus à sa place (déplacé, renommé, supprimé) : message clair au lieu de la fenêtre d'erreur de Windows
-function facOuvrirPdf(rel){const R=S.fac&&S.fac.rels,V=R?Object.values(R):[];
-  if(V.length&&!V.some(v=>String(v).toLowerCase()===String(rel).toLowerCase())){toast("PDF introuvable : il a été déplacé, renommé ou supprimé. Relancez la lecture des factures pour retrouver le lien.");return Promise.resolve()}
-  return window.api.facOuvrir(rel)}
+/* v208 (26/11, BREDIS) : le chemin d'un PDF est enregistré par rapport au dossier des factures du PC qui l'a lu. Sur un autre PC (dossier choisi
+   plus haut ou plus bas, autre compte Windows) ce chemin ne correspond pas : le bouton PDF ne faisait rien ou disait « introuvable ».
+   Maintenant : on cherche le même fichier dans la liste de CE PC (même fin de chemin, puis même nom s'il est unique) ; l'erreur de Windows est affichée. */
+let FAC_RELS_P=null;
+async function facRelsLocaux(){const R=S.fac&&S.fac.rels,V=R?Object.values(R):[];if(V.length)return V;
+  if(!FAC_RELS_P)FAC_RELS_P=window.api.facLister().then(L=>(L&&L.files||[]).map(f=>f.rel)).catch(()=>[]);return FAC_RELS_P}
+function facRelLocal(rel,V){const l=String(rel||"").replace(/\\/g,"/").toLowerCase();if(!V.length)return rel;
+  if(V.some(v=>String(v).toLowerCase()===l))return V.find(v=>String(v).toLowerCase()===l);
+  const p=l.replace(/^@mail\//,"").split("/").filter(Boolean),bas=V.map(v=>[v,String(v).toLowerCase()]);
+  for(let i=0;i<p.length;i++){const suf=p.slice(i).join("/"),c=bas.filter(([,s])=>s===suf||s.endsWith("/"+suf)||suf.endsWith("/"+s));
+    if(c.length===1)return c[0][0];if(c.length>1)return null}
+  return null}
+async function facOuvrirPdf(rel){const V=await facRelsLocaux(),loc=facRelLocal(rel,V);
+  if(!loc){toast(String(rel).startsWith("@mail/")?"Ce PDF a été reçu par mail sur un autre PC : ouvrez-le depuis ce PC-là.":"PDF introuvable sur ce PC : il a été déplacé, renommé ou supprimé, ou le dossier des factures de ce PC n'est pas le même. Relancez la lecture des factures.");return}
+  let err="";try{err=await window.api.facOuvrir(loc)}catch(e){err=String(e&&e.message||e).replace(/^.*Error:\s*/,"")}
+  if(err)toast("Ouverture du PDF impossible : "+err)}
 function facRelDe(k,x){return (x&&x.r)||(S.fac&&S.fac.rels&&S.fac.rels[k])||Object.keys(facCache()).find(rel=>facKey(rel)===k)||""}
 function facPopHtml(kind){const R=Object.entries(S.facImp||{}),pdf=(k,x)=>{const rel=FAC_API()?facRelDe(k,x):"";return rel?`<button class="btn small" data-poppdf="${esc(rel)}">PDF</button>`:""};
   if(kind==="imp"){const L=R.filter(([k,x])=>x&&x.s==="i").sort((a,b)=>String(b[1].le).localeCompare(String(a[1].le))||String(b[1].d).localeCompare(String(a[1].d))).slice(0,300);
