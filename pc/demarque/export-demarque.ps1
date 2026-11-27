@@ -92,13 +92,14 @@ try {
   $echec = 1
 }
 
-# 5) fichiers articles : une fois par jour (le premier passage apres 20 h sans mise a jour), ou tout de suite avec -Articles
+# 5) fichiers articles : une fois par jour (le premier passage apres 20 h sans mise a jour), ou tout de suite avec -Articles ;
+#    liste des fruits et legumes (fournisseur n° 2) : a chaque passage
 try {
   $dosArt = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'CLAUDE CODE\ARTICLES'
   New-Item -ItemType Directory -Force -Path $dosArt | Out-Null
   $repere = Join-Path $dosArt 'articles-derniere-mise-a-jour.txt'
   $vieux = -not (Test-Path $repere) -or ((Get-Date) - (Get-Item $repere).LastWriteTime).TotalHours -ge 20
-  if (($Articles -or $vieux) -and $cs) {
+  if ($cs) {
     $t0 = Get-Date
     $fr = [Globalization.CultureInfo]::GetCultureInfo('fr-FR')
     $bom = New-Object System.Text.UTF8Encoding($true)
@@ -137,7 +138,11 @@ try {
     function PC($t, $noms) { foreach ($n in $noms) { if (AC $t $n) { return $n } }; return $null }
     $magU = if ($mag) { $mag.ToUpper() } else { 'VIDEOR' }
     $bilan = @()
+    $nk = PC 'NOMENCLATURE' @('ID_NOMEN'); $nl = PC 'NOMENCLATURE' @('LIBNOMEN', 'LIB_NOMEN', 'LIBELLE', 'LIBEL', 'DESIGNATION', 'DESCRIP1', 'NOM')
+    $oR = if (AC 'REFERENCEMENT' 'ID_TIERS_MAG') { 'ORDER BY CASE WHEN x.ID_TIERS_MAG = 2 THEN 0 ELSE 1 END' } else { '' }  # 2 = le magasin
+    function K($al, $t, $n, $nom) { if (AC $t $n) { return "$al.[$n] AS [$nom]" } else { return "NULL AS [$nom]" } }
 
+    if ($Articles -or $vieux) {
     # a) une copie complete de chaque table utile (TIERS : code et nom seulement, sans adresses)
     $tables = @('ARTICLE', 'ARTICLE_COMPLEMENT', 'NOMENCLATURE', 'CODE_VENTE', 'REFERENCEMENT', 'REFERFOU', 'TARIF_FOU', 'STOCK', 'DIAPAR_ASSORT', 'PROMOTION', 'PROMO_MAG')
     foreach ($tb in $tables) {
@@ -150,7 +155,6 @@ try {
     }
 
     # b) fichier complet : une ligne par article (colonnes absentes de cette version de Videor = vides)
-    function K($al, $t, $n, $nom) { if (AC $t $n) { return "$al.[$n] AS [$nom]" } else { return "NULL AS [$nom]" } }
     $sel = @((K 'a' 'ARTICLE' 'COD_ART' 'CODE'), (K 'a' 'ARTICLE' 'DESCRIP1' 'LIBELLE'))
     $from = 'FROM ARTICLE a'
     if ((AC 'CODE_VENTE' 'ID_ART') -and (AC 'CODE_VENTE' 'EAN')) {
@@ -159,7 +163,6 @@ try {
       $sel += 'cv.EAN AS [EAN]'; $from += " OUTER APPLY (SELECT TOP 1 c.EAN FROM CODE_VENTE c WHERE c.ID_ART = a.ID_ART $w2 $o) cv"
     } else { $sel += 'NULL AS [EAN]' }
     # rayon : sous-famille -> famille -> rayon -> departement
-    $nk = PC 'NOMENCLATURE' @('ID_NOMEN'); $nl = PC 'NOMENCLATURE' @('LIBNOMEN', 'LIB_NOMEN', 'LIBELLE', 'LIBEL', 'DESIGNATION', 'DESCRIP1', 'NOM')
     if ($nk -and $nl -and (AC 'NOMENCLATURE' 'ID_NIVSUP') -and (AC 'ARTICLE' 'ID_NOMEN')) {
       $from += ' LEFT JOIN NOMENCLATURE n1 ON n1.ID_NOMEN = a.ID_NOMEN LEFT JOIN NOMENCLATURE n2 ON n2.ID_NOMEN = n1.ID_NIVSUP LEFT JOIN NOMENCLATURE n3 ON n3.ID_NOMEN = n2.ID_NIVSUP LEFT JOIN NOMENCLATURE n4 ON n4.ID_NOMEN = n3.ID_NIVSUP'
       $sel += "n4.[$nl] AS [DEPARTEMENT]", "n3.[$nl] AS [RAYON]", "n2.[$nl] AS [FAMILLE]", "n1.[$nl] AS [SOUS_FAMILLE]"
@@ -167,7 +170,6 @@ try {
     $sel += (K 'a' 'ARTICLE' 'TYPUNIT' 'UNITE'), (K 'a' 'ARTICLE' 'CODETVA' 'CODE_TVA')
     # prix magasin (REFERENCEMENT)
     $okR = AC 'REFERENCEMENT' 'ID_ART'
-    $oR = if (AC 'REFERENCEMENT' 'ID_TIERS_MAG') { 'ORDER BY CASE WHEN x.ID_TIERS_MAG = 2 THEN 0 ELSE 1 END' } else { '' }  # 2 = le magasin
     if ($okR) { $from += " OUTER APPLY (SELECT TOP 1 * FROM REFERENCEMENT x WHERE x.ID_ART = a.ID_ART $oR) r" }
     foreach ($p in @(@('PVTTC', 'PV_TTC'), @('PVHT', 'PV_HT'), @('APVTTC', 'ANCIEN_PV_TTC'), @('PA_NET_MAG', 'PA_NET'), @('PA_BRUT_MAG', 'PA_BRUT'), @('DATE_TARIF', 'DATE_TARIF'), @('FLG_PROMO', 'PROMO'), @('DEFERENCE', 'DEREFERENCE'))) {
       if ($okR) { $sel += (K 'r' 'REFERENCEMENT' $p[0] $p[1]) } else { $sel += "NULL AS [$($p[1])]" }
@@ -208,6 +210,59 @@ try {
 
     [IO.File]::WriteAllText($repere, ((Get-Date).ToString('dd/MM/yyyy HH:mm') + "`r`n" + ($bilan -join "`r`n")), $bom)
     Log ('Articles OK en ' + [int]((Get-Date) - $t0).TotalSeconds + ' s : ' + ($bilan -join ', '))
+    }
+
+    # c) fruits et legumes : tous les articles du fournisseur n° 2 « FRUITS ET LEGUMES » de Videor, a CHAQUE passage
+    #    -> ARTICLES\FRUITS-LEGUMES-<MAG>.csv (pour controle) et fruits-legumes-videor.json dans les donnees de GESMAR
+    try {
+      if (-not ((AC 'REFERFOU' 'ID_ART') -and (AC 'REFERFOU' 'ID_TIERS') -and (AC 'TIERS' 'ID_TIERS'))) { throw 'tables REFERFOU / TIERS incompletes' }
+      $tl = PC 'TIERS' @('RAISOC', 'NOM')
+      $nomT = if ($tl) { "t.[$tl]" } else { "''" }
+      # fournisseur n° 2 : code tiers = 2 (avec ou sans zeros devant) ; sinon nom « FRUITS ET LEGUMES »
+      $T2 = $null
+      if (AC 'TIERS' 'CODTIERS') { $T2 = Lire $cs "SELECT t.ID_TIERS, t.CODTIERS, $nomT AS NOM FROM TIERS t WHERE CASE WHEN LTRIM(RTRIM(CAST(t.CODTIERS AS varchar(50)))) <> '' AND LTRIM(RTRIM(CAST(t.CODTIERS AS varchar(50)))) NOT LIKE '%[^0-9]%' THEN CAST(LTRIM(RTRIM(CAST(t.CODTIERS AS varchar(50)))) AS bigint) END = 2" }
+      if ((-not $T2 -or $T2.Rows.Count -lt 1) -and $tl) { $T2 = Lire $cs "SELECT t.ID_TIERS, '' AS CODTIERS, $nomT AS NOM FROM TIERS t WHERE $nomT LIKE '%FRUIT%LEGUM%'" }
+      if (-not $T2 -or $T2.Rows.Count -lt 1) { throw 'fournisseur n° 2 FRUITS ET LEGUMES introuvable dans TIERS' }
+      $ids = @($T2.Rows | ForEach-Object { "'" + ([string]$_.ID_TIERS).Replace("'", "''") + "'" }) -join ','
+      $fourn = @($T2.Rows | ForEach-Object { ([string]$_.CODTIERS).Trim() + ' ' + ([string]$_.NOM).Trim() }) -join ' / '
+      $sF = @((K 'a' 'ARTICLE' 'COD_ART' 'CODE'), (K 'a' 'ARTICLE' 'DESCRIP1' 'LIBELLE'))
+      $fF = 'FROM ARTICLE a'
+      if ((AC 'CODE_VENTE' 'ID_ART') -and (AC 'CODE_VENTE' 'EAN')) {
+        $w3 = if (AC 'CODE_VENTE' 'DATSUP') { 'AND c.DATSUP IS NULL' } else { '' }
+        $sF += "STUFF((SELECT ' ' + LTRIM(RTRIM(CAST(c.EAN AS varchar(50)))) FROM CODE_VENTE c WHERE c.ID_ART = a.ID_ART $w3 FOR XML PATH('')), 1, 1, '') AS [EANS]"
+      } else { $sF += "NULL AS [EANS]" }
+      if ($nk -and $nl -and (AC 'NOMENCLATURE' 'ID_NIVSUP') -and (AC 'ARTICLE' 'ID_NOMEN')) {
+        $fF += ' LEFT JOIN NOMENCLATURE n1 ON n1.ID_NOMEN = a.ID_NOMEN LEFT JOIN NOMENCLATURE n2 ON n2.ID_NOMEN = n1.ID_NIVSUP LEFT JOIN NOMENCLATURE n3 ON n3.ID_NOMEN = n2.ID_NIVSUP'
+        $sF += "n3.[$nl] AS [RAYON]", "n2.[$nl] AS [FAMILLE]"
+      } else { $sF += 'NULL AS [RAYON]', 'NULL AS [FAMILLE]' }
+      $sF += (K 'a' 'ARTICLE' 'TYPUNIT' 'UNITE')
+      $pr = if (AC 'REFERFOU' 'FLG_PRINCI') { 'MAX(CAST(f.FLG_PRINCI AS varchar(10)))' } else { 'NULL' }
+      $rfx = if (AC 'REFERFOU' 'REFFOUR') { 'MAX(f.REFFOUR)' } else { 'NULL' }
+      $fF += " CROSS APPLY (SELECT $pr AS PRINCIPAL, $rfx AS REFFOUR FROM REFERFOU f WHERE f.ID_ART = a.ID_ART AND f.ID_TIERS IN ($ids) HAVING COUNT(*) > 0) q"
+      $sF += 'q.PRINCIPAL AS [FOURNISSEUR_PRINCIPAL]', 'q.REFFOUR AS [REF_FOURNISSEUR]'
+      if (AC 'REFERENCEMENT' 'ID_ART') {
+        $fF += " OUTER APPLY (SELECT TOP 1 * FROM REFERENCEMENT x WHERE x.ID_ART = a.ID_ART $oR) r"
+        $sF += (K 'r' 'REFERENCEMENT' 'PVTTC' 'PV_TTC'), (K 'r' 'REFERENCEMENT' 'PA_NET_MAG' 'PA_NET'), (K 'r' 'REFERENCEMENT' 'DEFERENCE' 'DEREFERENCE')
+      } else { $sF += 'NULL AS [PV_TTC]', 'NULL AS [PA_NET]', 'NULL AS [DEREFERENCE]' }
+      $oF = if (AC 'ARTICLE' 'COD_ART') { ' ORDER BY a.COD_ART' } else { '' }
+      $sqlF = 'SELECT ' + ($sF -join ', ') + ' ' + $fF + $oF
+      $nF = Ecrire $sqlF (Join-Path $dosArt "FRUITS-LEGUMES-$magU.csv")
+      # liste pour GESMAR : codes Videor et codes-barres des articles F&L
+      $TF = Lire $cs $sqlF
+      $liste = @(); $codesF = @{}; $eansF = @{}
+      foreach ($r in $TF.Rows) {
+        $c = ([string]$r.CODE).Trim(); if ($c) { $codesF[$c] = 1 }
+        $e = @(); if ($r.EANS -isnot [DBNull]) { $e = @(([string]$r.EANS).Split(' ') | Where-Object { $_ }) }
+        foreach ($x in $e) { $eansF[$x] = 1 }
+        $liste += [ordered]@{ code = $c; lib = ([string]$r.LIBELLE).Trim(); eans = $e; rayon = ([string]$r.RAYON).Trim() }
+      }
+      $oj = [ordered]@{ v = 1; quand = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ss'); base = $db; mag = $mag; fournisseur = $fourn; nb = $liste.Count; codes = @($codesF.Keys); eans = @($eansF.Keys); articles = $liste }
+      $jsonF = $oj | ConvertTo-Json -Compress -Depth 5
+      $utf8F = New-Object System.Text.UTF8Encoding($false)
+      $cibF = @((Join-Path $env:APPDATA 'GES\GESMAR\donnees'), (Join-Path $env:APPDATA 'GESMAR\donnees')) | Where-Object { Test-Path $_ }
+      foreach ($d in $cibF) { $f = Join-Path $d 'fruits-legumes-videor.json'; [IO.File]::WriteAllText($f + '.tmp', $jsonF, $utf8F); Move-Item -Force ($f + '.tmp') $f }
+      if ($Articles -or $vieux) { Log ("Fruits et legumes OK : fournisseur $fourn, $nF articles") }
+    } catch { Log ('Fruits et legumes : ERREUR ' + $_.Exception.Message) }
   }
 } catch { Log ('Articles : ERREUR ' + $_.Exception.Message) }
 
